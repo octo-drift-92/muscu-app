@@ -834,8 +834,8 @@
         html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume cette semaine — '+esc(w.name)+'</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries</th><th style="text-align:right">Cible 10-20</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint" style="margin-top:8px">Cible ~10-20 séries/groupe/sem (un peu moins pour les petits muscles).</p></div>';
       }
     }
-    var plats=[];
-    allExerciseNames().forEach(function(nm){ var pts=sessionsOf(nm); if(pts.length<4) return; var mx=0,idx=0; pts.forEach(function(p,i){ if(p.maxWeight>mx){mx=p.maxWeight;idx=i;} }); var since=pts.length-1-idx; if(since>=4 && mx>0) plats.push({nm:nm,kg:mx,since:since}); });
+    var plats=[], _n=new Date(), cutISO=new Date(_n.getTime()-42*864e5).toISOString().slice(0,10);
+    allExerciseNames().forEach(function(nm){ var pts=sessionsOf(nm); if(pts.length<4) return; var lastISO=''; pts.forEach(function(p){ if(p.iso&&p.iso>lastISO)lastISO=p.iso; }); if(lastISO&&lastISO<cutISO) return; var mx=0,idx=0; pts.forEach(function(p,i){ if(p.maxWeight>mx){mx=p.maxWeight;idx=i;} }); var since=pts.length-1-idx; if(since>=4 && mx>0) plats.push({nm:nm,kg:mx,since:since}); });
     plats.sort(function(a,b){return b.since-a.since;});
     html+='<div class="card" style="padding:10px 12px"><div class="section-label">Plateaux (charge bloquée ≥ 4 séances)</div>'+(plats.length?('<table class="hist"><tbody>'+plats.map(function(p){return '<tr><td>'+esc(p.nm)+'</td><td style="text-align:right">'+fmt(p.kg)+' kg</td><td style="text-align:right;color:var(--warning)">'+p.since+' séances</td></tr>';}).join('')+'</tbody></table><p class="hint" style="margin-top:8px">→ tente d\'abord +1-2 reps, puis +1-2 kg.</p>'):'<p class="hint">Aucun plateau — ça progresse 👍</p>')+'</div>';
     return html;
