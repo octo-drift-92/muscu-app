@@ -892,18 +892,21 @@
     } else {
       html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><p class="hint">Aucune donnée sur cette période.</p></div>';
     }
-    function pairHTML(aN,aG,bN,bG){
-      var a=avg[aG]||0, b=avg[bG]||0, tot=a+b; if(tot<=0) return '';
-      var vCol,vIco,vTxt;
-      if(a===0||b===0){ vCol='var(--warning)'; vIco='⚠'; vTxt=(a===0?aN:bN)+' absent'; }
-      else { var ra=a/b; if(ra>=0.5&&ra<=2){ vCol='var(--success)'; vIco='✓'; vTxt='équilibré'; } else { vCol='var(--warning)'; vIco='⚠'; vTxt=(ra>2?bN:aN)+' en retard'; } }
-      var pa=Math.round(a/tot*100);
+    function balanceRow(label,a,b,vCol,vIco,vTxt){
+      var tot=a+b; if(tot<=0) return ''; var pa=Math.round(a/tot*100);
       return '<div style="margin-bottom:12px">'
-        +'<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;margin-bottom:4px"><span style="font-weight:700">'+aN+' ↔ '+bN+'</span><span style="color:'+vCol+';font-weight:700">'+vIco+' '+vTxt+'</span></div>'
+        +'<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;margin-bottom:4px"><span style="font-weight:700">'+label+'</span><span style="color:'+vCol+';font-weight:700">'+vIco+' '+vTxt+'</span></div>'
         +'<div style="position:relative;display:flex;height:18px;border-radius:6px;overflow:hidden;font:700 10px/18px inherit;color:#fff">'
         +'<div style="width:'+pa+'%;background:var(--accent);padding-left:7px;white-space:nowrap;overflow:hidden">'+fmtSets(a)+'</div>'
         +'<div style="width:'+(100-pa)+'%;background:var(--text-faint);text-align:right;padding-right:7px;white-space:nowrap;overflow:hidden">'+fmtSets(b)+'</div>'
         +'<div style="position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--surface);box-shadow:0 0 0 1px rgba(0,0,0,.3)"></div></div></div>';
+    }
+    function pairHTML(aN,aG,bN,bG){
+      var a=avg[aG]||0, b=avg[bG]||0; if(a+b<=0) return '';
+      var vCol,vIco,vTxt;
+      if(a===0||b===0){ vCol='var(--warning)'; vIco='⚠'; vTxt=(a===0?aN:bN)+' absent'; }
+      else { var ra=a/b; if(ra>=0.5&&ra<=2){ vCol='var(--success)'; vIco='✓'; vTxt='équilibré'; } else { vCol='var(--warning)'; vIco='⚠'; vTxt=(ra>2?bN:aN)+' en retard'; } }
+      return balanceRow(aN+' ↔ '+bN, a, b, vCol, vIco, vTxt);
     }
     var pairs=pairHTML('Dos','Dos','Pecs','Pecs')+pairHTML('Épaules arr.','Épaules arr./coiffe','Épaules av.','Épaules')+pairHTML('Biceps','Biceps','Triceps','Triceps')+pairHTML('Ischios','Ischios','Quadri','Jambes (quad)');
     var pushG=(avg['Pecs']||0)+(avg['Épaules']||0)+(avg['Triceps']||0), pullG=(avg['Dos']||0)+(avg['Biceps']||0)+(avg['Épaules arr./coiffe']||0), glob='';
@@ -911,7 +914,7 @@
       var gr=(pushG>0)?pullG/pushG:99, gok=(gr>=0.8&&gr<=2.5);
       var gCol=gok?'var(--success)':'var(--warning)', gIco=gok?'✓':(gr<0.8?'⚠':'↕'), gTxt=(gr<0.8)?'trop de poussée':((gr<=2.5)?'équilibré':'tirage très dominant');
       var gNum=(pushG>0)?(Math.round(gr*100)/100).toString().replace('.',',')+' : 1':'tirage seul';
-      glob='<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline;font-size:12.5px;margin-bottom:11px"><span><b>Poussée/tirage global</b> · Tirage '+fmtSets(pullG)+' / Poussée '+fmtSets(pushG)+'</span><span style="color:'+gCol+';font-weight:700;white-space:nowrap">'+gIco+' '+gTxt+' ('+gNum+')</span></div>';
+      glob=balanceRow('Tirage ↔ Poussée · global', pullG, pushG, gCol, gIco, gTxt+' ('+gNum+')');
     }
     if(glob||pairs){
       var det=(glob&&pairs)?'<div style="border-top:1px solid var(--border);margin-bottom:10px"></div><div style="font-weight:700;font-size:11.5px;letter-spacing:.4px;margin-bottom:9px;color:var(--text-faint)">PAR PAIRE ANTAGONISTE</div>':'';
