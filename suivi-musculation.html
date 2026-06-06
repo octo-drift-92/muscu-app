@@ -243,6 +243,13 @@
   @keyframes flashComplete { 0%{box-shadow:0 0 0 0 rgba(52,211,153,.5);} 100%{box-shadow:0 0 0 16px rgba(52,211,153,0);} }
   .day-card.celebrate { animation:flashComplete .75s ease-out; }
   #toast.party { background:var(--accent-grad); color:#fff; }
+  .last-session { font-size:12px; color:var(--text-faint); margin:-2px 2px 9px; line-height:1.4; }
+  .prog-section-title { font-size:15px; font-weight:800; margin:8px 2px 12px; padding-top:20px; border-top:1px solid var(--border); letter-spacing:.2px; }
+  .period-bar { display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; margin-bottom:14px; }
+  .period-presets button { font-size:13px; padding:7px 12px; }
+  .period-dates { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .period-dates label { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text-faint); }
+  .period-dates input[type=date] { padding:6px 9px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--text); font:inherit; }
 </style>
 </head>
 <body>
@@ -271,6 +278,17 @@
   </section>
 
   <section id="view-progression" class="view">
+    <div class="period-bar">
+      <div class="segmented period-presets">
+        <button data-act="period" data-weeks="4">4 sem.</button>
+        <button data-act="period" data-weeks="8">8 sem.</button>
+        <button data-act="period" data-weeks="12">12 sem.</button>
+        <button data-act="period" data-weeks="0">Tout</button>
+      </div>
+      <div class="period-dates"><label>Du <input type="date" id="period-from"></label><label>au <input type="date" id="period-to"></label></div>
+    </div>
+    <div id="prog-global"></div>
+    <h3 class="prog-section-title" id="prog-detail-label">Progression par exercice</h3>
     <div class="controls">
       <select id="prog-exercise"></select>
       <div class="segmented" id="metric-seg">
@@ -505,7 +523,7 @@
       '<button class="mini-btn del" data-act="delSet" title="Supprimer la série">'+ic(P.trash)+'</button>' +
     '</div>';
   }
-  function exerciseHTML(ex){
+  function exerciseHTML(ex, day){
     var prog = ex.progression || 'none';
     return '<div class="ex-block" data-e="'+ex.id+'">' +
       '<div class="ex-head">' +
@@ -526,6 +544,7 @@
           '<button class="mini-btn del" data-act="delEx" title="Supprimer">'+ic(P.trash)+'</button>' +
         '</div>' +
       '</div>' +
+      lastSessionHTML(ex.name, day) +
       '<input class="ex-note" data-field="exNote" value="'+escA(ex.note)+'" placeholder="Note (technique, tempo, repos…)">' +
       '<div class="set-head"><span></span><span>Prévu</span><span style="text-align:center">Fait</span><span>Réalisé</span><span>Commentaire</span><span></span></div>' +
       ex.sets.map(setRowHTML).join('') +
@@ -533,7 +552,7 @@
     '</div>';
   }
   function dayCardHTML(day){
-    var ex = day.exercises.map(exerciseHTML).join('') || '<div class="empty" style="padding:20px">Aucun exercice. Ajoute-en un ci-dessous.</div>';
+    var ex = day.exercises.map(function(x){ return exerciseHTML(x, day); }).join('') || '<div class="empty" style="padding:20px">Aucun exercice. Ajoute-en un ci-dessous.</div>';
     return '<div class="day-card'+(day.collapsed?' collapsed':'')+(dayIsComplete(day)?' day-complete':'')+'" data-d="'+day.id+'">' +
       '<div class="day-head">' +
         '<button class="mini-btn drag-handle" data-drag="day" title="Glisser pour réordonner">'+ic(P.grip,'grip')+'</button>' +
@@ -789,6 +808,124 @@
     out.sort(function(a,b){ if(!a.iso&&!b.iso) return 0; if(!a.iso) return 1; if(!b.iso) return -1; return a.iso<b.iso?-1:(a.iso>b.iso?1:0); });
     return out;
   }
+  /* ---------- analyses : groupe musculaire, dernière séance, plateaux ---------- */
+  function muscleContribs(name){
+    var n=(name||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    function P(g){ return [{g:g,w:1}]; }
+    if(/face pull|oiseau|reverse fly|l-?fly|rotation ext|coiffe|echauffements? epaule|rotateur|superman|lever lateral/.test(n)) return P('Épaules arr./coiffe');
+    if(/leg curl/.test(n)) return P('Ischios');
+    if(/jambes tendues|romanian|\brdl\b|souleve de terre roumain/.test(n)) return [{g:'Ischios',w:1},{g:'Chaîne post.',w:.5}];
+    if(/souleve de terre|deadlift|\bsdt\b/.test(n)) return [{g:'Chaîne post.',w:1},{g:'Ischios',w:.5}];
+    if(/rowing|\brow\b/.test(n)) return [{g:'Dos',w:1},{g:'Biceps',w:.5},{g:'Épaules arr./coiffe',w:.5}];
+    if(/tirage|traction|pulldown|pull-?up|\blat\b/.test(n)) return [{g:'Dos',w:1},{g:'Biceps',w:.5}];
+    if(/pull-?over/.test(n)) return P('Dos');
+    if(/ecarte|pec deck|butterfly|\bfly\b/.test(n)) return P('Pecs');
+    if(/developpe couche|developpe incline|chest press|chess press|\bdips?\b|pompe/.test(n)) return [{g:'Pecs',w:1},{g:'Triceps',w:.5},{g:'Épaules',w:.5}];
+    if(/militaire|overhead press|developpe epaule|arnold/.test(n)) return [{g:'Épaules',w:1},{g:'Triceps',w:.5}];
+    if(/elevations? laterales?|elevations? frontales?/.test(n)) return P('Épaules');
+    if(/mollet|calf/.test(n)) return P('Mollets');
+    if(/squat|leg press|presse a cuisse|hack|fente|\blunge\b|leg extension/.test(n)) return P('Jambes (quad)');
+    if(/triceps|kickback|skull|barre au front/.test(n)) return P('Triceps');
+    if(/curl|biceps/.test(n)) return P('Biceps');
+    if(/crunch|gainage|abdo|plank|releve de jambe|oblique/.test(n)) return P('Abdos');
+    return P('Autre');
+  }
+  function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return false; if(from && iso<from) return false; if(to && iso>to) return false; return true; }
+  function volumeByGroupOverRange(from, to){
+    var g={}, wk={};
+    state.weeks.forEach(function(w){ w.days.forEach(function(d){
+      if(!ptInRange(d.date||'', from, to)) return;
+      var any=false;
+      d.exercises.forEach(function(x){ var ns=x.sets.length; if(!ns) return; any=true; muscleContribs(x.name).forEach(function(c){ g[c.g]=(g[c.g]||0)+ns*c.w; }); });
+      if(any) wk[w.id]=1;
+    });});
+    var nw=Object.keys(wk).length||1, avg={};
+    Object.keys(g).forEach(function(k){ avg[k]=g[k]/nw; });
+    return {avg:avg, weeks:nw};
+  }
+  function latestDataISO(){ var m=''; state.weeks.forEach(function(w){ w.days.forEach(function(d){ if(d.date && d.date>m) m=d.date; }); }); return m; }
+  function resolveRange(){
+    var s=state.settings, pw=s.progWeeks;
+    if(pw===undefined && !s.progFrom && !s.progTo) pw=8;
+    if(pw===0) return {from:'', to:'', label:'historique complet', preset:0};
+    if(pw){ var _t=todayISO(), _ld=latestDataISO(), _hi=(_ld&&_ld>_t)?_ld:_t; return {from:addDaysISO(_t, -pw*7), to:_hi, label:pw+' dernières semaines', preset:pw}; }
+    var from=s.progFrom||'', to=s.progTo||'';
+    if(!from && !to) return {from:'', to:'', label:'historique complet', preset:0};
+    var a=from?formatDateFR(from).slice(0,5):'', b=to?formatDateFR(to).slice(0,5):'';
+    var lab = (from&&to) ? ('du '+a+' au '+b) : (from ? ('depuis le '+a) : ('avant le '+b));
+    return {from:from, to:to, label:lab, preset:null};
+  }
+  function fmtSets(n){ var r=Math.round(n*2)/2; return (r%1===0)?String(r):(r.toFixed(1).replace('.',',')); }
+  function lastDoneBefore(name, beforeISO){
+    var best=null;
+    state.weeks.forEach(function(w){ w.days.forEach(function(d){
+      var di=d.date||w.startDate||''; if(!di) return; if(beforeISO && di>=beforeISO) return;
+      var sets=[]; d.exercises.forEach(function(x){ if((x.name||'').trim()===name) x.sets.forEach(function(s){ if(s.done) sets.push({r:(s.realReps!=null?s.realReps:s.planReps), w:(s.realWeight!=null?s.realWeight:s.planWeight)}); }); });
+      if(sets.length && (!best || di>best.iso)){ best={iso:di, sets:sets}; }
+    });});
+    return best;
+  }
+  function lastSessionHTML(name, day){
+    name=(name||'').trim(); if(!name) return '';
+    var cut=(day&&day.date)?day.date:((curWeek()&&curWeek().startDate)?curWeek().startDate:'');
+    var last=lastDoneBefore(name, cut); if(!last) return '';
+    var dp=last.iso.split('-'), dl=dp.length===3?(dp[2]+'/'+dp[1]):last.iso;
+    var sets=last.sets.slice(0,6).map(function(s){ var w=numStr(s.w); return intStr(s.r)+(w!==''?'×'+w:''); }).join('  ·  ');
+    return '<div class="last-session">↩ Dernière fois ('+dl+') : '+esc(sets)+(last.sets.length>6?' …':'')+'</div>';
+  }
+  function volStatus(group, n){
+    if(group==='Autre') return {lbl:'—', col:'var(--text-faint)'};
+    var petit={'Biceps':1,'Triceps':1,'Mollets':1,'Épaules arr./coiffe':1,'Abdos':1}[group];
+    var low=petit?4:6, optLo=petit?10:12, high=petit?16:20;
+    if(n<low) return {lbl:'léger', col:'var(--text-faint)'};
+    if(n<optLo) return {lbl:'productif', col:'var(--success)'};
+    if(n<=high) return {lbl:'optimal', col:'var(--success)'};
+    return {lbl:'élevé', col:'var(--accent)'};
+  }
+  function globalProgCards(){
+    var html='', R=resolveRange();
+    var V=volumeByGroupOverRange(R.from, R.to), avg=V.avg, keys=Object.keys(avg).sort(function(a,b){return avg[b]-avg[a];});
+    var sub=(R.preset===null)?R.label:('moyenne/sem · '+R.label);
+    if(keys.length){
+      var rows=keys.map(function(g){ var n=avg[g], s=volStatus(g,n); return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+fmtSets(n)+'</td><td style="text-align:right;color:'+s.col+'">'+s.lbl+'</td></tr>'; }).join('');
+      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:right">Statut</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint" style="margin-top:8px">Moyenne sur '+V.weeks+' sem. · séries équivalentes (direct = 1, indirect = 0,5). Repère : ~6-12 = productif, 12-20 = optimal (moins pour les petits muscles).</p></div>';
+    } else {
+      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><p class="hint">Aucune donnée sur cette période.</p></div>';
+    }
+    function balanceRow(label,a,b,vCol,vIco,vTxt){
+      var tot=a+b; if(tot<=0) return ''; var pa=Math.round(a/tot*100);
+      return '<div style="margin-bottom:12px">'
+        +'<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;margin-bottom:4px"><span style="font-weight:700">'+label+'</span><span style="color:'+vCol+';font-weight:700">'+vIco+' '+vTxt+'</span></div>'
+        +'<div style="position:relative;display:flex;height:18px;border-radius:6px;overflow:hidden;font:700 10px/18px inherit;color:#fff">'
+        +'<div style="width:'+pa+'%;background:var(--accent);padding-left:7px;white-space:nowrap;overflow:hidden">'+fmtSets(a)+'</div>'
+        +'<div style="width:'+(100-pa)+'%;background:var(--text-faint);text-align:right;padding-right:7px;white-space:nowrap;overflow:hidden">'+fmtSets(b)+'</div>'
+        +'<div style="position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--surface);box-shadow:0 0 0 1px rgba(0,0,0,.3)"></div></div></div>';
+    }
+    function pairHTML(aN,aG,bN,bG){
+      var a=avg[aG]||0, b=avg[bG]||0; if(a+b<=0) return '';
+      var vCol,vIco,vTxt;
+      if(a===0||b===0){ vCol='var(--warning)'; vIco='⚠'; vTxt=(a===0?aN:bN)+' absent'; }
+      else { var ra=a/b; if(ra>=0.5&&ra<=2){ vCol='var(--success)'; vIco='✓'; vTxt='équilibré'; } else { vCol='var(--warning)'; vIco='⚠'; vTxt=(ra>2?bN:aN)+' en retard'; } }
+      return balanceRow(aN+' ↔ '+bN, a, b, vCol, vIco, vTxt);
+    }
+    var pairs=pairHTML('Dos','Dos','Pecs','Pecs')+pairHTML('Épaules arr.','Épaules arr./coiffe','Épaules av.','Épaules')+pairHTML('Biceps','Biceps','Triceps','Triceps')+pairHTML('Ischios','Ischios','Quadri','Jambes (quad)');
+    var pushG=(avg['Pecs']||0)+(avg['Épaules']||0)+(avg['Triceps']||0), pullG=(avg['Dos']||0)+(avg['Biceps']||0)+(avg['Épaules arr./coiffe']||0), glob='';
+    if(pushG+pullG>0){
+      var gr=(pushG>0)?pullG/pushG:99, gok=(gr>=0.8&&gr<=2.5);
+      var gCol=gok?'var(--success)':'var(--warning)', gIco=gok?'✓':(gr<0.8?'⚠':'↕'), gTxt=(gr<0.8)?'trop de poussée':((gr<=2.5)?'équilibré':'tirage très dominant');
+      var gNum=(pushG>0)?(Math.round(gr*100)/100).toString().replace('.',',')+' : 1':'tirage seul';
+      glob=balanceRow('Tirage ↔ Poussée · global', pullG, pushG, gCol, gIco, gTxt+' ('+gNum+')');
+    }
+    if(glob||pairs){
+      var det=(glob&&pairs)?'<div style="border-top:1px solid var(--border);margin-bottom:10px"></div><div style="font-weight:700;font-size:11.5px;letter-spacing:.4px;margin-bottom:9px;color:var(--text-faint)">PAR PAIRE ANTAGONISTE</div>':'';
+      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Équilibre</div>'+glob+det+pairs+'<p class="hint" style="margin-top:2px">Global = somme poussée vs tirage. Paires = chaque muscle vs son antagoniste (vert si rapport ≤ 2×). Séries éq./sem sur la période.</p></div>';
+    }
+    var plats=[];
+    allExerciseNames().forEach(function(nm){ var pts=sessionsOf(nm).filter(function(p){ return ptInRange(p.iso, R.from, R.to); }); if(pts.length<4) return; var mx=0,idx=0; pts.forEach(function(p,i){ if(p.maxWeight>mx){mx=p.maxWeight;idx=i;} }); var since=pts.length-1-idx; if(since>=4 && mx>0) plats.push({nm:nm,kg:mx,since:since}); });
+    plats.sort(function(a,b){return b.since-a.since;});
+    html+='<div class="card" style="padding:10px 12px"><div class="section-label">Plateaux (charge bloquée ≥ 4 séances)</div>'+(plats.length?('<table class="hist"><tbody>'+plats.map(function(p){return '<tr><td>'+esc(p.nm)+'</td><td style="text-align:right">'+fmt(p.kg)+' kg</td><td style="text-align:right;color:var(--warning)">'+p.since+' séances</td></tr>';}).join('')+'</tbody></table><p class="hint" style="margin-top:8px">→ tente d\'abord +1-2 reps, puis +1-2 kg.</p>'):'<p class="hint">Aucun plateau sur la période 👍</p>')+'</div>';
+    return html;
+  }
   function buildChartSVG(points, metric){
     if(!points.length) return '<div class="empty">'+ic('<path d="M4 19V5M4 19h16"/><polyline points="6 14 10 10 13 13 18 7"/>')+'<p>Aucune série « faite » pour cet exercice.<br>Coche tes séries dans l\'onglet Programme pour suivre ta progression.</p></div>';
     var W=680,H=290,padL=46,padR=18,padT=18,padB=40,iW=W-padL-padR,iH=H-padT-padB;
@@ -810,15 +947,18 @@
     return '<svg class="chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity="0.28"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>'+grid+'<polygon class="area" points="'+area+'"/><polyline class="line" points="'+lp+'"/>'+circ+xl+'</svg>';
   }
   function renderProgression(){
-    var names=allExerciseNames(), sel=$('prog-exercise');
-    if(!names.length){ sel.innerHTML='<option>—</option>'; progSelected=null; $('prog-body').innerHTML='<div class="empty"><p>Ajoute des exercices dans ton programme pour voir ta progression.</p></div>'; return; }
+    var names=allExerciseNames(), sel=$('prog-exercise'), dl=$('prog-detail-label');
+    syncPeriodUI();
+    if(!names.length){ sel.innerHTML='<option>—</option>'; progSelected=null; $('prog-global').innerHTML=''; if(dl) dl.style.display='none'; $('prog-body').innerHTML='<div class="empty"><p>Ajoute des exercices dans ton programme pour voir ta progression.</p></div>'; return; }
+    if(dl) dl.style.display='';
+    $('prog-global').innerHTML=globalProgCards();
     if(!progSelected||names.indexOf(progSelected)===-1) progSelected=names[0];
     sel.innerHTML=names.map(function(n){return '<option value="'+escA(n)+'"'+(n===progSelected?' selected':'')+'>'+esc(n)+'</option>';}).join('');
     var segs=document.querySelectorAll('#metric-seg button'); for(var i=0;i<segs.length;i++) segs[i].classList.toggle('active', segs[i].dataset.metric===state.settings.metric);
     renderProgBody();
   }
   function renderProgBody(){
-    var pts=sessionsOf(progSelected), metric=state.settings.metric, box=$('prog-body');
+    var R=resolveRange(), pts=sessionsOf(progSelected).filter(function(p){ return ptInRange(p.iso, R.from, R.to); }), metric=state.settings.metric, box=$('prog-body');
     var weights=pts.map(function(p){return p.maxWeight;}), vols=pts.map(function(p){return p.volume;});
     var bw=weights.length?Math.max.apply(null,weights):0, bv=vols.length?Math.max.apply(null,vols):0;
     var prog='<small>—</small>';
@@ -833,6 +973,9 @@
     box.innerHTML='<div class="card chart-card">'+buildChartSVG(pts,metric)+'</div>'+stats+table;
   }
   function setMetric(m){ state.settings.metric=m; save(); var b=document.querySelectorAll('#metric-seg button'); for(var i=0;i<b.length;i++) b[i].classList.toggle('active', b[i].dataset.metric===m); renderProgBody(); }
+  function setPeriod(weeks){ state.settings.progWeeks=+weeks; state.settings.progFrom=''; state.settings.progTo=''; save(); renderProgression(); }
+  function setPeriodCustom(){ state.settings.progWeeks=null; state.settings.progFrom=$('period-from').value||''; state.settings.progTo=$('period-to').value||''; save(); renderProgression(); }
+  function syncPeriodUI(){ var R=resolveRange(), f=$('period-from'), t=$('period-to'); if(f) f.value=R.from||''; if(t) t.value=R.to||''; var pb=document.querySelectorAll('.period-presets button'); for(var i=0;i<pb.length;i++) pb[i].classList.toggle('active', pb[i].dataset.weeks===String(R.preset)); }
 
   /* ---------- réglages ---------- */
   function globalStats(){
@@ -960,6 +1103,7 @@
       case 'view': switchView(b.dataset.view); break;
       case 'theme': toggleTheme(); break;
       case 'metric': setMetric(b.dataset.metric); break;
+      case 'period': setPeriod(b.dataset.weeks); break;
       case 'weekPrev': navWeek(-1); break;
       case 'weekNext': navWeek(1); break;
       case 'addWeek': addWeek(); break;
@@ -1003,6 +1147,7 @@
     var el=e.target;
     if(el.dataset.act==='done'){ toggleDone(el); return; }
     if(el.dataset.act==='weekSelect'){ selectWeek(el.value); return; }
+    if(el.id==='period-from'||el.id==='period-to'){ setPeriodCustom(); return; }
     if(el.id==='prog-exercise'){ progSelected=el.value; renderProgBody(); return; }
     if(el.dataset.field==='exName'){ addLibrary(el.value); return; }
     if(el.dataset.field) applyField(el);
@@ -1185,7 +1330,15 @@
 
   /* ---------- init ---------- */
   load(); loadSyncCfg(); autoExpandToday(); applyTheme(); renderAll(); updateSyncBadge();
-  if(IS_PREVIEW){ var pvb=document.createElement('div'); pvb.textContent='DÉMO — données de test, non synchronisé'; pvb.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:200;background:var(--accent-grad);color:#fff;font:700 12px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;text-align:center;padding:6px 8px;letter-spacing:.3px;'; document.body.appendChild(pvb); }
+  if(IS_PREVIEW){
+    var pvb=document.createElement('div');
+    pvb.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:200;background:var(--accent-grad);color:#fff;font:700 12px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:7px 10px;letter-spacing:.3px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;';
+    var pvs=document.createElement('span'); pvs.textContent='DÉMO — données de test, non synchronisé';
+    var pvi=document.createElement('button'); pvi.textContent='⬇ Importer mes données de prod';
+    pvi.style.cssText='font:700 12px/1 inherit;background:#fff;color:#4f46e5;border:0;border-radius:8px;padding:7px 11px;cursor:pointer;';
+    pvi.onclick=function(){ var prod=localStorage.getItem('suivi-muscu-v3'); if(!prod){ alert('Aucune donnée de prod trouvée sur cet appareil. Ouvre la vraie app (hors démo) une fois pour charger tes données, puis reviens ici.'); return; } if(!confirm('Copier tes données de prod dans la démo ? La démo actuelle sera remplacée.')) return; localStorage.setItem(KEY, prod); location.reload(); };
+    pvb.appendChild(pvs); pvb.appendChild(pvi); document.body.appendChild(pvb);
+  }
   if(syncConfigured()){ doPull({silent:false}).then(function(){ autoExpandToday(); renderProgramme(); }); }
   function maybePull(){ if(syncConfigured() && (Date.now()-sync.lastPullAt>4000)){ doPull({silent:true}); } }
   window.addEventListener('focus', maybePull);
