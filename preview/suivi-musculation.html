@@ -243,6 +243,7 @@
   @keyframes flashComplete { 0%{box-shadow:0 0 0 0 rgba(52,211,153,.5);} 100%{box-shadow:0 0 0 16px rgba(52,211,153,0);} }
   .day-card.celebrate { animation:flashComplete .75s ease-out; }
   #toast.party { background:var(--accent-grad); color:#fff; }
+  .last-session { font-size:12px; color:var(--text-faint); margin:-2px 2px 9px; line-height:1.4; }
 </style>
 </head>
 <body>
@@ -505,7 +506,7 @@
       '<button class="mini-btn del" data-act="delSet" title="Supprimer la série">'+ic(P.trash)+'</button>' +
     '</div>';
   }
-  function exerciseHTML(ex){
+  function exerciseHTML(ex, day){
     var prog = ex.progression || 'none';
     return '<div class="ex-block" data-e="'+ex.id+'">' +
       '<div class="ex-head">' +
@@ -526,6 +527,7 @@
           '<button class="mini-btn del" data-act="delEx" title="Supprimer">'+ic(P.trash)+'</button>' +
         '</div>' +
       '</div>' +
+      lastSessionHTML(ex.name, day) +
       '<input class="ex-note" data-field="exNote" value="'+escA(ex.note)+'" placeholder="Note (technique, tempo, repos…)">' +
       '<div class="set-head"><span></span><span>Prévu</span><span style="text-align:center">Fait</span><span>Réalisé</span><span>Commentaire</span><span></span></div>' +
       ex.sets.map(setRowHTML).join('') +
@@ -533,7 +535,7 @@
     '</div>';
   }
   function dayCardHTML(day){
-    var ex = day.exercises.map(exerciseHTML).join('') || '<div class="empty" style="padding:20px">Aucun exercice. Ajoute-en un ci-dessous.</div>';
+    var ex = day.exercises.map(function(x){ return exerciseHTML(x, day); }).join('') || '<div class="empty" style="padding:20px">Aucun exercice. Ajoute-en un ci-dessous.</div>';
     return '<div class="day-card'+(day.collapsed?' collapsed':'')+(dayIsComplete(day)?' day-complete':'')+'" data-d="'+day.id+'">' +
       '<div class="day-head">' +
         '<button class="mini-btn drag-handle" data-drag="day" title="Glisser pour réordonner">'+ic(P.grip,'grip')+'</button>' +
@@ -789,6 +791,55 @@
     out.sort(function(a,b){ if(!a.iso&&!b.iso) return 0; if(!a.iso) return 1; if(!b.iso) return -1; return a.iso<b.iso?-1:(a.iso>b.iso?1:0); });
     return out;
   }
+  /* ---------- analyses : groupe musculaire, dernière séance, plateaux ---------- */
+  function muscleGroup(name){
+    var n=(name||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    if(/face pull|oiseau|reverse fly|l-?fly|rotation ext|coiffe|echauffements? epaule|rotateur|superman|lever lateral/.test(n)) return 'Épaules arr./coiffe';
+    if(/leg curl|ischio|hamstring|jambes tendues|romanian/.test(n)) return 'Ischios';
+    if(/tirage|traction|rowing|\brow\b|pulldown|pull-?over|\blat\b/.test(n)) return 'Dos';
+    if(/souleve de terre|deadlift|\bsdt\b/.test(n)) return 'Dos/ch. post.';
+    if(/developpe couche|developpe incline|ecarte|pec deck|chest|chess press|\bdips\b|pompe/.test(n)) return 'Pecs';
+    if(/militaire|elevations? laterales?|elevations? frontales?|overhead press|arnold|developpe epaule/.test(n)) return 'Épaules';
+    if(/mollet|calf/.test(n)) return 'Mollets';
+    if(/squat|fente|leg press|presse a cuisse|leg extension|hack/.test(n)) return 'Jambes (quad)';
+    if(/triceps|kickback|skull|barre au front/.test(n)) return 'Triceps';
+    if(/curl|biceps/.test(n)) return 'Biceps';
+    if(/crunch|gainage|abdo|plank|releve de jambe|oblique/.test(n)) return 'Abdos';
+    return 'Autre';
+  }
+  function weekVolumeByGroup(week){ var g={}; if(week) week.days.forEach(function(d){ d.exercises.forEach(function(x){ if(!x.sets.length) return; var grp=muscleGroup(x.name); g[grp]=(g[grp]||0)+x.sets.length; }); }); return g; }
+  function lastDoneBefore(name, beforeISO){
+    var best=null;
+    state.weeks.forEach(function(w){ w.days.forEach(function(d){
+      var di=d.date||w.startDate||''; if(!di) return; if(beforeISO && di>=beforeISO) return;
+      var sets=[]; d.exercises.forEach(function(x){ if((x.name||'').trim()===name) x.sets.forEach(function(s){ if(s.done) sets.push({r:(s.realReps!=null?s.realReps:s.planReps), w:(s.realWeight!=null?s.realWeight:s.planWeight)}); }); });
+      if(sets.length && (!best || di>best.iso)){ best={iso:di, sets:sets}; }
+    });});
+    return best;
+  }
+  function lastSessionHTML(name, day){
+    name=(name||'').trim(); if(!name) return '';
+    var cut=(day&&day.date)?day.date:((curWeek()&&curWeek().startDate)?curWeek().startDate:'');
+    var last=lastDoneBefore(name, cut); if(!last) return '';
+    var dp=last.iso.split('-'), dl=dp.length===3?(dp[2]+'/'+dp[1]):last.iso;
+    var sets=last.sets.slice(0,6).map(function(s){ var w=numStr(s.w); return intStr(s.r)+(w!==''?'×'+w:''); }).join('  ·  ');
+    return '<div class="last-session">↩ Dernière fois ('+dl+') : '+esc(sets)+(last.sets.length>6?' …':'')+'</div>';
+  }
+  function globalProgCards(){
+    var w=curWeek(), html='';
+    if(w){
+      var vg=weekVolumeByGroup(w), keys=Object.keys(vg).sort(function(a,b){return vg[b]-vg[a];});
+      if(keys.length){
+        var rows=keys.map(function(g){ var n=vg[g],col,lbl; if(n<10){col='var(--warning)';lbl='sous-volume';}else if(n<=20){col='var(--success)';lbl='cible ✓';}else{col='var(--accent)';lbl='élevé';} return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+n+'</td><td style="text-align:right;color:'+col+'">'+lbl+'</td></tr>'; }).join('');
+        html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume cette semaine — '+esc(w.name)+'</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries</th><th style="text-align:right">Cible 10-20</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint" style="margin-top:8px">Cible ~10-20 séries/groupe/sem (un peu moins pour les petits muscles).</p></div>';
+      }
+    }
+    var plats=[];
+    allExerciseNames().forEach(function(nm){ var pts=sessionsOf(nm); if(pts.length<4) return; var mx=0,idx=0; pts.forEach(function(p,i){ if(p.maxWeight>mx){mx=p.maxWeight;idx=i;} }); var since=pts.length-1-idx; if(since>=4 && mx>0) plats.push({nm:nm,kg:mx,since:since}); });
+    plats.sort(function(a,b){return b.since-a.since;});
+    html+='<div class="card" style="padding:10px 12px"><div class="section-label">Plateaux (charge bloquée ≥ 4 séances)</div>'+(plats.length?('<table class="hist"><tbody>'+plats.map(function(p){return '<tr><td>'+esc(p.nm)+'</td><td style="text-align:right">'+fmt(p.kg)+' kg</td><td style="text-align:right;color:var(--warning)">'+p.since+' séances</td></tr>';}).join('')+'</tbody></table><p class="hint" style="margin-top:8px">→ tente d\'abord +1-2 reps, puis +1-2 kg.</p>'):'<p class="hint">Aucun plateau — ça progresse 👍</p>')+'</div>';
+    return html;
+  }
   function buildChartSVG(points, metric){
     if(!points.length) return '<div class="empty">'+ic('<path d="M4 19V5M4 19h16"/><polyline points="6 14 10 10 13 13 18 7"/>')+'<p>Aucune série « faite » pour cet exercice.<br>Coche tes séries dans l\'onglet Programme pour suivre ta progression.</p></div>';
     var W=680,H=290,padL=46,padR=18,padT=18,padB=40,iW=W-padL-padR,iH=H-padT-padB;
@@ -830,7 +881,7 @@
       '<div class="stat"><div class="k">Progression charge</div><div class="v">'+prog+'</div></div></div>';
     var table=pts.length?('<div class="card" style="padding:6px 10px"><table class="hist"><thead><tr><th>Séance</th><th>Charge max</th><th>Volume</th></tr></thead><tbody>'+
       pts.slice().reverse().map(function(p){return '<tr><td>'+esc(p.full)+'</td><td>'+fmt(p.maxWeight)+' kg</td><td>'+fmt(p.volume)+'</td></tr>';}).join('')+'</tbody></table></div>'):'';
-    box.innerHTML='<div class="card chart-card">'+buildChartSVG(pts,metric)+'</div>'+stats+table;
+    box.innerHTML=globalProgCards()+'<div class="card chart-card">'+buildChartSVG(pts,metric)+'</div>'+stats+table;
   }
   function setMetric(m){ state.settings.metric=m; save(); var b=document.querySelectorAll('#metric-seg button'); for(var i=0;i<b.length;i++) b[i].classList.toggle('active', b[i].dataset.metric===m); renderProgBody(); }
 
