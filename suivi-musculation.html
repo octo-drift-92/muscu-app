@@ -54,7 +54,7 @@
   .icon-btn { width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); display:grid; place-items:center; cursor:pointer; }
   .icon-btn:hover { background:var(--surface-2); }
 
-  main { padding:20px 0 80px; }
+  main.wrap { padding-top:30px; padding-bottom:90px; }
   .view { display:none; }
   .view.active { display:block; }
 
@@ -229,7 +229,7 @@
   /* ----- iOS plein écran (écran d'accueil) + safe-area ----- */
   body { padding-left:env(safe-area-inset-left); padding-right:env(safe-area-inset-right); }
   header { padding-top:env(safe-area-inset-top); }
-  main { padding-bottom:max(80px, env(safe-area-inset-bottom)); }
+  main.wrap { padding-bottom:max(90px, env(safe-area-inset-bottom)); }
   #sync-badge { font-size:15px; font-weight:800; line-height:1; }
   #sync-badge[hidden] { display:none; }
   #sync-badge .sync-dot { display:block; }
@@ -334,6 +334,12 @@
       if(off!=null){ var nd=addDaysISO(week.startDate, off); if(d.date!==nd){ d.date=nd; changed=true; } }
     });
     return changed;
+  }
+  function sortWeekDays(week){
+    if(!week || !week.days) return false;
+    var before=week.days.map(function(d){return d.id;}).join(',');
+    week.days.sort(function(a,b){ var oa=dayOffsetFromName(a.name), ob=dayOffsetFromName(b.name); return (oa==null?99:oa)-(ob==null?99:ob); });
+    return before!==week.days.map(function(d){return d.id;}).join(',');
   }
   function num(x){ if(x===''||x==null) return 0; var n=typeof x==='number'?x:parseFloat(String(x).replace(',','.')); return isNaN(n)?0:n; }
   function toInt(v){ if(v==null||String(v).trim()==='') return null; var n=parseInt(String(v).replace(/[^\d-]/g,''),10); return isNaN(n)?null:n; }
@@ -563,6 +569,7 @@
         '<input class="name-input" data-field="weekName" value="'+escA(w.name)+'" placeholder="Nom de la semaine">' +
         '<input class="date-input" type="date" data-field="weekDate" value="'+escA(w.startDate)+'" title="Premier jour de la semaine — définit le nom (Sem. du …)">' +
         '<span class="sum" id="week-sum">'+weekSumHTML(w)+'</span>' +
+        '<button class="btn btn-sm" data-act="addDay" style="margin-left:auto">'+ic(P.plus)+'Ajouter un jour</button>' +
       '</div>' +
       w.days.map(dayCardHTML).join('') +
       '<div class="add-day-row">' +
@@ -690,7 +697,7 @@
     var w=curWeek(); if(!w) return;
     var d={ id:uid(), name:t.name, date:'', note:'', collapsed:false, exercises:t.exercises.map(function(x){
       return { id:uid(), name:x.name, note:x.note||'', sets:(x.sets&&x.sets.length?x.sets:[{planReps:null,planWeight:null}]).map(function(s){ return freshSet(s.planReps,s.planWeight); }) }; }) };
-    w.days.push(d); save(); renderProgramme(); toast('Séance « '+t.name+' » ajoutée');
+    w.days.push(d); sortWeekDays(w); save(); renderProgramme(); toast('Séance « '+t.name+' » ajoutée');
   }
   function deleteTemplate(id){ state.templates=state.templates.filter(function(t){return t.id!==id;}); save(); renderReglages(); }
 
@@ -964,6 +971,7 @@
     if(el.id==='prog-exercise'){ progSelected=el.value; renderProgBody(); return; }
     if(el.dataset.field==='exName'){ addLibrary(el.value); return; }
     if(el.dataset.field) applyField(el);
+    if(el.dataset.field==='dayName'){ var _w=curWeek(); if(_w && sortWeekDays(_w)){ save(); renderProgramme(); } }
   });
   document.addEventListener('keydown', function(e){
     if(e.key==='Enter' && e.target.dataset && ['planReps','planWeight','realReps','realWeight'].indexOf(e.target.dataset.field)>-1){ e.preventDefault(); addSet(locate(e.target)); }
@@ -1127,10 +1135,23 @@
   }
   function refreshSyncCard(){ var host=$('sync-card-host'); if(host) host.innerHTML=syncCardInner(); }
 
+  /* ---------- vue initiale : déplier la séance du jour ---------- */
+  function autoExpandToday(){
+    var w=curWeek(); if(!w || !w.days || !w.days.length) return;
+    var today=todayISO(), dated=w.days.filter(function(d){ return d.date; });
+    if(!dated.length) return;            // semaine sans dates -> on ne force rien
+    var target=null;
+    dated.forEach(function(d){ if(d.date===today) target=d; });               // 1. aujourd'hui
+    if(!target){ dated.forEach(function(d){ if(d.date>today && (!target||d.date<target.date)) target=d; }); }  // 2. prochaine à venir
+    if(!target){ dated.forEach(function(d){ if(!target||d.date>target.date) target=d; }); }                    // 3. plus récente passée
+    if(!target) return;
+    w.days.forEach(function(d){ d.collapsed=(d.id!==target.id); });
+  }
+
   /* ---------- init ---------- */
-  load(); loadSyncCfg(); applyTheme(); renderAll(); updateSyncBadge();
+  load(); loadSyncCfg(); autoExpandToday(); applyTheme(); renderAll(); updateSyncBadge();
   if(IS_PREVIEW){ var pvb=document.createElement('div'); pvb.textContent='DÉMO — données de test, non synchronisé'; pvb.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:200;background:var(--accent-grad);color:#fff;font:700 12px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;text-align:center;padding:6px 8px;letter-spacing:.3px;'; document.body.appendChild(pvb); }
-  if(syncConfigured()){ doPull({silent:false}); }
+  if(syncConfigured()){ doPull({silent:false}).then(function(){ autoExpandToday(); renderProgramme(); }); }
   function maybePull(){ if(syncConfigured() && (Date.now()-sync.lastPullAt>4000)){ doPull({silent:true}); } }
   window.addEventListener('focus', maybePull);
   document.addEventListener('visibilitychange', function(){ if(!document.hidden) maybePull(); });
