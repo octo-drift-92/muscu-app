@@ -795,22 +795,29 @@
     return out;
   }
   /* ---------- analyses : groupe musculaire, dernière séance, plateaux ---------- */
-  function muscleGroup(name){
+  function muscleContribs(name){
     var n=(name||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-    if(/face pull|oiseau|reverse fly|l-?fly|rotation ext|coiffe|echauffements? epaule|rotateur|superman|lever lateral/.test(n)) return 'Épaules arr./coiffe';
-    if(/leg curl|ischio|hamstring|jambes tendues|romanian/.test(n)) return 'Ischios';
-    if(/tirage|traction|rowing|\brow\b|pulldown|pull-?over|\blat\b/.test(n)) return 'Dos';
-    if(/souleve de terre|deadlift|\bsdt\b/.test(n)) return 'Dos/ch. post.';
-    if(/developpe couche|developpe incline|ecarte|pec deck|chest|chess press|\bdips\b|pompe/.test(n)) return 'Pecs';
-    if(/militaire|elevations? laterales?|elevations? frontales?|overhead press|arnold|developpe epaule/.test(n)) return 'Épaules';
-    if(/mollet|calf/.test(n)) return 'Mollets';
-    if(/squat|fente|leg press|presse a cuisse|leg extension|hack/.test(n)) return 'Jambes (quad)';
-    if(/triceps|kickback|skull|barre au front/.test(n)) return 'Triceps';
-    if(/curl|biceps/.test(n)) return 'Biceps';
-    if(/crunch|gainage|abdo|plank|releve de jambe|oblique/.test(n)) return 'Abdos';
-    return 'Autre';
+    function P(g){ return [{g:g,w:1}]; }
+    if(/face pull|oiseau|reverse fly|l-?fly|rotation ext|coiffe|echauffements? epaule|rotateur|superman|lever lateral/.test(n)) return P('Épaules arr./coiffe');
+    if(/leg curl/.test(n)) return P('Ischios');
+    if(/jambes tendues|romanian|\brdl\b|souleve de terre roumain/.test(n)) return [{g:'Ischios',w:1},{g:'Dos/ch. post.',w:.5}];
+    if(/souleve de terre|deadlift|\bsdt\b/.test(n)) return [{g:'Dos/ch. post.',w:1},{g:'Ischios',w:.5}];
+    if(/rowing|\brow\b/.test(n)) return [{g:'Dos',w:1},{g:'Biceps',w:.5},{g:'Épaules arr./coiffe',w:.5}];
+    if(/tirage|traction|pulldown|pull-?up|\blat\b/.test(n)) return [{g:'Dos',w:1},{g:'Biceps',w:.5}];
+    if(/pull-?over/.test(n)) return P('Dos');
+    if(/ecarte|pec deck|butterfly|\bfly\b/.test(n)) return P('Pecs');
+    if(/developpe couche|developpe incline|chest press|chess press|\bdips?\b|pompe/.test(n)) return [{g:'Pecs',w:1},{g:'Triceps',w:.5},{g:'Épaules',w:.5}];
+    if(/militaire|overhead press|developpe epaule|arnold/.test(n)) return [{g:'Épaules',w:1},{g:'Triceps',w:.5}];
+    if(/elevations? laterales?|elevations? frontales?/.test(n)) return P('Épaules');
+    if(/mollet|calf/.test(n)) return P('Mollets');
+    if(/squat|leg press|presse a cuisse|hack|fente|\blunge\b|leg extension/.test(n)) return P('Jambes (quad)');
+    if(/triceps|kickback|skull|barre au front/.test(n)) return P('Triceps');
+    if(/curl|biceps/.test(n)) return P('Biceps');
+    if(/crunch|gainage|abdo|plank|releve de jambe|oblique/.test(n)) return P('Abdos');
+    return P('Autre');
   }
-  function weekVolumeByGroup(week){ var g={}; if(week) week.days.forEach(function(d){ d.exercises.forEach(function(x){ if(!x.sets.length) return; var grp=muscleGroup(x.name); g[grp]=(g[grp]||0)+x.sets.length; }); }); return g; }
+  function weekVolumeByGroup(week){ var g={}; if(week) week.days.forEach(function(d){ d.exercises.forEach(function(x){ var ns=x.sets.length; if(!ns) return; muscleContribs(x.name).forEach(function(c){ g[c.g]=(g[c.g]||0)+ns*c.w; }); }); }); return g; }
+  function fmtSets(n){ var r=Math.round(n*2)/2; return (r%1===0)?String(r):(r.toFixed(1).replace('.',',')); }
   function lastDoneBefore(name, beforeISO){
     var best=null;
     state.weeks.forEach(function(w){ w.days.forEach(function(d){
@@ -842,8 +849,8 @@
     if(w){
       var vg=weekVolumeByGroup(w), keys=Object.keys(vg).sort(function(a,b){return vg[b]-vg[a];});
       if(keys.length){
-        var rows=keys.map(function(g){ var n=vg[g], s=volStatus(g,n); return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+n+'</td><td style="text-align:right;color:'+s.col+'">'+s.lbl+'</td></tr>'; }).join('');
-        html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume cette semaine — '+esc(w.name)+'</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries</th><th style="text-align:right">Statut</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint" style="margin-top:8px">Repère : ~6-12 = productif, 12-20 = optimal (moins pour les petits muscles). Séries directes seulement — le volume indirect (ex. biceps via le tirage) n\'est pas compté.</p></div>';
+        var rows=keys.map(function(g){ var n=vg[g], s=volStatus(g,n); return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+fmtSets(n)+'</td><td style="text-align:right;color:'+s.col+'">'+s.lbl+'</td></tr>'; }).join('');
+        html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume cette semaine — '+esc(w.name)+'</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq.</th><th style="text-align:right">Statut</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint" style="margin-top:8px">Séries équivalentes : travail direct = 1, indirect = 0,5 (ex. un tirage compte 0,5 pour les biceps). Repère : ~6-12 = productif, 12-20 = optimal (moins pour les petits muscles).</p></div>';
       }
     }
     var plats=[], _n=new Date(), cutISO=new Date(_n.getTime()-42*864e5).toISOString().slice(0,10);
