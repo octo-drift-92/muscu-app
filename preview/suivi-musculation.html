@@ -244,6 +244,7 @@
   .day-card.celebrate { animation:flashComplete .75s ease-out; }
   #toast.party { background:var(--accent-grad); color:#fff; }
   .last-session { font-size:12px; color:var(--text-faint); margin:-2px 2px 9px; line-height:1.4; }
+  .prog-section-title { font-size:15px; font-weight:800; margin:8px 2px 12px; padding-top:20px; border-top:1px solid var(--border); letter-spacing:.2px; }
 </style>
 </head>
 <body>
@@ -272,6 +273,8 @@
   </section>
 
   <section id="view-progression" class="view">
+    <div id="prog-global"></div>
+    <h3 class="prog-section-title" id="prog-detail-label">Progression par exercice</h3>
     <div class="controls">
       <select id="prog-exercise"></select>
       <div class="segmented" id="metric-seg">
@@ -861,8 +864,10 @@
     return '<svg class="chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity="0.28"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>'+grid+'<polygon class="area" points="'+area+'"/><polyline class="line" points="'+lp+'"/>'+circ+xl+'</svg>';
   }
   function renderProgression(){
-    var names=allExerciseNames(), sel=$('prog-exercise');
-    if(!names.length){ sel.innerHTML='<option>—</option>'; progSelected=null; $('prog-body').innerHTML='<div class="empty"><p>Ajoute des exercices dans ton programme pour voir ta progression.</p></div>'; return; }
+    var names=allExerciseNames(), sel=$('prog-exercise'), dl=$('prog-detail-label');
+    if(!names.length){ sel.innerHTML='<option>—</option>'; progSelected=null; $('prog-global').innerHTML=''; if(dl) dl.style.display='none'; $('prog-body').innerHTML='<div class="empty"><p>Ajoute des exercices dans ton programme pour voir ta progression.</p></div>'; return; }
+    if(dl) dl.style.display='';
+    $('prog-global').innerHTML=globalProgCards();
     if(!progSelected||names.indexOf(progSelected)===-1) progSelected=names[0];
     sel.innerHTML=names.map(function(n){return '<option value="'+escA(n)+'"'+(n===progSelected?' selected':'')+'>'+esc(n)+'</option>';}).join('');
     var segs=document.querySelectorAll('#metric-seg button'); for(var i=0;i<segs.length;i++) segs[i].classList.toggle('active', segs[i].dataset.metric===state.settings.metric);
@@ -881,7 +886,7 @@
       '<div class="stat"><div class="k">Progression charge</div><div class="v">'+prog+'</div></div></div>';
     var table=pts.length?('<div class="card" style="padding:6px 10px"><table class="hist"><thead><tr><th>Séance</th><th>Charge max</th><th>Volume</th></tr></thead><tbody>'+
       pts.slice().reverse().map(function(p){return '<tr><td>'+esc(p.full)+'</td><td>'+fmt(p.maxWeight)+' kg</td><td>'+fmt(p.volume)+'</td></tr>';}).join('')+'</tbody></table></div>'):'';
-    box.innerHTML=globalProgCards()+'<div class="card chart-card">'+buildChartSVG(pts,metric)+'</div>'+stats+table;
+    box.innerHTML='<div class="card chart-card">'+buildChartSVG(pts,metric)+'</div>'+stats+table;
   }
   function setMetric(m){ state.settings.metric=m; save(); var b=document.querySelectorAll('#metric-seg button'); for(var i=0;i<b.length;i++) b[i].classList.toggle('active', b[i].dataset.metric===m); renderProgBody(); }
 
