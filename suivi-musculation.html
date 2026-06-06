@@ -1173,12 +1173,12 @@
   /* ---------- vue initiale : déplier la séance du jour ---------- */
   function autoExpandToday(){
     var w=curWeek(); if(!w || !w.days || !w.days.length) return;
-    var today=todayISO(), dated=w.days.filter(function(d){ return d.date; });
-    if(!dated.length) return;            // semaine sans dates -> on ne force rien
+    var today=todayISO(), cand=w.days.filter(function(d){ return d.date && !dayIsComplete(d); });
+    if(!cand.length) return;            // rien à déplier (jours terminés ou sans date) -> on laisse l'état
     var target=null;
-    dated.forEach(function(d){ if(d.date===today) target=d; });               // 1. aujourd'hui
-    if(!target){ dated.forEach(function(d){ if(d.date>today && (!target||d.date<target.date)) target=d; }); }  // 2. prochaine à venir
-    if(!target){ dated.forEach(function(d){ if(!target||d.date>target.date) target=d; }); }                    // 3. plus récente passée
+    cand.forEach(function(d){ if(d.date===today) target=d; });               // 1. aujourd'hui (non terminé)
+    if(!target){ cand.forEach(function(d){ if(d.date>today && (!target||d.date<target.date)) target=d; }); }  // 2. prochaine à venir non terminée
+    if(!target){ cand.forEach(function(d){ if(!target||d.date>target.date) target=d; }); }                    // 3. plus récente passée non terminée
     if(!target) return;
     w.days.forEach(function(d){ d.collapsed=(d.id!==target.id); });
   }
