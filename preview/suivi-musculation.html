@@ -882,13 +882,6 @@
     if(n<=high) return {lbl:'optimal', col:'var(--success)'};
     return {lbl:'élevé', col:'var(--accent)'};
   }
-  function groupCategory(g){
-    if(g==='Pecs'||g==='Épaules'||g==='Triceps') return 'Poussée';
-    if(g==='Dos'||g==='Biceps'||g==='Épaules arr./coiffe') return 'Tirage';
-    if(g==='Jambes (quad)'||g==='Ischios'||g==='Mollets'||g==='Chaîne post.') return 'Jambes';
-    if(g==='Abdos') return 'Tronc';
-    return null;
-  }
   function globalProgCards(){
     var html='', R=resolveRange();
     var V=volumeByGroupOverRange(R.from, R.to), avg=V.avg, keys=Object.keys(avg).sort(function(a,b){return avg[b]-avg[a];});
@@ -899,26 +892,22 @@
     } else {
       html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><p class="hint">Aucune donnée sur cette période.</p></div>';
     }
-    var cat={}; Object.keys(avg).forEach(function(g){ var c=groupCategory(g); if(c) cat[c]=(cat[c]||0)+avg[g]; });
-    var catOrder=['Poussée','Tirage','Jambes','Tronc'], catRows=catOrder.filter(function(c){return cat[c]!=null;}).map(function(c){ return '<tr><td>'+c+'</td><td style="text-align:right;font-weight:700">'+fmtSets(cat[c])+'</td></tr>'; }).join('');
-    if(catRows){
-      var push=cat['Poussée']||0, pull=cat['Tirage']||0, head='';
-      if(push+pull>0){
-        var r=(push>0)?pull/push:99, ok=(r>=0.8&&r<=2.5), vTxt, vIco;
-        if(r<0.8){ vTxt='Trop de poussée — ajoute du tirage'; vIco='⚠'; }
-        else if(r<=2.5){ vTxt='Équilibré — léger avantage tirage, idéal'; vIco='✓'; }
-        else { vTxt='Tirage très dominant — pense à pousser aussi'; vIco='↕'; }
-        var vCol=ok?'var(--success)':'var(--warning)';
-        var rNum=(push>0)?(Math.round(r*100)/100).toString().replace('.',',')+' : 1':'tirage seul';
-        var pPull=Math.round(pull/(push+pull)*100);
-        head='<div style="display:flex;align-items:center;gap:9px;background:color-mix(in srgb,'+vCol+' 15%,transparent);color:'+vCol+';font-weight:800;padding:10px 12px;border-radius:10px;margin:2px 0 11px;font-size:13.5px;line-height:1.3"><span style="font-size:17px">'+vIco+'</span><span>'+vTxt+'  ·  ratio '+rNum+'</span></div>'
-          +'<div style="position:relative;display:flex;height:22px;border-radius:7px;overflow:hidden;font:800 10.5px/22px inherit;color:#fff;margin-bottom:10px;">'
-          +'<div style="width:'+pPull+'%;background:'+vCol+';padding-left:8px;white-space:nowrap;overflow:hidden">Tirage '+fmtSets(pull)+'</div>'
-          +'<div style="width:'+(100-pPull)+'%;background:var(--text-faint);text-align:right;padding-right:8px;white-space:nowrap;overflow:hidden">'+fmtSets(push)+' Poussée</div>'
-          +'<div title="équilibre 1:1" style="position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--surface);box-shadow:0 0 0 1px rgba(0,0,0,.3)"></div></div>';
-      }
-      var extra=['Jambes','Tronc'].filter(function(c){return cat[c]!=null;}).map(function(c){return c+' '+fmtSets(cat[c]);}).join('  ·  ');
-      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Équilibre poussée / tirage</div>'+head+(extra?'<div class="hint" style="margin:0 0 2px">'+extra+'</div>':'')+'<p class="hint" style="margin-top:6px">Idéal : entre 1:1 et ~2:1 en faveur du tirage (repère = 1:1). Trop de poussée fragilise l\'épaule ; beaucoup trop de tirage = poussée sous-développée. Soulevé de terre compté dans Jambes.</p></div>';
+    function pairHTML(aN,aG,bN,bG){
+      var a=avg[aG]||0, b=avg[bG]||0, tot=a+b; if(tot<=0) return '';
+      var vCol,vIco,vTxt;
+      if(a===0||b===0){ vCol='var(--warning)'; vIco='⚠'; vTxt=(a===0?aN:bN)+' absent'; }
+      else { var ra=a/b; if(ra>=0.5&&ra<=2){ vCol='var(--success)'; vIco='✓'; vTxt='équilibré'; } else { vCol='var(--warning)'; vIco='⚠'; vTxt=(ra>2?bN:aN)+' en retard'; } }
+      var pa=Math.round(a/tot*100);
+      return '<div style="margin-bottom:12px">'
+        +'<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;margin-bottom:4px"><span style="font-weight:700">'+aN+' ↔ '+bN+'</span><span style="color:'+vCol+';font-weight:700">'+vIco+' '+vTxt+'</span></div>'
+        +'<div style="position:relative;display:flex;height:18px;border-radius:6px;overflow:hidden;font:700 10px/18px inherit;color:#fff">'
+        +'<div style="width:'+pa+'%;background:var(--accent);padding-left:7px;white-space:nowrap;overflow:hidden">'+fmtSets(a)+'</div>'
+        +'<div style="width:'+(100-pa)+'%;background:var(--text-faint);text-align:right;padding-right:7px;white-space:nowrap;overflow:hidden">'+fmtSets(b)+'</div>'
+        +'<div style="position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--surface);box-shadow:0 0 0 1px rgba(0,0,0,.3)"></div></div></div>';
+    }
+    var pairs=pairHTML('Dos','Dos','Pecs','Pecs')+pairHTML('Épaules arr.','Épaules arr./coiffe','Épaules av.','Épaules')+pairHTML('Biceps','Biceps','Triceps','Triceps')+pairHTML('Ischios','Ischios','Quadri','Jambes (quad)');
+    if(pairs){
+      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Équilibre par paires (antagonistes)</div>'+pairs+'<p class="hint" style="margin-top:2px">Vert quand les deux côtés sont dans un rapport ≤ 2× (repère = 1:1 au milieu). Un léger biais est normal (dos ≥ pecs). Séries éq./sem sur la période.</p></div>';
     }
     var plats=[];
     allExerciseNames().forEach(function(nm){ var pts=sessionsOf(nm).filter(function(p){ return ptInRange(p.iso, R.from, R.to); }); if(pts.length<4) return; var mx=0,idx=0; pts.forEach(function(p,i){ if(p.maxWeight>mx){mx=p.maxWeight;idx=i;} }); var since=pts.length-1-idx; if(since>=4 && mx>0) plats.push({nm:nm,kg:mx,since:since}); });
