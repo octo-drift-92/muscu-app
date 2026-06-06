@@ -623,7 +623,7 @@
       var card=row.closest('.day-card'), complete=dayIsComplete(loc.day);
       if(card){
         card.classList.toggle('day-complete', complete);
-        if(complete && s.done){ card.classList.remove('celebrate'); void card.offsetWidth; card.classList.add('celebrate'); toastParty('🎉 '+(loc.day.name||'Jour')+' terminé — bravo !'); }
+        if(complete && s.done){ card.classList.remove('celebrate'); void card.offsetWidth; card.classList.add('celebrate'); toastParty('🎉 '+(loc.day.name||'Jour')+' terminé — bravo !'); loc.day.collapsed=true; save(); setTimeout(function(){ var c=document.querySelector('[data-d="'+loc.day.id+'"]'); if(c) c.classList.add('collapsed'); }, 800); }
       }
     }
     updateWeekSummary();
