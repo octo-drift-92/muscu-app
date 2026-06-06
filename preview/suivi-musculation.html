@@ -245,6 +245,11 @@
   #toast.party { background:var(--accent-grad); color:#fff; }
   .last-session { font-size:12px; color:var(--text-faint); margin:-2px 2px 9px; line-height:1.4; }
   .prog-section-title { font-size:15px; font-weight:800; margin:8px 2px 12px; padding-top:20px; border-top:1px solid var(--border); letter-spacing:.2px; }
+  .period-bar { display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; margin-bottom:14px; }
+  .period-presets button { font-size:13px; padding:7px 12px; }
+  .period-dates { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .period-dates label { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text-faint); }
+  .period-dates input[type=date] { padding:6px 9px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--text); font:inherit; }
 </style>
 </head>
 <body>
@@ -273,6 +278,15 @@
   </section>
 
   <section id="view-progression" class="view">
+    <div class="period-bar">
+      <div class="segmented period-presets">
+        <button data-act="period" data-weeks="4">4 sem.</button>
+        <button data-act="period" data-weeks="8">8 sem.</button>
+        <button data-act="period" data-weeks="12">12 sem.</button>
+        <button data-act="period" data-weeks="0">Tout</button>
+      </div>
+      <div class="period-dates"><label>Du <input type="date" id="period-from"></label><label>au <input type="date" id="period-to"></label></div>
+    </div>
     <div id="prog-global"></div>
     <h3 class="prog-section-title" id="prog-detail-label">Progression par exercice</h3>
     <div class="controls">
@@ -816,7 +830,30 @@
     if(/crunch|gainage|abdo|plank|releve de jambe|oblique/.test(n)) return P('Abdos');
     return P('Autre');
   }
-  function weekVolumeByGroup(week){ var g={}; if(week) week.days.forEach(function(d){ d.exercises.forEach(function(x){ var ns=x.sets.length; if(!ns) return; muscleContribs(x.name).forEach(function(c){ g[c.g]=(g[c.g]||0)+ns*c.w; }); }); }); return g; }
+  function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return false; if(from && iso<from) return false; if(to && iso>to) return false; return true; }
+  function volumeByGroupOverRange(from, to){
+    var g={}, wk={};
+    state.weeks.forEach(function(w){ w.days.forEach(function(d){
+      if(!ptInRange(d.date||'', from, to)) return;
+      var any=false;
+      d.exercises.forEach(function(x){ var ns=x.sets.length; if(!ns) return; any=true; muscleContribs(x.name).forEach(function(c){ g[c.g]=(g[c.g]||0)+ns*c.w; }); });
+      if(any) wk[w.id]=1;
+    });});
+    var nw=Object.keys(wk).length||1, avg={};
+    Object.keys(g).forEach(function(k){ avg[k]=g[k]/nw; });
+    return {avg:avg, weeks:nw};
+  }
+  function resolveRange(){
+    var s=state.settings, pw=s.progWeeks;
+    if(pw===undefined && !s.progFrom && !s.progTo) pw=8;
+    if(pw===0) return {from:'', to:'', label:'historique complet', preset:0};
+    if(pw) return {from:addDaysISO(todayISO(), -pw*7), to:'', label:pw+' dernières semaines', preset:pw};
+    var from=s.progFrom||'', to=s.progTo||'';
+    if(!from && !to) return {from:'', to:'', label:'historique complet', preset:0};
+    var a=from?formatDateFR(from).slice(0,5):'', b=to?formatDateFR(to).slice(0,5):'';
+    var lab = (from&&to) ? ('du '+a+' au '+b) : (from ? ('depuis le '+a) : ('avant le '+b));
+    return {from:from, to:to, label:lab, preset:null};
+  }
   function fmtSets(n){ var r=Math.round(n*2)/2; return (r%1===0)?String(r):(r.toFixed(1).replace('.',',')); }
   function lastDoneBefore(name, beforeISO){
     var best=null;
@@ -845,18 +882,19 @@
     return {lbl:'élevé', col:'var(--accent)'};
   }
   function globalProgCards(){
-    var w=curWeek(), html='';
-    if(w){
-      var vg=weekVolumeByGroup(w), keys=Object.keys(vg).sort(function(a,b){return vg[b]-vg[a];});
-      if(keys.length){
-        var rows=keys.map(function(g){ var n=vg[g], s=volStatus(g,n); return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+fmtSets(n)+'</td><td style="text-align:right;color:'+s.col+'">'+s.lbl+'</td></tr>'; }).join('');
-        html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume cette semaine — '+esc(w.name)+'</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq.</th><th style="text-align:right">Statut</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint" style="margin-top:8px">Séries équivalentes : travail direct = 1, indirect = 0,5 (ex. un tirage compte 0,5 pour les biceps). Repère : ~6-12 = productif, 12-20 = optimal (moins pour les petits muscles).</p></div>';
-      }
+    var html='', R=resolveRange();
+    var V=volumeByGroupOverRange(R.from, R.to), avg=V.avg, keys=Object.keys(avg).sort(function(a,b){return avg[b]-avg[a];});
+    var sub=(R.preset===null)?R.label:('moyenne/sem · '+R.label);
+    if(keys.length){
+      var rows=keys.map(function(g){ var n=avg[g], s=volStatus(g,n); return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+fmtSets(n)+'</td><td style="text-align:right;color:'+s.col+'">'+s.lbl+'</td></tr>'; }).join('');
+      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:right">Statut</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint" style="margin-top:8px">Moyenne sur '+V.weeks+' sem. · séries équivalentes (direct = 1, indirect = 0,5). Repère : ~6-12 = productif, 12-20 = optimal (moins pour les petits muscles).</p></div>';
+    } else {
+      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><p class="hint">Aucune donnée sur cette période.</p></div>';
     }
-    var plats=[], _n=new Date(), cutISO=new Date(_n.getTime()-42*864e5).toISOString().slice(0,10);
-    allExerciseNames().forEach(function(nm){ var pts=sessionsOf(nm); if(pts.length<4) return; var lastISO=''; pts.forEach(function(p){ if(p.iso&&p.iso>lastISO)lastISO=p.iso; }); if(lastISO&&lastISO<cutISO) return; var mx=0,idx=0; pts.forEach(function(p,i){ if(p.maxWeight>mx){mx=p.maxWeight;idx=i;} }); var since=pts.length-1-idx; if(since>=4 && mx>0) plats.push({nm:nm,kg:mx,since:since}); });
+    var plats=[];
+    allExerciseNames().forEach(function(nm){ var pts=sessionsOf(nm).filter(function(p){ return ptInRange(p.iso, R.from, R.to); }); if(pts.length<4) return; var mx=0,idx=0; pts.forEach(function(p,i){ if(p.maxWeight>mx){mx=p.maxWeight;idx=i;} }); var since=pts.length-1-idx; if(since>=4 && mx>0) plats.push({nm:nm,kg:mx,since:since}); });
     plats.sort(function(a,b){return b.since-a.since;});
-    html+='<div class="card" style="padding:10px 12px"><div class="section-label">Plateaux (charge bloquée ≥ 4 séances)</div>'+(plats.length?('<table class="hist"><tbody>'+plats.map(function(p){return '<tr><td>'+esc(p.nm)+'</td><td style="text-align:right">'+fmt(p.kg)+' kg</td><td style="text-align:right;color:var(--warning)">'+p.since+' séances</td></tr>';}).join('')+'</tbody></table><p class="hint" style="margin-top:8px">→ tente d\'abord +1-2 reps, puis +1-2 kg.</p>'):'<p class="hint">Aucun plateau — ça progresse 👍</p>')+'</div>';
+    html+='<div class="card" style="padding:10px 12px"><div class="section-label">Plateaux (charge bloquée ≥ 4 séances)</div>'+(plats.length?('<table class="hist"><tbody>'+plats.map(function(p){return '<tr><td>'+esc(p.nm)+'</td><td style="text-align:right">'+fmt(p.kg)+' kg</td><td style="text-align:right;color:var(--warning)">'+p.since+' séances</td></tr>';}).join('')+'</tbody></table><p class="hint" style="margin-top:8px">→ tente d\'abord +1-2 reps, puis +1-2 kg.</p>'):'<p class="hint">Aucun plateau sur la période 👍</p>')+'</div>';
     return html;
   }
   function buildChartSVG(points, metric){
@@ -881,6 +919,7 @@
   }
   function renderProgression(){
     var names=allExerciseNames(), sel=$('prog-exercise'), dl=$('prog-detail-label');
+    syncPeriodUI();
     if(!names.length){ sel.innerHTML='<option>—</option>'; progSelected=null; $('prog-global').innerHTML=''; if(dl) dl.style.display='none'; $('prog-body').innerHTML='<div class="empty"><p>Ajoute des exercices dans ton programme pour voir ta progression.</p></div>'; return; }
     if(dl) dl.style.display='';
     $('prog-global').innerHTML=globalProgCards();
@@ -890,7 +929,7 @@
     renderProgBody();
   }
   function renderProgBody(){
-    var pts=sessionsOf(progSelected), metric=state.settings.metric, box=$('prog-body');
+    var R=resolveRange(), pts=sessionsOf(progSelected).filter(function(p){ return ptInRange(p.iso, R.from, R.to); }), metric=state.settings.metric, box=$('prog-body');
     var weights=pts.map(function(p){return p.maxWeight;}), vols=pts.map(function(p){return p.volume;});
     var bw=weights.length?Math.max.apply(null,weights):0, bv=vols.length?Math.max.apply(null,vols):0;
     var prog='<small>—</small>';
@@ -905,6 +944,9 @@
     box.innerHTML='<div class="card chart-card">'+buildChartSVG(pts,metric)+'</div>'+stats+table;
   }
   function setMetric(m){ state.settings.metric=m; save(); var b=document.querySelectorAll('#metric-seg button'); for(var i=0;i<b.length;i++) b[i].classList.toggle('active', b[i].dataset.metric===m); renderProgBody(); }
+  function setPeriod(weeks){ state.settings.progWeeks=+weeks; state.settings.progFrom=''; state.settings.progTo=''; save(); renderProgression(); }
+  function setPeriodCustom(){ state.settings.progWeeks=null; state.settings.progFrom=$('period-from').value||''; state.settings.progTo=$('period-to').value||''; save(); renderProgression(); }
+  function syncPeriodUI(){ var R=resolveRange(), f=$('period-from'), t=$('period-to'); if(f) f.value=R.from||''; if(t) t.value=R.to||''; var pb=document.querySelectorAll('.period-presets button'); for(var i=0;i<pb.length;i++) pb[i].classList.toggle('active', pb[i].dataset.weeks===String(R.preset)); }
 
   /* ---------- réglages ---------- */
   function globalStats(){
@@ -1032,6 +1074,7 @@
       case 'view': switchView(b.dataset.view); break;
       case 'theme': toggleTheme(); break;
       case 'metric': setMetric(b.dataset.metric); break;
+      case 'period': setPeriod(b.dataset.weeks); break;
       case 'weekPrev': navWeek(-1); break;
       case 'weekNext': navWeek(1); break;
       case 'addWeek': addWeek(); break;
@@ -1075,6 +1118,7 @@
     var el=e.target;
     if(el.dataset.act==='done'){ toggleDone(el); return; }
     if(el.dataset.act==='weekSelect'){ selectWeek(el.value); return; }
+    if(el.id==='period-from'||el.id==='period-to'){ setPeriodCustom(); return; }
     if(el.id==='prog-exercise'){ progSelected=el.value; renderProgBody(); return; }
     if(el.dataset.field==='exName'){ addLibrary(el.value); return; }
     if(el.dataset.field) applyField(el);
