@@ -569,6 +569,7 @@
         '<input class="name-input" data-field="weekName" value="'+escA(w.name)+'" placeholder="Nom de la semaine">' +
         '<input class="date-input" type="date" data-field="weekDate" value="'+escA(w.startDate)+'" title="Premier jour de la semaine — définit le nom (Sem. du …)">' +
         '<span class="sum" id="week-sum">'+weekSumHTML(w)+'</span>' +
+        '<button class="btn btn-sm" data-act="addDay" style="margin-left:auto">'+ic(P.plus)+'Ajouter un jour</button>' +
       '</div>' +
       w.days.map(dayCardHTML).join('') +
       '<div class="add-day-row">' +
