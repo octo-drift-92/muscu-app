@@ -881,6 +881,13 @@
     if(n<=high) return {lbl:'optimal', col:'var(--success)'};
     return {lbl:'élevé', col:'var(--accent)'};
   }
+  function groupCategory(g){
+    if(g==='Pecs'||g==='Épaules'||g==='Triceps') return 'Poussée';
+    if(g==='Dos'||g==='Biceps'||g==='Épaules arr./coiffe') return 'Tirage';
+    if(g==='Jambes (quad)'||g==='Ischios'||g==='Mollets'||g==='Dos/ch. post.') return 'Jambes';
+    if(g==='Abdos') return 'Tronc';
+    return null;
+  }
   function globalProgCards(){
     var html='', R=resolveRange();
     var V=volumeByGroupOverRange(R.from, R.to), avg=V.avg, keys=Object.keys(avg).sort(function(a,b){return avg[b]-avg[a];});
@@ -890,6 +897,15 @@
       html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:right">Statut</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint" style="margin-top:8px">Moyenne sur '+V.weeks+' sem. · séries équivalentes (direct = 1, indirect = 0,5). Repère : ~6-12 = productif, 12-20 = optimal (moins pour les petits muscles).</p></div>';
     } else {
       html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><p class="hint">Aucune donnée sur cette période.</p></div>';
+    }
+    var cat={}; Object.keys(avg).forEach(function(g){ var c=groupCategory(g); if(c) cat[c]=(cat[c]||0)+avg[g]; });
+    var catOrder=['Poussée','Tirage','Jambes','Tronc'], catRows=catOrder.filter(function(c){return cat[c]!=null;}).map(function(c){ return '<tr><td>'+c+'</td><td style="text-align:right;font-weight:700">'+fmtSets(cat[c])+'</td></tr>'; }).join('');
+    if(catRows){
+      var push=cat['Poussée']||0, pull=cat['Tirage']||0, rTxt, rCol;
+      if(push===0 && pull===0){ rTxt='—'; rCol='var(--text-faint)'; }
+      else if(push===0){ rTxt='tirage uniquement'; rCol='var(--success)'; }
+      else { var r=pull/push; rTxt=(Math.round(r*100)/100).toString().replace('.',',')+' : 1'; rCol=(r>=0.9)?'var(--success)':'var(--warning)'; }
+      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Équilibre poussée / tirage</div><table class="hist"><tbody>'+catRows+'</tbody></table><p class="hint" style="margin-top:8px">Ratio tirage : poussée = <b style="color:'+rCol+'">'+rTxt+'</b> — vise ≥ 1:1 (au moins autant de tirage que de poussée, protège les épaules). Soulevé de terre compté dans Jambes.</p></div>';
     }
     var plats=[];
     allExerciseNames().forEach(function(nm){ var pts=sessionsOf(nm).filter(function(p){ return ptInRange(p.iso, R.from, R.to); }); if(pts.length<4) return; var mx=0,idx=0; pts.forEach(function(p,i){ if(p.maxWeight>mx){mx=p.maxWeight;idx=i;} }); var since=pts.length-1-idx; if(since>=4 && mx>0) plats.push({nm:nm,kg:mx,since:since}); });
