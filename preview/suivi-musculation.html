@@ -828,13 +828,22 @@
     var sets=last.sets.slice(0,6).map(function(s){ var w=numStr(s.w); return intStr(s.r)+(w!==''?'×'+w:''); }).join('  ·  ');
     return '<div class="last-session">↩ Dernière fois ('+dl+') : '+esc(sets)+(last.sets.length>6?' …':'')+'</div>';
   }
+  function volStatus(group, n){
+    if(group==='Autre') return {lbl:'—', col:'var(--text-faint)'};
+    var petit={'Biceps':1,'Triceps':1,'Mollets':1,'Épaules arr./coiffe':1,'Abdos':1}[group];
+    var low=petit?4:6, optLo=petit?10:12, high=petit?16:20;
+    if(n<low) return {lbl:'léger', col:'var(--text-faint)'};
+    if(n<optLo) return {lbl:'productif', col:'var(--success)'};
+    if(n<=high) return {lbl:'optimal', col:'var(--success)'};
+    return {lbl:'élevé', col:'var(--accent)'};
+  }
   function globalProgCards(){
     var w=curWeek(), html='';
     if(w){
       var vg=weekVolumeByGroup(w), keys=Object.keys(vg).sort(function(a,b){return vg[b]-vg[a];});
       if(keys.length){
-        var rows=keys.map(function(g){ var n=vg[g],col,lbl; if(n<10){col='var(--warning)';lbl='sous-volume';}else if(n<=20){col='var(--success)';lbl='cible ✓';}else{col='var(--accent)';lbl='élevé';} return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+n+'</td><td style="text-align:right;color:'+col+'">'+lbl+'</td></tr>'; }).join('');
-        html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume cette semaine — '+esc(w.name)+'</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries</th><th style="text-align:right">Cible 10-20</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint" style="margin-top:8px">Cible ~10-20 séries/groupe/sem (un peu moins pour les petits muscles).</p></div>';
+        var rows=keys.map(function(g){ var n=vg[g], s=volStatus(g,n); return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+n+'</td><td style="text-align:right;color:'+s.col+'">'+s.lbl+'</td></tr>'; }).join('');
+        html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume cette semaine — '+esc(w.name)+'</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries</th><th style="text-align:right">Statut</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint" style="margin-top:8px">Repère : ~6-12 = productif, 12-20 = optimal (moins pour les petits muscles). Séries directes seulement — le volume indirect (ex. biceps via le tirage) n\'est pas compté.</p></div>';
       }
     }
     var plats=[], _n=new Date(), cutISO=new Date(_n.getTime()-42*864e5).toISOString().slice(0,10);
