@@ -814,8 +814,8 @@
     function P(g){ return [{g:g,w:1}]; }
     if(/face pull|oiseau|reverse fly|l-?fly|rotation ext|coiffe|echauffements? epaule|rotateur|superman|lever lateral/.test(n)) return P('Épaules arr./coiffe');
     if(/leg curl/.test(n)) return P('Ischios');
-    if(/jambes tendues|romanian|\brdl\b|souleve de terre roumain/.test(n)) return [{g:'Ischios',w:1},{g:'Dos/ch. post.',w:.5}];
-    if(/souleve de terre|deadlift|\bsdt\b/.test(n)) return [{g:'Dos/ch. post.',w:1},{g:'Ischios',w:.5}];
+    if(/jambes tendues|romanian|\brdl\b|souleve de terre roumain/.test(n)) return [{g:'Ischios',w:1},{g:'Chaîne post.',w:.5}];
+    if(/souleve de terre|deadlift|\bsdt\b/.test(n)) return [{g:'Chaîne post.',w:1},{g:'Ischios',w:.5}];
     if(/rowing|\brow\b/.test(n)) return [{g:'Dos',w:1},{g:'Biceps',w:.5},{g:'Épaules arr./coiffe',w:.5}];
     if(/tirage|traction|pulldown|pull-?up|\blat\b/.test(n)) return [{g:'Dos',w:1},{g:'Biceps',w:.5}];
     if(/pull-?over/.test(n)) return P('Dos');
@@ -884,7 +884,7 @@
   function groupCategory(g){
     if(g==='Pecs'||g==='Épaules'||g==='Triceps') return 'Poussée';
     if(g==='Dos'||g==='Biceps'||g==='Épaules arr./coiffe') return 'Tirage';
-    if(g==='Jambes (quad)'||g==='Ischios'||g==='Mollets'||g==='Dos/ch. post.') return 'Jambes';
+    if(g==='Jambes (quad)'||g==='Ischios'||g==='Mollets'||g==='Chaîne post.') return 'Jambes';
     if(g==='Abdos') return 'Tronc';
     return null;
   }
