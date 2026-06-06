@@ -860,12 +860,13 @@
           '<div class="stat"><div class="k">Jours</div><div class="v">'+g.days+'</div></div>'+
           '<div class="stat"><div class="k">Séries faites</div><div class="v">'+g.done+' <small>/ '+g.sets+'</small></div></div>'+
           '<div class="stat"><div class="k">Volume réalisé</div><div class="v">'+fmt(g.rv)+'</div></div></div>'+
+        '<button class="btn primary" data-act="export-xlsx" style="width:100%;margin-bottom:10px">'+ic('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/>')+'Export Excel (.xlsx) — pour analyse</button>'+
         '<div class="btn-grid">'+
           '<button class="btn" data-act="export-json">'+ic('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>')+'Sauvegarde (JSON)</button>'+
           '<button class="btn" data-act="import-json">'+ic('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 8l5-5 5 5M12 3v12"/>')+'Restaurer (JSON)</button>'+
-          '<button class="btn" data-act="export-csv">'+ic('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>')+'Export Excel (CSV)</button>'+
+          '<button class="btn" data-act="export-csv">'+ic('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>')+'Export CSV (brut)</button>'+
           '<button class="btn" data-act="import-csv">'+ic('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 8l5-5 5 5M12 3v12"/>')+'Import CSV</button></div>'+
-        '<p class="hint" style="margin-top:12px">La <b>sauvegarde JSON</b> conserve tout (programme, modèles, historique). Le <b>CSV</b> sert à Excel : <code>Semaine;Jour;Date;Exercice;Série;Reps prévues;Charge prévue;Fait;Reps réalisées;Charge réalisée;Commentaire</code>.</p>'+
+        '<p class="hint" style="margin-top:12px">L\'<b>Export Excel (.xlsx)</b> contient 4 onglets — <b>Données</b>, <b>Progression</b>, <b>Volume par semaine</b>, <b>Records</b> — idéal pour faire analyser ton programme. La <b>sauvegarde JSON</b> conserve tout (programme, modèles, historique) ; le <b>CSV</b> reste un export brut.</p>'+
         '<p class="hint" style="margin-top:6px">⚠️ Données stockées dans ce navigateur (localStorage), non synchronisées via OneDrive. Exporte pour sauvegarder ou changer d\'appareil.</p></div>'+
       '<div class="card"><div class="section-label">Zone de danger</div>'+
         '<button class="btn danger" data-act="reset-all">'+ic(P.trash)+'Tout réinitialiser</button></div>';
@@ -877,6 +878,39 @@
   function csvCell(v){ var s=String(v==null?'':v); return /[";\r\n]/.test(s)?('"'+s.replace(/"/g,'""')+'"'):s; }
   function parseCSV(text){ var rows=[],row=[],f='',q=false,i,c; for(i=0;i<text.length;i++){ c=text[i]; if(q){ if(c==='"'){ if(text[i+1]==='"'){ f+='"'; i++; } else q=false; } else f+=c; } else { if(c==='"') q=true; else if(c===';'){ row.push(f); f=''; } else if(c==='\n'){ row.push(f); rows.push(row); row=[]; f=''; } else if(c==='\r'){} else f+=c; } } if(f.length||row.length){ row.push(f); rows.push(row); } return rows; }
   function parseDateImport(s){ if(!s) return ''; s=String(s).trim(); var m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/); if(m) return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'); if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s; return ''; }
+  /* ---------- moteur Excel (.xlsx) natif, sans dépendance ---------- */
+  var crcTable=(function(){ var t=[],c,n,k; for(n=0;n<256;n++){ c=n; for(k=0;k<8;k++){ c=c&1?(0xEDB88320^(c>>>1)):(c>>>1); } t[n]=c>>>0; } return t; })();
+  function crc32(b){ var c=0xFFFFFFFF,i; for(i=0;i<b.length;i++){ c=crcTable[(c^b[i])&0xFF]^(c>>>8); } return (c^0xFFFFFFFF)>>>0; }
+  function xlEsc(s){ return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c];}); }
+  function xlCol(i){ var s=''; i++; while(i>0){ var m=(i-1)%26; s=String.fromCharCode(65+m)+s; i=Math.floor((i-1)/26); } return s; }
+  function xlCell(ref,val){ if(val==null||val===''){ return '<c r="'+ref+'"/>'; } if(typeof val==='number'&&isFinite(val)){ return '<c r="'+ref+'"><v>'+val+'</v></c>'; } return '<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+xlEsc(val)+'</t></is></c>'; }
+  function xlSheet(rows){ var xml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>',r,c; for(r=0;r<rows.length;r++){ xml+='<row r="'+(r+1)+'">'; for(c=0;c<rows[r].length;c++){ xml+=xlCell(xlCol(c)+(r+1),rows[r][c]); } xml+='</row>'; } return xml+'</sheetData></worksheet>'; }
+  function xlZip(files){ var enc=new TextEncoder(),names=Object.keys(files),chunks=[],central=[],offset=0; names.forEach(function(name){ var data=enc.encode(files[name]),nb=enc.encode(name),crc=crc32(data),size=data.length; var lh=new Uint8Array(30+nb.length),dv=new DataView(lh.buffer); dv.setUint32(0,0x04034b50,true); dv.setUint16(4,20,true); dv.setUint16(8,0,true); dv.setUint32(14,crc,true); dv.setUint32(18,size,true); dv.setUint32(22,size,true); dv.setUint16(26,nb.length,true); lh.set(nb,30); chunks.push(lh,data); central.push({nb:nb,crc:crc,size:size,offset:offset}); offset+=lh.length+data.length; }); var cstart=offset; central.forEach(function(rec){ var ch=new Uint8Array(46+rec.nb.length),dv=new DataView(ch.buffer); dv.setUint32(0,0x02014b50,true); dv.setUint16(4,20,true); dv.setUint16(6,20,true); dv.setUint32(16,rec.crc,true); dv.setUint32(20,rec.size,true); dv.setUint32(24,rec.size,true); dv.setUint16(28,rec.nb.length,true); dv.setUint32(42,rec.offset,true); ch.set(rec.nb,46); chunks.push(ch); offset+=ch.length; }); var eocd=new Uint8Array(22),dv=new DataView(eocd.buffer); dv.setUint32(0,0x06054b50,true); dv.setUint16(8,central.length,true); dv.setUint16(10,central.length,true); dv.setUint32(12,offset-cstart,true); dv.setUint32(16,cstart,true); chunks.push(eocd); var total=chunks.reduce(function(a,c){return a+c.length;},0),out=new Uint8Array(total),p=0; chunks.forEach(function(c){ out.set(c,p); p+=c.length; }); return out; }
+  function xlBuild(sheets){ var files={}; files['[Content_Types].xml']='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+sheets.map(function(s,i){return '<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';}).join('')+'</Types>'; files['_rels/.rels']='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'; files['xl/workbook.xml']='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+sheets.map(function(s,i){return '<sheet name="'+xlEsc(s.name)+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>';}).join('')+'</sheets></workbook>'; files['xl/_rels/workbook.xml.rels']='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+sheets.map(function(s,i){return '<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>';}).join('')+'</Relationships>'; sheets.forEach(function(s,i){ files['xl/worksheets/sheet'+(i+1)+'.xml']=xlSheet(s.rows); }); return xlZip(files); }
+  function exportXLSX(){
+    var d1=[['Semaine','Jour','Date','Exercice','Série','Reps prévues','Charge prévue','Fait','Reps réalisées','Charge réalisée','Volume réalisé','Commentaire']];
+    state.weeks.forEach(function(w){ w.days.forEach(function(d){
+      var dd=d.date?formatDateFR(d.date):(w.startDate?formatDateFR(w.startDate):'');
+      d.exercises.forEach(function(x){ x.sets.forEach(function(s,i){
+        var rr=(s.realReps!=null?s.realReps:s.planReps), rw=(s.realWeight!=null?s.realWeight:s.planWeight);
+        d1.push([w.name,d.name,dd,x.name,i+1,(s.planReps==null?'':s.planReps),(s.planWeight==null?'':s.planWeight),s.done?'Oui':'Non',(s.realReps==null?'':s.realReps),(s.realWeight==null?'':s.realWeight),s.done?num(rr)*num(rw):'',s.comment||'']);
+      }); });
+    }); });
+    if(d1.length<=1){ toast('Rien à exporter'); return; }
+    var d2=[['Exercice','Séance','Charge max (kg)','Volume réalisé']];
+    var d4=[['Exercice','Record charge (kg)','Atteint le','Record volume (séance)','Atteint le']];
+    allExerciseNames().forEach(function(name){
+      var sess=sessionsOf(name); if(!sess.length) return;
+      var bw=null,bwd='',bv=null,bvd='';
+      sess.forEach(function(p){ d2.push([name,p.full,p.maxWeight,p.volume]); if(bw==null||p.maxWeight>bw){bw=p.maxWeight;bwd=p.full;} if(bv==null||p.volume>bv){bv=p.volume;bvd=p.full;} });
+      d4.push([name,bw,bwd,bv,bvd]);
+    });
+    var d3=[['Semaine','Début','Séries faites','Séries prévues','Volume réalisé','Volume prévu']];
+    state.weeks.forEach(function(w){ var t=0,dn=0,pv=0,rv=0; w.days.forEach(function(day){ var s=dayStats(day); t+=s.total; dn+=s.done; pv+=s.planVol; rv+=s.realVol; }); d3.push([w.name,w.startDate?formatDateFR(w.startDate):'',dn,t,rv,pv]); });
+    var bytes=xlBuild([ {name:'Données',rows:d1}, {name:'Progression',rows:d2}, {name:'Volume par semaine',rows:d3}, {name:'Records',rows:d4} ]);
+    download('analyse-muscu-'+todayISO()+'.xlsx', bytes, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    toast('Export Excel (.xlsx) généré');
+  }
   function exportCSV(){
     var H=['Semaine','Jour','Date','Exercice','Série','Reps prévues','Charge prévue','Fait','Reps réalisées','Charge réalisée','Commentaire'], rows=[];
     state.weeks.forEach(function(w){ w.days.forEach(function(d){ var dd=d.date?formatDateFR(d.date):(w.startDate?formatDateFR(w.startDate):''); d.exercises.forEach(function(x){ x.sets.forEach(function(s,i){ rows.push([w.name,d.name,dd,x.name,i+1,intStr(s.planReps),numStr(s.planWeight),s.done?'Oui':'Non',intStr(s.realReps),numStr(s.realWeight),s.comment||'']); }); }); }); });
@@ -953,6 +987,7 @@
       case 'addLib': addLibFromInput(); break;
       case 'delLib': delLibrary(b.dataset.lib); break;
       case 'delTpl': deleteTemplate(b.dataset.tpl); break;
+      case 'export-xlsx': exportXLSX(); break;
       case 'export-csv': exportCSV(); break;
       case 'import-csv': $('file-csv').click(); break;
       case 'export-json': exportJSON(); break;
