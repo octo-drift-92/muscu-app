@@ -843,11 +843,12 @@
     Object.keys(g).forEach(function(k){ avg[k]=g[k]/nw; });
     return {avg:avg, weeks:nw};
   }
+  function latestDataISO(){ var m=''; state.weeks.forEach(function(w){ w.days.forEach(function(d){ if(d.date && d.date>m) m=d.date; }); }); return m; }
   function resolveRange(){
     var s=state.settings, pw=s.progWeeks;
     if(pw===undefined && !s.progFrom && !s.progTo) pw=8;
     if(pw===0) return {from:'', to:'', label:'historique complet', preset:0};
-    if(pw) return {from:addDaysISO(todayISO(), -pw*7), to:'', label:pw+' dernières semaines', preset:pw};
+    if(pw){ var _t=todayISO(), _ld=latestDataISO(), _hi=(_ld&&_ld>_t)?_ld:_t; return {from:addDaysISO(_t, -pw*7), to:_hi, label:pw+' dernières semaines', preset:pw}; }
     var from=s.progFrom||'', to=s.progTo||'';
     if(!from && !to) return {from:'', to:'', label:'historique complet', preset:0};
     var a=from?formatDateFR(from).slice(0,5):'', b=to?formatDateFR(to).slice(0,5):'';
