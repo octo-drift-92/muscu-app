@@ -1137,13 +1137,15 @@
 
   /* ---------- vue initiale : déplier la séance du jour ---------- */
   function autoExpandToday(){
-    var today=todayISO(), target=null, tgtWeek=null, best=null;
-    state.weeks.forEach(function(w){ w.days.forEach(function(d){ if(d.date===today){ tgtWeek=w; target=d; } }); });
-    if(!target){ state.weeks.forEach(function(w){ w.days.forEach(function(d){ if(d.date && d.date>today && (!best||d.date<best.d.date)){ best={w:w,d:d}; } }); }); if(best){ tgtWeek=best.w; target=best.d; } }
-    if(!target){ best=null; state.weeks.forEach(function(w){ w.days.forEach(function(d){ if(d.date && d.date<today && (!best||d.date>best.d.date)){ best={w:w,d:d}; } }); }); if(best){ tgtWeek=best.w; target=best.d; } }
-    if(!tgtWeek || !target) return;
-    state.currentWeekId=tgtWeek.id;
-    tgtWeek.days.forEach(function(d){ d.collapsed=(d.id!==target.id); });
+    var w=curWeek(); if(!w || !w.days || !w.days.length) return;
+    var today=todayISO(), dated=w.days.filter(function(d){ return d.date; });
+    if(!dated.length) return;            // semaine sans dates -> on ne force rien
+    var target=null;
+    dated.forEach(function(d){ if(d.date===today) target=d; });               // 1. aujourd'hui
+    if(!target){ dated.forEach(function(d){ if(d.date>today && (!target||d.date<target.date)) target=d; }); }  // 2. prochaine à venir
+    if(!target){ dated.forEach(function(d){ if(!target||d.date>target.date) target=d; }); }                    // 3. plus récente passée
+    if(!target) return;
+    w.days.forEach(function(d){ d.collapsed=(d.id!==target.id); });
   }
 
   /* ---------- init ---------- */
