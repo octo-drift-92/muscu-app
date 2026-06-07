@@ -306,6 +306,10 @@
   .gym-nav .btn { min-width:60px; font-size:18px; }
   .gym-nav .btn[disabled] { opacity:.35; pointer-events:none; }
   .gym-count { font-size:13px; font-weight:700; color:var(--text-faint); }
+  .bilan-stats { display:flex; gap:8px; margin-top:4px; }
+  .bilan-stats > div { flex:1; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:9px 6px; text-align:center; min-width:0; }
+  .bilan-stats b { display:block; font-size:18px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .bilan-stats span { font-size:11px; color:var(--text-faint); }
 </style>
 </head>
 <body>
@@ -1076,8 +1080,26 @@
     if(n<=high) return {lbl:'optimal', col:'var(--success)'};
     return {lbl:'élevé', col:'var(--accent)'};
   }
+  var bilanOffset=0;
+  function fmtKg(n){ return Math.round(n).toLocaleString('fr-FR'); }
+  function bilanMonth(off){ var d=new Date(), dt=new Date(d.getFullYear(), d.getMonth()+off, 1); return { key: dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0'), label: dt.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}) }; }
+  function monthlyBilan(off){
+    var tm=bilanMonth(off), key=tm.key, floor=key+'-01';
+    var days={}, sets=0, tonnage=0, maxIn={}, maxBefore={};
+    state.weeks.forEach(function(w){ w.days.forEach(function(d){ var iso=d.date||''; if(!iso) return; var inM=iso.slice(0,7)===key, bef=iso<floor;
+      d.exercises.forEach(function(x){ var nm=(x.name||'').trim(); if(isWarmup(nm)) return; x.sets.forEach(function(s){ if(!s.done) return; var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0;
+        if(inM){ days[d.id]=1; sets++; tonnage+=wt*rp; if(nm&&(!maxIn[nm]||wt>maxIn[nm])) maxIn[nm]=wt; }
+        else if(bef){ if(nm&&(!maxBefore[nm]||wt>maxBefore[nm])) maxBefore[nm]=wt; }
+      }); });
+    });});
+    var recs=[]; Object.keys(maxIn).forEach(function(nm){ var mb=maxBefore[nm]||0; if(maxIn[nm]>mb && maxIn[nm]>0) recs.push({nm:nm, kg:maxIn[nm], prev:mb}); });
+    recs.sort(function(a,b){return b.kg-a.kg;});
+    return { label:tm.label, seances:Object.keys(days).length, sets:sets, tonnage:tonnage, records:recs };
+  }
   function globalProgCards(){
     var html='', R=resolveRange();
+    var B=monthlyBilan(bilanOffset);
+    html+='<div class="card" style="padding:10px 12px"><div class="section-label" style="display:flex;align-items:center;gap:8px">Bilan — '+esc(B.label)+'<span style="margin-left:auto;display:flex;gap:6px"><button class="mini-btn" data-act="bilanPrev" aria-label="Mois précédent">◀</button><button class="mini-btn" data-act="bilanNext"'+(bilanOffset>=0?' disabled':'')+' aria-label="Mois suivant">▶</button></span></div><div class="bilan-stats"><div><b>'+B.seances+'</b><span>séances</span></div><div><b>'+B.sets+'</b><span>séries faites</span></div><div><b>'+fmtKg(B.tonnage)+'</b><span>kg soulevés</span></div></div>'+(B.records.length?('<div style="margin-top:10px;font-weight:700;font-size:11.5px;color:var(--text-faint);letter-spacing:.3px">RECORDS DE CHARGE DU MOIS ('+B.records.length+')</div><table class="hist"><tbody>'+B.records.slice(0,8).map(function(r){return '<tr><td>'+esc(r.nm)+'</td><td style="text-align:right;color:var(--success);font-weight:700">'+fmt(r.kg)+' kg</td><td style="text-align:right;color:var(--text-faint)">'+(r.prev?'+'+fmt(r.kg-r.prev):'1er')+'</td></tr>';}).join('')+'</tbody></table>'):'<p class="hint" style="margin-top:8px">Aucun nouveau record de charge ce mois.</p>')+'</div>';
     var V=volumeByGroupOverRange(R.from, R.to), avg=V.avg;
     var sub=(R.preset===null)?R.label:('moyenne/sem · '+R.label);
     var total=0; Object.keys(avg).forEach(function(k){ total+=avg[k]; });
@@ -1303,6 +1325,8 @@
       case 'theme': toggleTheme(); break;
       case 'metric': setMetric(b.dataset.metric); break;
       case 'period': setPeriod(b.dataset.weeks); break;
+      case 'bilanPrev': bilanOffset--; renderProgression(); break;
+      case 'bilanNext': if(bilanOffset<0) bilanOffset++; renderProgression(); break;
       case 'weekPrev': navWeek(-1); break;
       case 'weekNext': navWeek(1); break;
       case 'addWeek': addWeek(); break;
