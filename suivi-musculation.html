@@ -267,6 +267,9 @@
   .reo-ex.reo-before { box-shadow: inset 0 3px 0 var(--accent); }
   .reo-ex.reo-after { box-shadow: inset 0 -3px 0 var(--accent); }
   .reo-list.reo-into { outline:2px dashed var(--accent); outline-offset:-3px; border-radius:9px; }
+  .reo-ex.reo-locked { opacity:.5; }
+  .reo-lock { flex:0 0 auto; width:24px; text-align:center; color:var(--success); font-weight:800; }
+  .reo-tag { flex:0 0 auto; font-size:11px; color:var(--text-faint); border:1px solid var(--border); border-radius:6px; padding:1px 6px; }
 </style>
 </head>
 <body>
@@ -621,13 +624,16 @@
     );
     window.scrollTo(0,y);
   }
+  function exDone(x){ return !!(x.sets && x.sets.some(function(s){ return s.done; })); }
+  function afterDoneIdx(arr){ var k=0; for(var i=0;i<arr.length;i++){ if(exDone(arr[i])) k=i+1; } return k; }
   function renderReorderBoard(w){
     var days=w.days.map(function(d){
       var rows=d.exercises.map(function(x){
-        var nm=(x.name||'').trim();
+        var nm=(x.name||'').trim(), nmH=(nm?esc(nm):'<i style="opacity:.5">Sans nom</i>');
+        if(exDone(x)) return '<div class="reo-ex reo-locked" data-d="'+d.id+'" data-e="'+x.id+'"><span class="reo-lock" aria-label="Réalisé">✓</span><span class="reo-name">'+nmH+'</span><span class="reo-tag">fait</span></div>';
         return '<div class="reo-ex" data-d="'+d.id+'" data-e="'+x.id+'">'
           +'<span class="reo-handle" data-reodrag aria-label="Glisser">'+ic(P.grip)+'</span>'
-          +'<span class="reo-name">'+(nm?esc(nm):'<i style="opacity:.5">Sans nom</i>')+'</span>'
+          +'<span class="reo-name">'+nmH+'</span>'
           +'<button class="mini-btn reo-arrow" data-act="reoUp" aria-label="Monter">↑</button>'
           +'<button class="mini-btn reo-arrow" data-act="reoDown" aria-label="Descendre">↓</button>'
           +'</div>';
@@ -640,10 +646,11 @@
     var w=curWeek(); if(!w) return;
     var di=-1; for(var i=0;i<w.days.length;i++){ if(w.days[i].id===dayId){ di=i; break; } } if(di<0) return;
     var day=w.days[di], xi=-1; for(var j=0;j<day.exercises.length;j++){ if(day.exercises[j].id===exId){ xi=j; break; } } if(xi<0) return;
+    if(exDone(day.exercises[xi])) return;
     var ni=xi+dir;
-    if(ni>=0 && ni<day.exercises.length){ var a=day.exercises, t=a[ni]; a[ni]=a[xi]; a[xi]=t; }
+    if(ni>=0 && ni<day.exercises.length){ if(exDone(day.exercises[ni])) return; var a=day.exercises, t=a[ni]; a[ni]=a[xi]; a[xi]=t; }
     else if(dir<0 && di>0){ var it=day.exercises.splice(xi,1)[0]; w.days[di-1].exercises.push(it); }
-    else if(dir>0 && di<w.days.length-1){ var it2=day.exercises.splice(xi,1)[0]; w.days[di+1].exercises.unshift(it2); }
+    else if(dir>0 && di<w.days.length-1){ var it2=day.exercises.splice(xi,1)[0]; var nd=w.days[di+1]; nd.exercises.splice(afterDoneIdx(nd.exercises),0,it2); }
     else return;
     save(); renderProgramme();
   }
@@ -830,6 +837,7 @@
     if(!reoDrag) return; e.preventDefault(); clearReoInd();
     var t=document.elementFromPoint(e.clientX, e.clientY); if(!t){ reoDrag.target=null; return; }
     var row=t.closest('.reo-ex');
+    if(row && row.classList.contains('reo-locked')){ reoDrag.target=null; return; }
     if(row && row!==reoDrag.el){ var r=row.getBoundingClientRect(), bef=e.clientY < r.top+r.height/2; row.classList.add(bef?'reo-before':'reo-after'); reoDrag.target={ dayId:row.dataset.d, exId:row.dataset.e, before:bef }; }
     else if(!row){ var list=t.closest('.reo-list'); if(list){ list.classList.add('reo-into'); reoDrag.target={ dayId:list.dataset.d, exId:null, before:false }; } else reoDrag.target=null; }
   });
