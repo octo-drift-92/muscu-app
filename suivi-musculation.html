@@ -277,6 +277,39 @@
   .reo-ex.reo-locked { opacity:.5; }
   .reo-lock { flex:0 0 auto; width:24px; text-align:center; color:var(--success); font-weight:800; }
   .reo-tag { flex:0 0 auto; font-size:11px; color:var(--text-faint); border:1px solid var(--border); border-radius:6px; padding:1px 6px; }
+  .gym-launch { width:100%; margin-bottom:12px; font-weight:800; }
+  .gym { position:fixed; inset:0; z-index:300; background:var(--bg); display:flex; flex-direction:column; overflow:hidden; }
+  .gym[hidden] { display:none; }
+  .gym-top { display:flex; align-items:center; gap:10px; padding:12px 14px; padding-top:calc(12px + env(safe-area-inset-top)); border-bottom:1px solid var(--border); }
+  .gym-x { width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:17px; cursor:pointer; flex:0 0 auto; }
+  .gym-title { font-weight:800; font-size:15px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gym-rest { font-variant-numeric:tabular-nums; font-weight:700; font-size:13px; color:var(--accent); flex:0 0 auto; }
+  .gym-progress { height:6px; background:var(--surface); }
+  .gym-progress i { display:block; height:100%; background:var(--accent); transition:width .25s; }
+  .gym-body { flex:1; overflow:auto; padding:16px 14px 22px; -webkit-overflow-scrolling:touch; }
+  .gym-ex-head { margin-bottom:16px; }
+  .gym-pos { font-size:12px; color:var(--text-faint); font-weight:700; letter-spacing:.4px; }
+  .gym-ex-name { font-size:23px; font-weight:800; margin:4px 0 6px; line-height:1.15; }
+  .gym .last-session { margin:4px 0 0; }
+  .gym-sets { display:flex; flex-direction:column; gap:12px; }
+  .gym-set { display:flex; align-items:center; gap:10px; flex-wrap:wrap; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px; }
+  .gym-set.done { border-color:var(--success); background:color-mix(in srgb,var(--success) 9%,var(--surface)); }
+  .gym-set-n { font-weight:800; font-size:13.5px; flex:0 0 100%; color:var(--text-faint); }
+  .gym-stepper { display:flex; align-items:center; gap:8px; flex:1 1 130px; }
+  .gym-pm { width:48px; height:48px; border-radius:12px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:24px; font-weight:700; cursor:pointer; flex:0 0 auto; line-height:1; }
+  .gym-pm:active { background:var(--surface); }
+  .gym-val { flex:1; text-align:center; font-size:21px; font-weight:800; font-variant-numeric:tabular-nums; display:flex; flex-direction:column; line-height:1; min-width:0; }
+  .gym-val small { font-size:10px; font-weight:600; color:var(--text-faint); margin-top:3px; }
+  .gym-done { flex:0 0 100%; height:50px; border-radius:12px; border:1px solid var(--accent); background:var(--accent); color:#fff; font-size:16px; font-weight:800; cursor:pointer; }
+  .gym-done.on { background:var(--success); border-color:var(--success); }
+  .gym-nav { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; padding-bottom:calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--border); background:var(--surface); }
+  .gym-nav .btn { min-width:60px; font-size:18px; }
+  .gym-nav .btn[disabled] { opacity:.35; pointer-events:none; }
+  .gym-count { font-size:13px; font-weight:700; color:var(--text-faint); }
+  .bilan-stats { display:flex; gap:8px; margin-top:4px; }
+  .bilan-stats > div { flex:1; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:9px 6px; text-align:center; min-width:0; }
+  .bilan-stats b { display:block; font-size:18px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .bilan-stats span { font-size:11px; color:var(--text-faint); }
 </style>
 </head>
 <body>
@@ -336,6 +369,7 @@
 <input type="file" id="file-csv" accept=".csv,text/csv" hidden>
 <input type="file" id="file-json" accept=".json,application/json" hidden>
 <div id="toast"></div>
+<div id="gym" class="gym" hidden></div>
 
 <script>
 (function () {
@@ -603,6 +637,7 @@
       '</div>' +
       '<div class="day-body">' +
         '<input class="day-note" data-field="dayNote" value="'+escA(day.note)+'" placeholder="Note de séance (ressenti, forme du jour…)">' +
+        (day.exercises.length?'<button class="btn primary gym-launch" data-act="gymStart">▶ Mode séance</button>':'') +
         ex +
         '<button class="btn ghost" data-act="addEx">'+ic(P.plus)+'Ajouter un exercice</button>' +
       '</div>' +
@@ -670,6 +705,62 @@
   }
   function reoArrow(btn, dir){ var ex=btn.closest('.reo-ex'); if(ex) reoMove(ex.dataset.d, ex.dataset.e, dir); }
   function renderAll(){ populateDatalist(); renderProgramme(); }
+
+  /* ---------- mode séance (gym) ---------- */
+  var gymMode=null, gymTimer=null, gymRestStart=0;
+  function gymDay(){ var w=curWeek(); return (gymMode && w) ? w.days.filter(function(d){return d.id===gymMode.dayId;})[0] : null; }
+  function gymCurEx(){ var day=gymDay(); return day ? day.exercises[gymMode.exIndex] : null; }
+  function gymStart(loc){ if(!loc.day || !loc.day.exercises.length) return; gymMode={dayId:loc.day.id, exIndex:0}; gymRestStart=0; renderGym(); }
+  function gymExit(){ gymMode=null; gymStopTimer(); var ov=$('gym'); if(ov){ ov.hidden=true; ov.innerHTML=''; } renderProgramme(); }
+  function gymNav(d){ var day=gymDay(); if(!day) return; gymMode.exIndex=Math.max(0, Math.min(day.exercises.length-1, gymMode.exIndex+d)); renderGym(); }
+  function gymStep(btn){ var ex=gymCurEx(); if(!ex) return; var si=+btn.dataset.si, f=btn.dataset.f, d=+btn.dataset.d, s=ex.sets[si]; if(!s) return;
+    if(f==='reps'){ var v=(s.realReps!=null?s.realReps:s.planReps)||0; s.realReps=Math.max(0, Math.round(v+d)); }
+    else { var w=(s.realWeight!=null?s.realWeight:s.planWeight)||0; s.realWeight=Math.max(0, Math.round((w+d)*2)/2); }
+    save(); renderGym(); }
+  function gymDone(btn){ var day=gymDay(), ex=gymCurEx(); if(!ex) return; var si=+btn.dataset.si, s=ex.sets[si]; if(!s) return;
+    s.done=!s.done;
+    if(s.done){ if(s.realReps==null) s.realReps=s.planReps; if(s.realWeight==null) s.realWeight=s.planWeight; gymStartRest(); }
+    save(); updateDaySummary(day.id); updateWeekSummary();
+    if(s.done && ex.sets.length && ex.sets.every(function(z){return z.done;}) && gymMode.exIndex<day.exercises.length-1){ gymMode.exIndex++; }
+    renderGym(); }
+  function gymStartRest(){ gymRestStart=Date.now(); gymStopTimer(); gymTimer=setInterval(gymTick,1000); }
+  function gymStopTimer(){ if(gymTimer){ clearInterval(gymTimer); gymTimer=null; } }
+  function gymTick(){ var el=$('gym-rest'); if(!el) return; if(!gymRestStart){ el.textContent='repos —'; return; } var t=Math.floor((Date.now()-gymRestStart)/1000); el.textContent='repos '+Math.floor(t/60)+':'+String(t%60).padStart(2,'0'); }
+  function renderGym(){
+    var ov=$('gym'); if(!ov) return;
+    var day=gymDay();
+    if(!gymMode || !day || !day.exercises.length){ gymMode=null; gymStopTimer(); ov.hidden=true; ov.innerHTML=''; return; }
+    gymMode.exIndex=Math.max(0, Math.min(day.exercises.length-1, gymMode.exIndex));
+    var ex=day.exercises[gymMode.exIndex];
+    var totalSets=0, doneSets=0; day.exercises.forEach(function(x){ x.sets.forEach(function(s){ totalSets++; if(s.done) doneSets++; }); });
+    var setsH=ex.sets.map(function(s,i){
+      var rr=(s.realReps!=null?s.realReps:s.planReps), rw=(s.realWeight!=null?s.realWeight:s.planWeight);
+      return '<div class="gym-set'+(s.done?' done':'')+'">'
+        +'<div class="gym-set-n">Série '+(i+1)+'</div>'
+        +'<div class="gym-stepper"><button class="gym-pm" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="-1">−</button><span class="gym-val">'+intStr(rr)+'<small>reps</small></span><button class="gym-pm" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="1">+</button></div>'
+        +'<div class="gym-stepper"><button class="gym-pm" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="-2.5">−</button><span class="gym-val">'+(numStr(rw)||'—')+'<small>kg</small></span><button class="gym-pm" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="2.5">+</button></div>'
+        +'<button class="gym-done'+(s.done?' on':'')+'" data-act="gymDone" data-si="'+i+'">'+(s.done?'✓ Fait':'Fait')+'</button>'
+        +'</div>';
+    }).join('');
+    ov.innerHTML=
+      '<div class="gym-top">'
+        +'<button class="gym-x" data-act="gymExit" aria-label="Quitter">✕</button>'
+        +'<div class="gym-title">'+esc(day.name||'Séance')+(day.date?' · '+esc(formatDateFR(day.date).slice(0,5)):'')+'</div>'
+        +'<div class="gym-rest" id="gym-rest">repos —</div>'
+      +'</div>'
+      +'<div class="gym-progress"><i style="width:'+(totalSets?Math.round(doneSets/totalSets*100):0)+'%"></i></div>'
+      +'<div class="gym-body">'
+        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span><h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+'</h2>'+lastSessionHTML(ex.name, day)+'</div>'
+        +'<div class="gym-sets">'+setsH+'</div>'
+      +'</div>'
+      +'<div class="gym-nav">'
+        +'<button class="btn" data-act="gymPrev"'+(gymMode.exIndex<=0?' disabled':'')+'>◀</button>'
+        +'<span class="gym-count">'+doneSets+' / '+totalSets+' séries</span>'
+        +'<button class="btn" data-act="gymNext"'+(gymMode.exIndex>=day.exercises.length-1?' disabled':'')+'>▶</button>'
+      +'</div>';
+    ov.hidden=false;
+    gymTick();
+  }
 
   /* ---------- field edits ---------- */
   function applyField(el){
@@ -989,8 +1080,26 @@
     if(n<=high) return {lbl:'optimal', col:'var(--success)'};
     return {lbl:'élevé', col:'var(--accent)'};
   }
+  var bilanOffset=0;
+  function fmtKg(n){ return Math.round(n).toLocaleString('fr-FR'); }
+  function bilanMonth(off){ var d=new Date(), dt=new Date(d.getFullYear(), d.getMonth()+off, 1); return { key: dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0'), label: dt.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}) }; }
+  function monthlyBilan(off){
+    var tm=bilanMonth(off), key=tm.key, floor=key+'-01';
+    var days={}, sets=0, tonnage=0, maxIn={}, maxBefore={};
+    state.weeks.forEach(function(w){ w.days.forEach(function(d){ var iso=d.date||''; if(!iso) return; var inM=iso.slice(0,7)===key, bef=iso<floor;
+      d.exercises.forEach(function(x){ var nm=(x.name||'').trim(); if(isWarmup(nm)) return; x.sets.forEach(function(s){ if(!s.done) return; var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0;
+        if(inM){ days[d.id]=1; sets++; tonnage+=wt*rp; if(nm&&(!maxIn[nm]||wt>maxIn[nm])) maxIn[nm]=wt; }
+        else if(bef){ if(nm&&(!maxBefore[nm]||wt>maxBefore[nm])) maxBefore[nm]=wt; }
+      }); });
+    });});
+    var recs=[]; Object.keys(maxIn).forEach(function(nm){ var mb=maxBefore[nm]||0; if(maxIn[nm]>mb && maxIn[nm]>0) recs.push({nm:nm, kg:maxIn[nm], prev:mb}); });
+    recs.sort(function(a,b){return b.kg-a.kg;});
+    return { label:tm.label, seances:Object.keys(days).length, sets:sets, tonnage:tonnage, records:recs };
+  }
   function globalProgCards(){
     var html='', R=resolveRange();
+    var B=monthlyBilan(bilanOffset);
+    html+='<div class="card" style="padding:10px 12px"><div class="section-label" style="display:flex;align-items:center;gap:8px">Bilan — '+esc(B.label)+'<span style="margin-left:auto;display:flex;gap:6px"><button class="mini-btn" data-act="bilanPrev" aria-label="Mois précédent">◀</button><button class="mini-btn" data-act="bilanNext"'+(bilanOffset>=0?' disabled':'')+' aria-label="Mois suivant">▶</button></span></div><div class="bilan-stats"><div><b>'+B.seances+'</b><span>séances</span></div><div><b>'+B.sets+'</b><span>séries faites</span></div><div><b>'+fmtKg(B.tonnage)+'</b><span>kg soulevés</span></div></div>'+(B.records.length?('<div style="margin-top:10px;font-weight:700;font-size:11.5px;color:var(--text-faint);letter-spacing:.3px">RECORDS DE CHARGE DU MOIS ('+B.records.length+')</div><table class="hist"><tbody>'+B.records.slice(0,8).map(function(r){return '<tr><td>'+esc(r.nm)+'</td><td style="text-align:right;color:var(--success);font-weight:700">'+fmt(r.kg)+' kg</td><td style="text-align:right;color:var(--text-faint)">'+(r.prev?'+'+fmt(r.kg-r.prev):'1er')+'</td></tr>';}).join('')+'</tbody></table>'):'<p class="hint" style="margin-top:8px">Aucun nouveau record de charge ce mois.</p>')+'</div>';
     var V=volumeByGroupOverRange(R.from, R.to), avg=V.avg;
     var sub=(R.preset===null)?R.label:('moyenne/sem · '+R.label);
     var total=0; Object.keys(avg).forEach(function(k){ total+=avg[k]; });
@@ -1216,6 +1325,8 @@
       case 'theme': toggleTheme(); break;
       case 'metric': setMetric(b.dataset.metric); break;
       case 'period': setPeriod(b.dataset.weeks); break;
+      case 'bilanPrev': bilanOffset--; renderProgression(); break;
+      case 'bilanNext': if(bilanOffset<0) bilanOffset++; renderProgression(); break;
       case 'weekPrev': navWeek(-1); break;
       case 'weekNext': navWeek(1); break;
       case 'addWeek': addWeek(); break;
@@ -1233,6 +1344,12 @@
       case 'delDay': deleteDay(loc); break;
       case 'collapseDay': toggleCollapse(loc,b); break;
       case 'collapseEx': toggleExCollapse(loc,b); break;
+      case 'gymStart': gymStart(loc); break;
+      case 'gymExit': gymExit(); break;
+      case 'gymPrev': gymNav(-1); break;
+      case 'gymNext': gymNav(1); break;
+      case 'gymStep': gymStep(b); break;
+      case 'gymDone': gymDone(b); break;
       case 'addEx': addExercise(loc); break;
       case 'dupEx': duplicateExercise(loc); break;
       case 'delEx': deleteExercise(loc); break;
