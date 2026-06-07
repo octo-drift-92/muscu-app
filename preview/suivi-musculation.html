@@ -252,6 +252,21 @@
   .period-dates input[type=date] { padding:6px 9px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--text); font:inherit; }
   .period-week-wrap { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text-faint); flex-basis:100%; }
   .period-week-wrap select { padding:6px 9px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--text); font:inherit; flex:1; min-width:0; max-width:280px; }
+  .reorder-bar { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:12px; font-size:12.5px; color:var(--text-faint); line-height:1.4; }
+  .reorder-board { display:flex; flex-direction:column; gap:12px; }
+  .reo-day { border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--surface); }
+  .reo-day-head { padding:8px 12px; font-weight:800; font-size:13px; border-bottom:1px solid var(--border); }
+  .reo-date { opacity:.55; font-weight:400; }
+  .reo-list { padding:7px; display:flex; flex-direction:column; gap:6px; min-height:40px; }
+  .reo-ex { display:flex; align-items:center; gap:8px; background:var(--bg); border:1px solid var(--border); border-radius:9px; padding:6px 8px; }
+  .reo-handle { cursor:grab; touch-action:none; color:var(--text-faint); display:inline-flex; flex:0 0 auto; padding:3px; }
+  .reo-name { flex:1; min-width:0; font-weight:600; font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .reo-arrow { width:32px; height:32px; font-size:16px; font-weight:700; flex:0 0 auto; }
+  .reo-empty { color:var(--text-faint); font-size:12px; padding:6px 8px; }
+  .reo-ex.reo-dragging { opacity:.4; }
+  .reo-ex.reo-before { box-shadow: inset 0 3px 0 var(--accent); }
+  .reo-ex.reo-after { box-shadow: inset 0 -3px 0 var(--accent); }
+  .reo-list.reo-into { outline:2px dashed var(--accent); outline-offset:-3px; border-radius:9px; }
 </style>
 </head>
 <body>
@@ -580,18 +595,20 @@
     if(!state.templates.length) return '<div class="menu-empty">Aucun modèle. Enregistre une séance avec l\'icône signet pour la réutiliser ici.</div>';
     return state.templates.map(function(t){ return '<button data-act="addFromTpl" data-tpl="'+t.id+'">'+esc(t.name)+'<span>'+t.exercises.length+' exercice'+(t.exercises.length>1?'s':'')+'</span></button>'; }).join('');
   }
+  var reorderMode=false;
   function renderProgramme(){
     renderWeekBar();
     var box = $('week-view');
     var w = curWeek();
     if(!w){ box.innerHTML = '<div class="empty">'+ic('<path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/>')+'<p>Aucune semaine. Crée ta première semaine pour commencer.</p></div>'; return; }
     var y = window.scrollY;
-    box.innerHTML =
+    box.innerHTML = reorderMode ? renderReorderBoard(w) : (
       '<div class="week-head">' +
         '<input class="name-input" data-field="weekName" value="'+escA(w.name)+'" placeholder="Nom de la semaine">' +
         '<input class="date-input" type="date" data-field="weekDate" value="'+escA(w.startDate)+'" title="Premier jour de la semaine — définit le nom (Sem. du …)">' +
         '<span class="sum" id="week-sum">'+weekSumHTML(w)+'</span>' +
-        '<button class="btn btn-sm" data-act="addDay" style="margin-left:auto">'+ic(P.plus)+'Ajouter un jour</button>' +
+        '<button class="btn btn-sm ghost" data-act="reorderToggle" style="margin-left:auto" title="Réorganiser / déplacer les exercices">'+ic(P.move)+'Réorganiser</button>' +
+        '<button class="btn btn-sm" data-act="addDay">'+ic(P.plus)+'Ajouter un jour</button>' +
       '</div>' +
       w.days.map(dayCardHTML).join('') +
       '<div class="add-day-row">' +
@@ -600,9 +617,37 @@
           '<button class="btn ghost" data-act="tplMenu">'+ic(P.bookmark)+'Depuis un modèle '+ic(P.down)+'</button>' +
           '<div class="menu" id="tpl-menu" hidden>'+templateMenuHTML()+'</div>' +
         '</div>' +
-      '</div>';
+      '</div>'
+    );
     window.scrollTo(0,y);
   }
+  function renderReorderBoard(w){
+    var days=w.days.map(function(d){
+      var rows=d.exercises.map(function(x){
+        var nm=(x.name||'').trim();
+        return '<div class="reo-ex" data-d="'+d.id+'" data-e="'+x.id+'">'
+          +'<span class="reo-handle" data-reodrag aria-label="Glisser">'+ic(P.grip)+'</span>'
+          +'<span class="reo-name">'+(nm?esc(nm):'<i style="opacity:.5">Sans nom</i>')+'</span>'
+          +'<button class="mini-btn reo-arrow" data-act="reoUp" aria-label="Monter">↑</button>'
+          +'<button class="mini-btn reo-arrow" data-act="reoDown" aria-label="Descendre">↓</button>'
+          +'</div>';
+      }).join('') || '<div class="reo-empty">— aucun exercice —</div>';
+      return '<div class="reo-day"><div class="reo-day-head">'+esc(d.name||'Jour')+(d.date?' <span class="reo-date">'+esc(formatDateFR(d.date).slice(0,5))+'</span>':'')+'</div><div class="reo-list" data-d="'+d.id+'">'+rows+'</div></div>';
+    }).join('');
+    return '<div class="reorder-bar"><span>Glisse la poignée <b>⠿</b> ou utilise ↑↓ (aux extrémités, la flèche passe au jour voisin).</span><button class="btn btn-sm primary" data-act="reorderDone">Terminé</button></div><div class="reorder-board">'+days+'</div>';
+  }
+  function reoMove(dayId, exId, dir){
+    var w=curWeek(); if(!w) return;
+    var di=-1; for(var i=0;i<w.days.length;i++){ if(w.days[i].id===dayId){ di=i; break; } } if(di<0) return;
+    var day=w.days[di], xi=-1; for(var j=0;j<day.exercises.length;j++){ if(day.exercises[j].id===exId){ xi=j; break; } } if(xi<0) return;
+    var ni=xi+dir;
+    if(ni>=0 && ni<day.exercises.length){ var a=day.exercises, t=a[ni]; a[ni]=a[xi]; a[xi]=t; }
+    else if(dir<0 && di>0){ var it=day.exercises.splice(xi,1)[0]; w.days[di-1].exercises.push(it); }
+    else if(dir>0 && di<w.days.length-1){ var it2=day.exercises.splice(xi,1)[0]; w.days[di+1].exercises.unshift(it2); }
+    else return;
+    save(); renderProgramme();
+  }
+  function reoArrow(btn, dir){ var ex=btn.closest('.reo-ex'); if(ex) reoMove(ex.dataset.d, ex.dataset.e, dir); }
   function renderAll(){ populateDatalist(); renderProgramme(); }
 
   /* ---------- field edits ---------- */
@@ -769,6 +814,30 @@
     cleanupDnd();
   });
   document.addEventListener('dragend', cleanupDnd);
+
+  /* ---------- mode réorganisation : glisser tactile (pointer events) ---------- */
+  var reoDrag=null;
+  function clearReoInd(){ var els=document.querySelectorAll('.reo-before,.reo-after,.reo-into'); for(var i=0;i<els.length;i++) els[i].classList.remove('reo-before','reo-after','reo-into'); }
+  function cleanupReo(){ if(reoDrag&&reoDrag.el) reoDrag.el.classList.remove('reo-dragging'); clearReoInd(); reoDrag=null; }
+  document.addEventListener('pointerdown', function(e){
+    var h=e.target.closest('[data-reodrag]'); if(!h) return;
+    var ex=h.closest('.reo-ex'); if(!ex) return; e.preventDefault();
+    reoDrag={ dayId:ex.dataset.d, exId:ex.dataset.e, el:ex, target:null };
+    ex.classList.add('reo-dragging');
+    try{ h.setPointerCapture(e.pointerId); }catch(_){}
+  });
+  document.addEventListener('pointermove', function(e){
+    if(!reoDrag) return; e.preventDefault(); clearReoInd();
+    var t=document.elementFromPoint(e.clientX, e.clientY); if(!t){ reoDrag.target=null; return; }
+    var row=t.closest('.reo-ex');
+    if(row && row!==reoDrag.el){ var r=row.getBoundingClientRect(), bef=e.clientY < r.top+r.height/2; row.classList.add(bef?'reo-before':'reo-after'); reoDrag.target={ dayId:row.dataset.d, exId:row.dataset.e, before:bef }; }
+    else if(!row){ var list=t.closest('.reo-list'); if(list){ list.classList.add('reo-into'); reoDrag.target={ dayId:list.dataset.d, exId:null, before:false }; } else reoDrag.target=null; }
+  });
+  document.addEventListener('pointerup', function(){
+    if(!reoDrag) return; var tg=reoDrag.target, src=reoDrag; cleanupReo();
+    if(tg) moveExerciseDnD(src.dayId, src.exId, tg.dayId, tg.exId, tg.before);
+  });
+  document.addEventListener('pointercancel', cleanupReo);
 
   /* ---------- library ---------- */
   function populateDatalist(){ $('lib-list').innerHTML = state.library.map(function(e){ return '<option value="'+escA(e)+'"></option>'; }).join(''); }
@@ -1129,6 +1198,10 @@
       case 'dup': duplicateWeek(); break;
       case 'delWeek': deleteWeek(); break;
       case 'addDay': addDay(); break;
+      case 'reorderToggle': reorderMode=true; renderProgramme(); break;
+      case 'reorderDone': reorderMode=false; renderProgramme(); break;
+      case 'reoUp': reoArrow(b,-1); break;
+      case 'reoDown': reoArrow(b,1); break;
       case 'tplMenu': toggleMenu('tpl-menu'); break;
       case 'addFromTpl': addDayFromTemplate(b.dataset.tpl); closeMenus(); break;
       case 'dayTpl': saveDayAsTemplate(loc); break;
