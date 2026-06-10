@@ -319,6 +319,8 @@
   .today-go { width:100%; font-weight:800; }
   .toast-undo { margin-left:10px; background:transparent; border:1px solid rgba(255,255,255,.55); color:inherit; border-radius:7px; padding:3px 10px; font-weight:700; font-size:12px; cursor:pointer; }
   .help-q { display:inline-grid; place-items:center; width:18px; height:18px; border-radius:50%; border:1px solid var(--border); background:var(--surface); color:var(--text-faint); font-size:11px; font-weight:700; cursor:pointer; vertical-align:middle; }
+  .help-box { background:var(--bg); border:1px solid var(--border); border-radius:9px; padding:9px 11px; margin:8px 0 4px; font-size:12px; line-height:1.5; color:var(--text-faint); }
+  .help-box[hidden] { display:none; }
   .ex-body .prog-toggle { margin-bottom:9px; }
   .prog-lbl { font-size:12px; color:var(--text-faint); font-weight:600; margin-right:2px; }
   #toast { z-index:400; }
@@ -737,7 +739,7 @@
     return '<div class="today-card"><div class="today-head"><span class="today-label">Aujourd\'hui · '+esc(day.name||'Séance')+'</span><span class="today-badge">'+badge+'</span>'+sk+'</div><p class="today-prog">'+st.done+' / '+st.total+' séries · '+esc(ts.week.name||'')+'</p>'+btn+'</div>';
   }
   function gymStartToday(btn){ var wid=btn.dataset.w, did=btn.dataset.d; if(wid && state.currentWeekId!==wid){ state.currentWeekId=wid; save(); renderProgramme(); } var w=curWeek(); var day=w&&w.days.filter(function(d){return d.id===did;})[0]; if(day && day.exercises.length){ gymMode={dayId:did, exIndex:0}; gymRestStart=0; renderGym(); } }
-  function helpTopic(t){ var m={volume:'Séries éq./sem = volume hebdo par muscle. Direct=1, indirect=0,5. Repère : <6 léger · 6-12 productif · 12-20 optimal.', equilibre:'On vise autant de tirage que de poussée (ratio ≥ 1:1), et chaque muscle équilibré avec son antagoniste (rapport ≤ 2×).'}; toast(m[t]||''); }
+  function helpTopic(t){ var el=document.querySelector('.help-box[data-help="'+t+'"]'); if(el) el.hidden=!el.hidden; }
 
   /* ---------- mode séance (gym) ---------- */
   var gymMode=null, gymTimer=null, gymRestStart=0;
@@ -1139,7 +1141,7 @@
     keys.sort(function(a,b){return (avg[b]||0)-(avg[a]||0);});
     if(total>0){
       var rows=keys.map(function(g){ var n=avg[g]||0, s=volStatus(g,n); return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+fmtSets(n)+'</td><td style="text-align:right;color:'+s.col+'">'+s.lbl+'</td></tr>'; }).join('');
-      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:right">Statut</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint" style="margin-top:8px">Tous les groupes affichés (0 = non travaillé). Moyenne sur '+V.weeks+' sem. · séries éq. (direct 1, indirect 0,5 ; échauffements exclus). Repère : ~6-12 = productif, 12-20 = optimal (moins pour les petits muscles).</p></div>';
+      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><div class="help-box" data-help="volume" hidden>Séries éq./sem = volume hebdo par muscle (direct = 1, indirect = 0,5 ; échauffements exclus). Tous les groupes sont affichés (0 = non travaillé). Repère : moins de 6 = léger · 6-12 = productif · 12-20 = optimal (un peu moins pour les petits muscles). Moyenne sur '+V.weeks+' semaines.</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:right">Statut</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
     } else {
       html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><p class="hint">Aucune donnée sur cette période.</p></div>';
     }
@@ -1169,7 +1171,7 @@
     }
     if(glob||pairs){
       var det=(glob&&pairs)?'<div style="border-top:1px solid var(--border);margin-bottom:10px"></div><div style="font-weight:700;font-size:11.5px;letter-spacing:.4px;margin-bottom:9px;color:var(--text-faint)">PAR PAIRE ANTAGONISTE</div>':'';
-      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Équilibre <button class="help-q" data-act="help" data-topic="equilibre">?</button></div>'+glob+det+pairs+'<p class="hint" style="margin-top:2px">Global = somme poussée vs tirage. Paires = chaque muscle vs son antagoniste (vert si rapport ≤ 2×). Séries éq./sem sur la période.</p></div>';
+      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Équilibre <button class="help-q" data-act="help" data-topic="equilibre">?</button></div><div class="help-box" data-help="equilibre" hidden>Le global = tout ce qui pousse (pecs, épaules av., triceps) vs tout ce qui tire (dos, biceps, arrière d\'épaule). On vise au moins autant de tirage que de poussée (ratio ≥ 1:1, bon pour les épaules). Les paires comparent chaque muscle à son antagoniste — vert si l\'un ne dépasse pas 2× l\'autre.</div>'+glob+det+pairs+'</div>';
     }
     var plats=[];
     allExerciseNames().forEach(function(nm){ if(isWarmup(nm)) return; var pts=sessionsOf(nm).filter(function(p){ return ptInRange(p.iso, R.from, R.to); }); if(pts.length<4) return; var mx=0,idx=0; pts.forEach(function(p,i){ if(p.maxWeight>mx){mx=p.maxWeight;idx=i;} }); var since=pts.length-1-idx; if(since>=4 && mx>0) plats.push({nm:nm,kg:mx,since:since}); });
