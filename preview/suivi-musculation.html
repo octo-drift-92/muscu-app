@@ -496,9 +496,10 @@
     } catch(e){ console.error('load',e); }
     seed(); save();
   }
+  var saveWarned=false;
   function save(){
     if(!SYNC_SUSPEND){ state.updatedAt = Date.now(); }
-    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){ alert('Sauvegarde impossible : '+e.message); }
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){ if(!saveWarned){ saveWarned=true; try{ toast('Sauvegarde locale indisponible ici (aperçu) — ouvre l\'app via son lien.'); }catch(_){} } }
     if(!SYNC_SUSPEND){ schedulePush(); }
   }
 
