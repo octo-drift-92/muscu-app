@@ -310,6 +310,18 @@
   .bilan-stats > div { flex:1; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:9px 6px; text-align:center; min-width:0; }
   .bilan-stats b { display:block; font-size:18px; font-weight:800; font-variant-numeric:tabular-nums; }
   .bilan-stats span { font-size:11px; color:var(--text-faint); }
+  .today-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 14px; margin-bottom:14px; }
+  .today-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .today-label { font-weight:800; font-size:14px; }
+  .today-badge { font-size:11px; font-weight:700; color:var(--text-faint); border:1px solid var(--border); border-radius:6px; padding:1px 7px; }
+  .today-streak { margin-left:auto; font-size:12px; font-weight:700; color:var(--accent); }
+  .today-prog { font-size:12.5px; color:var(--text-faint); margin:6px 0 10px; }
+  .today-go { width:100%; font-weight:800; }
+  .toast-undo { margin-left:10px; background:transparent; border:1px solid rgba(255,255,255,.55); color:inherit; border-radius:7px; padding:3px 10px; font-weight:700; font-size:12px; cursor:pointer; }
+  .help-q { display:inline-grid; place-items:center; width:18px; height:18px; border-radius:50%; border:1px solid var(--border); background:var(--surface); color:var(--text-faint); font-size:11px; font-weight:700; cursor:pointer; vertical-align:middle; }
+  .ex-body .prog-toggle { margin-bottom:9px; }
+  .prog-lbl { font-size:12px; color:var(--text-faint); font-weight:600; margin-right:2px; }
+  #toast { z-index:400; }
 </style>
 </head>
 <body>
@@ -511,6 +523,9 @@
   var tT=null;
   function toast(m){ var t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(tT); tT=setTimeout(function(){t.classList.remove('show');},2000); }
   function toastParty(m){ var t=$('toast'); t.textContent=m; t.classList.add('show','party'); clearTimeout(tT); tT=setTimeout(function(){ t.classList.remove('show'); setTimeout(function(){ t.classList.remove('party'); },300); },2600); }
+  var pendingUndo=null, undoT=null;
+  function toastUndo(msg, restore){ pendingUndo=restore; var t=$('toast'); t.classList.remove('party'); t.innerHTML=esc(msg)+' <button class="toast-undo" data-act="undo">Annuler</button>'; t.classList.add('show'); clearTimeout(tT); clearTimeout(undoT); undoT=setTimeout(function(){ t.classList.remove('show'); pendingUndo=null; }, 6000); }
+  function doUndo(){ if(!pendingUndo) return; var f=pendingUndo; pendingUndo=null; clearTimeout(undoT); var t=$('toast'); t.classList.remove('show'); f(); }
 
   /* ---------- lookup ---------- */
   function curWeek(){ return state.weeks.filter(function(w){return w.id===state.currentWeekId;})[0] || state.weeks[0] || null; }
@@ -596,12 +611,6 @@
         '<button class="mini-btn drag-handle" data-drag="ex" title="Glisser pour déplacer">'+ic(P.grip,'grip')+'</button>' +
         '<input class="name-input" data-field="exName" list="lib-list" value="'+escA(ex.name)+'" placeholder="Nom de l\'exercice">' +
         '<span class="ex-summary">'+exSummary(ex)+'</span>' +
-        '<div class="prog-toggle" title="Progression appliquée lors de la duplication de la semaine">' +
-          ic(P.trend,'prog-ico') +
-          '<button class="prog-btn'+(prog==='none'?' active':'')+'" data-act="prog" data-mode="none" title="Pas de progression — rester pareil">Pareil</button>' +
-          '<button class="prog-btn'+(prog==='volume'?' active':'')+'" data-act="prog" data-mode="volume" title="Volume : +1 répétition vs prévu à chaque duplication">Vol</button>' +
-          '<button class="prog-btn'+(prog==='weight'?' active':'')+'" data-act="prog" data-mode="weight" title="Poids : +1 kg vs prévu, répétitions remises à 8">Poids</button>' +
-        '</div>' +
         '<div class="ex-actions">' +
           '<div class="menu-wrap">' +
             '<button class="mini-btn" data-act="moveEx" title="Déplacer vers un autre jour">'+ic(P.move)+'</button>' +
@@ -612,6 +621,11 @@
         '</div>' +
       '</div>' +
       '<div class="ex-body">' +
+      '<div class="prog-toggle" title="Progression appliquée lors de la duplication de la semaine"><span class="prog-lbl">Progression :</span>' +
+        '<button class="prog-btn'+(prog==='none'?' active':'')+'" data-act="prog" data-mode="none" title="Pas de progression — rester pareil">Pareil</button>' +
+        '<button class="prog-btn'+(prog==='volume'?' active':'')+'" data-act="prog" data-mode="volume" title="Volume : +1 répétition vs prévu à chaque duplication">Vol</button>' +
+        '<button class="prog-btn'+(prog==='weight'?' active':'')+'" data-act="prog" data-mode="weight" title="Poids : +1 kg vs prévu, répétitions remises à 8">Poids</button>' +
+      '</div>' +
       lastSessionHTML(ex.name, day) +
       '<input class="ex-note" data-field="exNote" value="'+escA(ex.note)+'" placeholder="Note (technique, tempo, repos…)">' +
       '<div class="set-head"><span></span><span>Prévu</span><span style="text-align:center">Fait</span><span>Réalisé</span><span>Commentaire</span><span></span></div>' +
@@ -652,9 +666,10 @@
     renderWeekBar();
     var box = $('week-view');
     var w = curWeek();
-    if(!w){ box.innerHTML = '<div class="empty">'+ic('<path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/>')+'<p>Aucune semaine. Crée ta première semaine pour commencer.</p></div>'; return; }
+    if(!w){ box.innerHTML = '<div class="empty">'+ic('<path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/>')+'<p>Bienvenue 💪 Crée ta première semaine pour démarrer.</p></div>'; return; }
     var y = window.scrollY;
     box.innerHTML = reorderMode ? renderReorderBoard(w) : (
+      todayCardHTML() +
       '<div class="week-head">' +
         '<input class="name-input" data-field="weekName" value="'+escA(w.name)+'" placeholder="Nom de la semaine">' +
         '<input class="date-input" type="date" data-field="weekDate" value="'+escA(w.startDate)+'" title="Premier jour de la semaine — définit le nom (Sem. du …)">' +
@@ -706,6 +721,23 @@
   function reoArrow(btn, dir){ var ex=btn.closest('.reo-ex'); if(ex) reoMove(ex.dataset.d, ex.dataset.e, dir); }
   function renderAll(){ populateDatalist(); renderProgramme(); }
 
+  /* ---------- confort UX : accueil "aujourd'hui", record, anti-doublon ---------- */
+  function exBestBefore(name, beforeISO){ var best=0; state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||''; if(beforeISO && di && di>=beforeISO) return; d.exercises.forEach(function(x){ if((x.name||'').trim()!==name) return; x.sets.forEach(function(s){ if(s.done){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0; if(wt>best) best=wt; } }); }); }); }); return best; }
+  function uniqueWeekDate(iso){ var used={}; state.weeks.forEach(function(w){ if(w.startDate) used[w.startDate]=1; }); var d=iso, g=0; while(used[d] && g<260){ d=addDaysISO(d,7); g++; } return d; }
+  function todaySession(){ var t=todayISO(); for(var i=0;i<state.weeks.length;i++){ var w=state.weeks[i]; for(var j=0;j<w.days.length;j++){ if(w.days[j].date===t) return {week:w, day:w.days[j]}; } } return null; }
+  function weekStreak(){ var wk={}; state.weeks.forEach(function(w){ w.days.forEach(function(d){ if(d.date && d.exercises.some(function(x){return x.sets.some(function(s){return s.done;});})) wk[mondayISO(d.date)]=1; }); }); var keys=Object.keys(wk).sort(); if(!keys.length) return 0; var last=keys[keys.length-1], curM=mondayISO(todayISO()); if(last<addDaysISO(curM,-7)) return 0; var n=0, cur=last, g=0; while(wk[cur] && g<520){ n++; cur=addDaysISO(cur,-7); g++; } return n; }
+  function todayCardHTML(){
+    var ts=todaySession(), streak=weekStreak();
+    var sk = streak>1 ? '<span class="today-streak">🔥 '+streak+' sem.</span>' : '';
+    if(!ts){ return '<div class="today-card"><div class="today-head"><span class="today-label">Aujourd\'hui</span>'+sk+'</div><p class="today-prog">Pas de séance prévue aujourd\'hui — bon repos 😴</p></div>'; }
+    var day=ts.day, st=dayStats(day);
+    var badge = st.total===0 ? 'à planifier' : (st.done>=st.total ? '✓ terminée' : (st.done>0 ? 'en cours' : 'à faire'));
+    var btn = st.total>0 ? '<button class="btn primary today-go" data-act="gymStartToday" data-d="'+day.id+'" data-w="'+ts.week.id+'">'+(st.done>=st.total?'Revoir la séance':(st.done>0?'▶ Reprendre la séance':'▶ Commencer la séance'))+'</button>' : '';
+    return '<div class="today-card"><div class="today-head"><span class="today-label">Aujourd\'hui · '+esc(day.name||'Séance')+'</span><span class="today-badge">'+badge+'</span>'+sk+'</div><p class="today-prog">'+st.done+' / '+st.total+' séries · '+esc(ts.week.name||'')+'</p>'+btn+'</div>';
+  }
+  function gymStartToday(btn){ var wid=btn.dataset.w, did=btn.dataset.d; if(wid && state.currentWeekId!==wid){ state.currentWeekId=wid; save(); renderProgramme(); } var w=curWeek(); var day=w&&w.days.filter(function(d){return d.id===did;})[0]; if(day && day.exercises.length){ gymMode={dayId:did, exIndex:0}; gymRestStart=0; renderGym(); } }
+  function helpTopic(t){ var m={volume:'Séries éq./sem = volume hebdo par muscle. Direct=1, indirect=0,5. Repère : <6 léger · 6-12 productif · 12-20 optimal.', equilibre:'On vise autant de tirage que de poussée (ratio ≥ 1:1), et chaque muscle équilibré avec son antagoniste (rapport ≤ 2×).'}; toast(m[t]||''); }
+
   /* ---------- mode séance (gym) ---------- */
   var gymMode=null, gymTimer=null, gymRestStart=0;
   function gymDay(){ var w=curWeek(); return (gymMode && w) ? w.days.filter(function(d){return d.id===gymMode.dayId;})[0] : null; }
@@ -719,7 +751,7 @@
     save(); renderGym(); }
   function gymDone(btn){ var day=gymDay(), ex=gymCurEx(); if(!ex) return; var si=+btn.dataset.si, s=ex.sets[si]; if(!s) return;
     s.done=!s.done;
-    if(s.done){ if(s.realReps==null) s.realReps=s.planReps; if(s.realWeight==null) s.realWeight=s.planWeight; gymStartRest(); }
+    if(s.done){ if(s.realReps==null) s.realReps=s.planReps; if(s.realWeight==null) s.realWeight=s.planWeight; gymStartRest(); var _nm=(ex.name||'').trim(), _wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0; if(_nm && _wt>0){ var _pb=exBestBefore(_nm, day.date); if(_pb>0 && _wt>_pb) toastParty('🎉 Record '+_nm+' : '+fmt(_wt)+' kg !'); } }
     save(); updateDaySummary(day.id); updateWeekSummary();
     if(s.done && ex.sets.length && ex.sets.every(function(z){return z.done;}) && gymMode.exIndex<day.exercises.length-1){ gymMode.exIndex++; }
     renderGym(); }
@@ -815,7 +847,7 @@
   function selectWeek(id){ state.currentWeekId=id; save(); renderProgramme(); }
   function defaultNextMonday(){ var latest=''; state.weeks.forEach(function(w){ if(w.startDate && w.startDate>latest) latest=w.startDate; }); return latest ? addDaysISO(latest,7) : mondayISO(todayISO()); }
   function refreshWeekNameUI(week){ var ni=document.querySelector('#week-view [data-field="weekName"]'); if(ni) ni.value=week.name; var o=document.querySelector('#week-select option[value="'+week.id+'"]'); if(o) o.textContent=week.name; }
-  function addWeek(){ var iso=defaultNextMonday(); var w=freshWeek(weekNameFromDate(iso)); w.startDate=iso; state.weeks.push(w); state.currentWeekId=w.id; save(); renderProgramme(); toast('Semaine ajoutée'); focusField('[data-field="weekName"]'); }
+  function addWeek(){ var iso=uniqueWeekDate(defaultNextMonday()); var w=freshWeek(weekNameFromDate(iso)); w.startDate=iso; state.weeks.push(w); state.currentWeekId=w.id; save(); renderProgramme(); toast('Semaine ajoutée'); focusField('[data-field="weekName"]'); }
 
   function setCopy(s){ return { id:uid(), planReps:s.planReps, planWeight:s.planWeight, done:false, realReps:null, realWeight:null, comment:'' }; }
   function setProgress(s, exMode){
@@ -826,7 +858,7 @@
   }
   function duplicateWeek(){
     var w = curWeek(); if(!w) return;
-    var newDate = w.startDate ? addDaysISO(mondayISO(w.startDate),7) : defaultNextMonday();
+    var newDate = uniqueWeekDate(w.startDate ? addDaysISO(mondayISO(w.startDate),7) : defaultNextMonday());
     var nw = { id:uid(), name:weekNameFromDate(newDate), startDate:newDate, collapsed:false, days:w.days.map(function(d){
       return { id:uid(), name:d.name, date:'', note:d.note, collapsed:false, exercises:d.exercises.map(function(x){
         var exMode = x.progression||'none';
@@ -840,12 +872,11 @@
   }
   function deleteWeek(){
     var w=curWeek(); if(!w) return;
-    if(!confirm('Supprimer « '+w.name+' » et toutes ses séances ?')) return;
     var i=state.weeks.findIndex(function(x){return x.id===w.id;});
     state.weeks.splice(i,1);
-    if(!state.weeks.length){ state.weeks.push(freshWeek('Semaine 1')); }
-    state.currentWeekId=(state.weeks[Math.max(0,i-1)]||state.weeks[0]).id;
-    save(); renderProgramme(); toast('Semaine supprimée');
+    state.currentWeekId=(state.weeks[Math.max(0,i-1)]||state.weeks[0]||{}).id;
+    save(); renderProgramme();
+    toastUndo('Semaine supprimée', function(){ state.weeks.splice(i,0,w); state.currentWeekId=w.id; save(); renderProgramme(); });
   }
 
   function cloneDay(d, name){
@@ -854,16 +885,16 @@
   }
   function addDay(){ var w=curWeek(); if(!w) return; var d=freshDay('Jour '+(w.days.length+1)); w.days.push(d); save(); renderProgramme(); focusField('[data-d="'+d.id+'"] [data-field="dayName"]'); }
   function duplicateDay(loc){ if(!loc.day) return; var w=curWeek(); var nd=cloneDay(loc.day, loc.day.name+' (copie)'); var i=w.days.findIndex(function(d){return d.id===loc.day.id;}); w.days.splice(i+1,0,nd); save(); renderProgramme(); toast('Jour dupliqué'); }
-  function deleteDay(loc){ if(!loc.day) return; if(!confirm('Supprimer « '+loc.day.name+' » ?')) return; var w=curWeek(); w.days=w.days.filter(function(d){return d.id!==loc.day.id;}); save(); renderProgramme(); }
+  function deleteDay(loc){ if(!loc.day) return; var w=curWeek(); var i=w.days.findIndex(function(d){return d.id===loc.day.id;}); var day=loc.day; w.days.splice(i,1); save(); renderProgramme(); toastUndo('Jour supprimé', function(){ w.days.splice(i,0,day); save(); renderProgramme(); }); }
   function toggleCollapse(loc,btn){ if(!loc.day) return; loc.day.collapsed=!loc.day.collapsed; save(); btn.closest('.day-card').classList.toggle('collapsed', loc.day.collapsed); }
   function toggleExCollapse(loc,btn){ if(!loc.ex) return; loc.ex.collapsed=!loc.ex.collapsed; save(); var b=btn.closest('.ex-block'); if(b){ var sm=b.querySelector('.ex-summary'); if(sm) sm.innerHTML=exSummary(loc.ex); b.classList.toggle('collapsed', loc.ex.collapsed); } }
 
   function addExercise(loc){ if(!loc.day) return; var ex={ id:uid(), name:'', note:'', sets:[ freshSet(10,null) ] }; loc.day.exercises.push(ex); save(); renderProgramme(); focusField('[data-e="'+ex.id+'"] [data-field="exName"]'); }
   function duplicateExercise(loc){ if(!loc.ex||!loc.day) return; var x=loc.ex; var nx={ id:uid(), name:x.name, note:x.note, progression:(x.progression||'none'), sets:x.sets.map(function(s){ return freshSet(s.planReps,s.planWeight); }) }; var i=loc.day.exercises.findIndex(function(e){return e.id===x.id;}); loc.day.exercises.splice(i+1,0,nx); save(); renderProgramme(); toast('Exercice dupliqué'); }
-  function deleteExercise(loc){ if(!loc.ex||!loc.day) return; if(!confirm('Supprimer « '+(loc.ex.name||'cet exercice')+' » ?')) return; loc.day.exercises=loc.day.exercises.filter(function(e){return e.id!==loc.ex.id;}); save(); renderProgramme(); }
+  function deleteExercise(loc){ if(!loc.ex||!loc.day) return; var d=loc.day, i=d.exercises.findIndex(function(e){return e.id===loc.ex.id;}); var ex=loc.ex; d.exercises.splice(i,1); save(); renderProgramme(); toastUndo('Exercice supprimé', function(){ d.exercises.splice(i,0,ex); save(); renderProgramme(); }); }
 
   function addSet(loc){ if(!loc.ex) return; var last=loc.ex.sets[loc.ex.sets.length-1]; var ns=last?freshSet(last.planReps,last.planWeight):freshSet(10,null); loc.ex.sets.push(ns); save(); renderProgramme(); if(loc.day) updateDaySummary(loc.day.id); focusField('[data-s="'+ns.id+'"] [data-field="planWeight"]'); }
-  function deleteSet(loc){ if(!loc.ex||!loc.set) return; loc.ex.sets=loc.ex.sets.filter(function(x){return x.id!==loc.set.id;}); save(); renderProgramme(); if(loc.day) updateDaySummary(loc.day.id); updateWeekSummary(); }
+  function deleteSet(loc){ if(!loc.ex||!loc.set) return; var ex=loc.ex, i=ex.sets.findIndex(function(x){return x.id===loc.set.id;}); var set=loc.set; ex.sets.splice(i,1); save(); renderProgramme(); if(loc.day) updateDaySummary(loc.day.id); updateWeekSummary(); toastUndo('Série supprimée', function(){ ex.sets.splice(i,0,set); save(); renderProgramme(); }); }
 
   /* ---------- templates ---------- */
   function saveDayAsTemplate(loc){
@@ -1107,7 +1138,7 @@
     keys.sort(function(a,b){return (avg[b]||0)-(avg[a]||0);});
     if(total>0){
       var rows=keys.map(function(g){ var n=avg[g]||0, s=volStatus(g,n); return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+fmtSets(n)+'</td><td style="text-align:right;color:'+s.col+'">'+s.lbl+'</td></tr>'; }).join('');
-      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:right">Statut</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint" style="margin-top:8px">Tous les groupes affichés (0 = non travaillé). Moyenne sur '+V.weeks+' sem. · séries éq. (direct 1, indirect 0,5 ; échauffements exclus). Repère : ~6-12 = productif, 12-20 = optimal (moins pour les petits muscles).</p></div>';
+      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:right">Statut</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint" style="margin-top:8px">Tous les groupes affichés (0 = non travaillé). Moyenne sur '+V.weeks+' sem. · séries éq. (direct 1, indirect 0,5 ; échauffements exclus). Repère : ~6-12 = productif, 12-20 = optimal (moins pour les petits muscles).</p></div>';
     } else {
       html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><p class="hint">Aucune donnée sur cette période.</p></div>';
     }
@@ -1137,7 +1168,7 @@
     }
     if(glob||pairs){
       var det=(glob&&pairs)?'<div style="border-top:1px solid var(--border);margin-bottom:10px"></div><div style="font-weight:700;font-size:11.5px;letter-spacing:.4px;margin-bottom:9px;color:var(--text-faint)">PAR PAIRE ANTAGONISTE</div>':'';
-      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Équilibre</div>'+glob+det+pairs+'<p class="hint" style="margin-top:2px">Global = somme poussée vs tirage. Paires = chaque muscle vs son antagoniste (vert si rapport ≤ 2×). Séries éq./sem sur la période.</p></div>';
+      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Équilibre <button class="help-q" data-act="help" data-topic="equilibre">?</button></div>'+glob+det+pairs+'<p class="hint" style="margin-top:2px">Global = somme poussée vs tirage. Paires = chaque muscle vs son antagoniste (vert si rapport ≤ 2×). Séries éq./sem sur la période.</p></div>';
     }
     var plats=[];
     allExerciseNames().forEach(function(nm){ if(isWarmup(nm)) return; var pts=sessionsOf(nm).filter(function(p){ return ptInRange(p.iso, R.from, R.to); }); if(pts.length<4) return; var mx=0,idx=0; pts.forEach(function(p,i){ if(p.maxWeight>mx){mx=p.maxWeight;idx=i;} }); var since=pts.length-1-idx; if(since>=4 && mx>0) plats.push({nm:nm,kg:mx,since:since}); });
@@ -1350,6 +1381,9 @@
       case 'gymNext': gymNav(1); break;
       case 'gymStep': gymStep(b); break;
       case 'gymDone': gymDone(b); break;
+      case 'gymStartToday': gymStartToday(b); break;
+      case 'undo': doUndo(); break;
+      case 'help': helpTopic(b.dataset.topic); break;
       case 'addEx': addExercise(loc); break;
       case 'dupEx': duplicateExercise(loc); break;
       case 'delEx': deleteExercise(loc); break;
