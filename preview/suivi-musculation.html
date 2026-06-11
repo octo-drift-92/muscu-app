@@ -304,11 +304,11 @@
   .gym-set.done { border-color:var(--success); background:color-mix(in srgb,var(--success) 9%,var(--surface)); }
   .gym-set-n { font-weight:800; font-size:13.5px; flex:0 0 100%; color:var(--text-faint); }
   .gym-stepper { display:flex; align-items:center; gap:10px; flex:0 0 100%; }
-  .gym-pm { width:80px; height:58px; border-radius:12px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:26px; font-weight:700; cursor:pointer; flex:0 0 auto; line-height:1; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+  .gym-pm { width:80px; height:58px; border-radius:12px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:26px; font-weight:700; cursor:pointer; flex:0 0 auto; line-height:1; display:grid; place-items:center; user-select:none; -webkit-user-select:none; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
   .gym-pm:active { background:var(--surface); }
   .gym-val { flex:1; text-align:center; font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; display:flex; flex-direction:column; line-height:1; min-width:0; }
   .gym-val small { font-size:10px; font-weight:600; color:var(--text-faint); margin-top:3px; }
-  .gym-done { flex:0 0 100%; height:50px; border-radius:12px; border:1px solid var(--accent); background:var(--accent); color:var(--on-accent); font-size:16px; font-weight:800; cursor:pointer; }
+  .gym-done { flex:0 0 100%; height:50px; border-radius:12px; border:1px solid var(--accent); background:var(--accent); color:var(--on-accent); font-size:16px; font-weight:800; cursor:pointer; display:grid; place-items:center; user-select:none; -webkit-user-select:none; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
   .gym-done.on { background:var(--success); border-color:var(--success); }
   .gym-nav { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; padding-bottom:calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--border); background:var(--surface); }
   .gym-nav .btn { min-width:60px; font-size:18px; }
@@ -784,9 +784,9 @@
       var rr=(s.realReps!=null?s.realReps:s.planReps), rw=(s.realWeight!=null?s.realWeight:s.planWeight);
       return '<div class="gym-set'+(s.done?' done':'')+'">'
         +'<div class="gym-set-n">Série '+(i+1)+'</div>'
-        +'<div class="gym-stepper"><button class="gym-pm" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="-1">−</button><span class="gym-val">'+intStr(rr)+'<small>reps</small></span><button class="gym-pm" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="1">+</button></div>'
-        +'<div class="gym-stepper"><button class="gym-pm" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="-2.5">−</button><span class="gym-val">'+(numStr(rw)||'—')+'<small>kg</small></span><button class="gym-pm" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="2.5">+</button></div>'
-        +'<button class="gym-done'+(s.done?' on':'')+'" data-act="gymDone" data-si="'+i+'">'+(s.done?'✓ Fait':'Fait')+'</button>'
+        +'<div class="gym-stepper"><div class="gym-pm" role="button" aria-label="moins" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="-1">−</div><span class="gym-val">'+intStr(rr)+'<small>reps</small></span><div class="gym-pm" role="button" aria-label="plus" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="1">+</div></div>'
+        +'<div class="gym-stepper"><div class="gym-pm" role="button" aria-label="moins" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="-2.5">−</div><span class="gym-val">'+(numStr(rw)||'—')+'<small>kg</small></span><div class="gym-pm" role="button" aria-label="plus" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="2.5">+</div></div>'
+        +'<div class="gym-done'+(s.done?' on':'')+'" role="button" data-act="gymDone" data-si="'+i+'">'+(s.done?'✓ Fait':'Fait')+'</div>'
         +'</div>';
     }).join('');
     var _ob=ov.querySelector('.gym-body'), _keep=(_ob && ov.getAttribute('data-exidx')===String(gymMode.exIndex))?_ob.scrollTop:0;
