@@ -303,10 +303,10 @@
   .gym-set { display:flex; align-items:center; gap:10px; flex-wrap:wrap; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px; }
   .gym-set.done { border-color:var(--success); background:color-mix(in srgb,var(--success) 9%,var(--surface)); }
   .gym-set-n { font-weight:800; font-size:13.5px; flex:0 0 100%; color:var(--text-faint); }
-  .gym-stepper { display:flex; align-items:center; gap:8px; flex:1 1 130px; }
-  .gym-pm { width:48px; height:48px; border-radius:12px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:24px; font-weight:700; cursor:pointer; flex:0 0 auto; line-height:1; }
+  .gym-stepper { display:flex; align-items:center; gap:10px; flex:0 0 100%; }
+  .gym-pm { width:80px; height:58px; border-radius:12px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:26px; font-weight:700; cursor:pointer; flex:0 0 auto; line-height:1; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
   .gym-pm:active { background:var(--surface); }
-  .gym-val { flex:1; text-align:center; font-size:21px; font-weight:800; font-variant-numeric:tabular-nums; display:flex; flex-direction:column; line-height:1; min-width:0; }
+  .gym-val { flex:1; text-align:center; font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; display:flex; flex-direction:column; line-height:1; min-width:0; }
   .gym-val small { font-size:10px; font-weight:600; color:var(--text-faint); margin-top:3px; }
   .gym-done { flex:0 0 100%; height:50px; border-radius:12px; border:1px solid var(--accent); background:var(--accent); color:var(--on-accent); font-size:16px; font-weight:800; cursor:pointer; }
   .gym-done.on { background:var(--success); border-color:var(--success); }
@@ -759,9 +759,11 @@
   function gymExit(){ gymMode=null; gymStopTimer(); var ov=$('gym'); if(ov){ ov.hidden=true; ov.innerHTML=''; } renderProgramme(); }
   function gymNav(d){ var day=gymDay(); if(!day) return; gymMode.exIndex=Math.max(0, Math.min(day.exercises.length-1, gymMode.exIndex+d)); renderGym(); }
   function gymStep(btn){ var ex=gymCurEx(); if(!ex) return; var si=+btn.dataset.si, f=btn.dataset.f, d=+btn.dataset.d, s=ex.sets[si]; if(!s) return;
-    if(f==='reps'){ var v=(s.realReps!=null?s.realReps:s.planReps)||0; s.realReps=Math.max(0, Math.round(v+d)); }
-    else { var w=(s.realWeight!=null?s.realWeight:s.planWeight)||0; s.realWeight=Math.max(0, Math.round((w+d)*2)/2); }
-    save(); renderGym(); }
+    var disp;
+    if(f==='reps'){ var v=(s.realReps!=null?s.realReps:s.planReps)||0; s.realReps=Math.max(0, Math.round(v+d)); disp=intStr(s.realReps)+'<small>reps</small>'; }
+    else { var w=(s.realWeight!=null?s.realWeight:s.planWeight)||0; s.realWeight=Math.max(0, Math.round((w+d)*2)/2); disp=(numStr(s.realWeight)||'—')+'<small>kg</small>'; }
+    save();
+    var el=btn.parentNode.querySelector('.gym-val'); if(el) el.innerHTML=disp; }
   function gymDone(btn){ var day=gymDay(), ex=gymCurEx(); if(!ex) return; var si=+btn.dataset.si, s=ex.sets[si]; if(!s) return;
     s.done=!s.done;
     if(s.done){ if(s.realReps==null) s.realReps=s.planReps; if(s.realWeight==null) s.realWeight=s.planWeight; gymStartRest(); var _nm=(ex.name||'').trim(), _wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0; if(_nm && _wt>0){ var _pb=exBestBefore(_nm, day.date); if(_pb>0 && _wt>_pb) toastParty('🎉 Record '+_nm+' : '+fmt(_wt)+' kg !'); } }
@@ -787,6 +789,7 @@
         +'<button class="gym-done'+(s.done?' on':'')+'" data-act="gymDone" data-si="'+i+'">'+(s.done?'✓ Fait':'Fait')+'</button>'
         +'</div>';
     }).join('');
+    var _ob=ov.querySelector('.gym-body'), _keep=(_ob && ov.getAttribute('data-exidx')===String(gymMode.exIndex))?_ob.scrollTop:0;
     ov.innerHTML=
       '<div class="gym-top">'
         +'<button class="gym-x" data-act="gymExit" aria-label="Quitter">✕</button>'
@@ -804,6 +807,7 @@
         +'<button class="btn" data-act="gymNext"'+(gymMode.exIndex>=day.exercises.length-1?' disabled':'')+'>▶</button>'
       +'</div>';
     ov.hidden=false;
+    ov.setAttribute('data-exidx', String(gymMode.exIndex)); var _nb=ov.querySelector('.gym-body'); if(_nb) _nb.scrollTop=_keep;
     gymTick();
   }
 
