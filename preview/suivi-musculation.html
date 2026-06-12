@@ -285,6 +285,12 @@
   .reo-ex.reo-locked { opacity:.5; }
   .reo-lock { flex:0 0 auto; width:24px; text-align:center; color:var(--success); font-weight:800; }
   .reo-tag { flex:0 0 auto; font-size:11px; color:var(--text-faint); border:1px solid var(--border); border-radius:6px; padding:1px 6px; }
+  .reo-name-input { flex:1; min-width:0; font-weight:600; font-size:13.5px; background:var(--bg); border:1px solid var(--border); border-radius:7px; color:var(--text); padding:6px 8px; font-family:inherit; }
+  .reo-name-input:focus { outline:none; border-color:var(--accent); }
+  .reo-acts { display:flex; align-items:center; gap:4px; flex:0 0 auto; }
+  .reo-acts .mini-btn { width:30px; height:30px; }
+  .reo-foot { padding:0 7px 8px; }
+  .reo-add { width:100%; justify-content:center; border-style:dashed; color:var(--text-dim); font-weight:600; }
   .gym-launch { width:100%; margin-bottom:12px; font-weight:800; }
   .gym { position:fixed; inset:0; z-index:300; background:var(--bg); display:flex; flex-direction:column; overflow:hidden; }
   .gym[hidden] { display:none; }
@@ -710,14 +716,18 @@
         if(exDone(x)) return '<div class="reo-ex reo-locked" data-d="'+d.id+'" data-e="'+x.id+'"><span class="reo-lock" aria-label="Réalisé">✓</span><span class="reo-name">'+nmH+'</span><span class="reo-tag">fait</span></div>';
         return '<div class="reo-ex" data-d="'+d.id+'" data-e="'+x.id+'">'
           +'<span class="reo-handle" data-reodrag aria-label="Glisser">'+ic(P.grip)+'</span>'
-          +'<span class="reo-name">'+nmH+'</span>'
-          +'<button class="mini-btn reo-arrow" data-act="reoUp" aria-label="Monter">↑</button>'
-          +'<button class="mini-btn reo-arrow" data-act="reoDown" aria-label="Descendre">↓</button>'
+          +'<input class="reo-name-input" data-field="exName" list="lib-list" value="'+escA(x.name)+'" placeholder="Nom de l\'exercice">'
+          +'<div class="reo-acts">'
+            +'<button class="mini-btn reo-arrow" data-act="reoUp" aria-label="Monter">↑</button>'
+            +'<button class="mini-btn reo-arrow" data-act="reoDown" aria-label="Descendre">↓</button>'
+            +'<button class="mini-btn" data-act="dupEx" aria-label="Dupliquer" title="Dupliquer">'+ic(P.copy)+'</button>'
+            +'<button class="mini-btn del" data-act="delEx" aria-label="Supprimer" title="Supprimer">'+ic(P.trash)+'</button>'
+          +'</div>'
           +'</div>';
       }).join('') || '<div class="reo-empty">— aucun exercice —</div>';
-      return '<div class="reo-day"><div class="reo-day-head">'+esc(d.name||'Jour')+(d.date?' <span class="reo-date">'+esc(formatDateFR(d.date).slice(0,5))+'</span>':'')+'</div><div class="reo-list" data-d="'+d.id+'">'+rows+'</div></div>';
+      return '<div class="reo-day" data-d="'+d.id+'"><div class="reo-day-head">'+esc(d.name||'Jour')+(d.date?' <span class="reo-date">'+esc(formatDateFR(d.date).slice(0,5))+'</span>':'')+'</div><div class="reo-list" data-d="'+d.id+'">'+rows+'</div><div class="reo-foot"><button class="btn btn-sm ghost reo-add" data-act="addEx">'+ic(P.plus)+'Ajouter un exercice</button></div></div>';
     }).join('');
-    return '<div class="reorder-bar"><span>Glisse la poignée <b>⠿</b> ou utilise ↑↓ (aux extrémités, la flèche passe au jour voisin).</span><button class="btn btn-sm primary" data-act="reorderDone">Terminé</button></div><div class="reorder-board">'+days+'</div>';
+    return '<div class="reorder-bar"><span>Glisse <b>⠿</b> ou ↑↓ pour déplacer · duplique, supprime, ou ajoute un exercice en bas de chaque jour.</span><button class="btn btn-sm primary" data-act="reorderDone">Terminé</button></div><div class="reorder-board">'+days+'</div>';
   }
   function reoMove(dayId, exId, dir){
     var w=curWeek(); if(!w) return;
