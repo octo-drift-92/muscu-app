@@ -278,7 +278,6 @@
   .reo-add-day .menu-wrap { width:100%; }
   .reo-add-day .btn { width:100%; justify-content:center; }
   .menu.menu-up { top:auto; bottom:calc(100% + 6px); max-height:60vh; overflow:auto; }
-  .menu-sep { height:1px; background:var(--border); margin:5px 6px; }
   .reo-date { opacity:.55; font-weight:400; }
   .reo-list { padding:7px; display:flex; flex-direction:column; gap:6px; min-height:40px; }
   .reo-ex { display:flex; align-items:center; gap:8px; background:var(--bg); border:1px solid var(--border); border-radius:9px; padding:6px 8px; }
@@ -928,9 +927,7 @@
   function reoAddDayMenuHTML(w){
     var used={}; (w.days||[]).forEach(function(d){ var off=dayOffsetFromName(d.name); if(off!=null) used[off]=true; });
     var items=WEEKDAY_LABELS.map(function(lbl,i){ return used[i]?'':'<button data-act="reoAddDay" data-day="'+lbl+'">'+lbl+'</button>'; }).join('');
-    return (items||'<div class="menu-empty">Tous les jours de la semaine sont déjà créés.</div>')
-      +'<div class="menu-sep"></div>'
-      +'<button data-act="reoAddDay" data-day="">Autre (jour libre)…</button>';
+    return items||'<div class="menu-empty">Tous les jours de la semaine sont déjà créés.</div>';
   }
   function reoAddDay(name){ var w=curWeek(); if(!w) return; var d=freshDay(name||('Jour '+(w.days.length+1))); w.days.push(d); if(w.startDate) autoDateWeek(w); save(); closeMenus(); renderProgramme(); focusField('[data-d="'+d.id+'"] [data-field="dayName"]'); }
   function duplicateDay(loc){ if(!loc.day) return; var w=curWeek(); var nd=cloneDay(loc.day, loc.day.name+' (copie)'); var i=w.days.findIndex(function(d){return d.id===loc.day.id;}); w.days.splice(i+1,0,nd); save(); renderProgramme(); toast('Jour dupliqué'); }
