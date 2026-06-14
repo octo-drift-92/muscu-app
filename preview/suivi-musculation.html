@@ -669,7 +669,7 @@
         '</div>' +
       '</div>' +
       '<div class="ex-body">' +
-      '<div class="prog-toggle" title="Progression appliquée lors de la duplication de la semaine"><span class="prog-lbl">Progression :</span>' +
+      '<div class="prog-toggle" title="Mode appliqué aux semaines suivantes du bloc (recalcul auto) et à la duplication"><span class="prog-lbl">Progression :</span>' +
         '<button class="prog-btn'+(prog==='none'?' active':'')+'" data-act="prog" data-mode="none" title="Pas de progression — rester pareil">Pareil</button>' +
         '<button class="prog-btn'+(prog==='volume'?' active':'')+'" data-act="prog" data-mode="volume" title="Volume : +1 répétition vs prévu à chaque duplication">Vol</button>' +
         '<button class="prog-btn'+(prog==='weight'?' active':'')+'" data-act="prog" data-mode="weight" title="Poids : +1 kg vs prévu, répétitions remises à 8">Poids</button>' +
@@ -991,6 +991,30 @@
     made.forEach(function(w){ state.weeks.push(w); });
     state.currentWeekId=made[0].id; save(); closeComposer(); renderProgramme();
     toast(made.length+' semaines générées 💪');
+  }
+  // change de mode/charge sur une semaine → recalcule ce même exercice dans les semaines suivantes (non commencées)
+  function propagateProgression(fromWeek, ex){
+    if(!fromWeek || !ex || !fromWeek.startDate || !ex.sets || !ex.sets.length) return;
+    var mode=ex.progression||'none', name=(ex.name||'').trim(); if(!name) return;
+    var base=ex.sets[0], curR=(base.planReps!=null?base.planReps:null), curW=(base.planWeight!=null?base.planWeight:null);
+    var later=state.weeks.filter(function(w){ return w.startDate && w.startDate>fromWeek.startDate; }).sort(function(a,b){ return a.startDate<b.startDate?-1:1; });
+    var snaps=[], changed=0;
+    for(var i=0;i<later.length;i++){
+      var w=later[i], target=null;
+      for(var di=0; di<w.days.length && !target; di++){ var exs=w.days[di].exercises; for(var xi=0; xi<exs.length; xi++){ if((exs[xi].name||'').trim()===name){ target=exs[xi]; break; } } }
+      if(!target) break;
+      if(target.sets.some(function(s){ return s.done; })) break;
+      if(!/deload/i.test(w.name||'')){
+        if(mode==='volume'){ if(curR!=null) curR=curR+1; }
+        else if(mode==='weight'){ if(curW!=null) curW=curW+1; curR=8; }
+      }
+      var nR=curR, nW=curW;
+      snaps.push({ ex:target, oldProg:target.progression, oldSets:target.sets });
+      target.progression=mode;
+      target.sets=target.sets.map(function(){ return { id:uid(), planReps:nR, planWeight:nW, done:false, realReps:null, realWeight:null, comment:'' }; });
+      changed++;
+    }
+    if(changed){ save(); toastUndo(changed+' semaine'+(changed>1?'s':'')+' suivante'+(changed>1?'s':'')+' adaptée'+(changed>1?'s':''), function(){ snaps.forEach(function(s){ s.ex.progression=s.oldProg; s.ex.sets=s.oldSets; }); save(); renderProgramme(); }); }
   }
   function deleteWeek(){
     var w=curWeek(); if(!w) return;
@@ -1533,7 +1557,8 @@
       case 'prog':
         if(loc.ex){ loc.ex.progression=b.dataset.mode; save();
           var blk=b.closest('.ex-block'); var pbs=blk.querySelectorAll('.prog-btn');
-          for(var pi=0;pi<pbs.length;pi++) pbs[pi].classList.toggle('active', pbs[pi].dataset.mode===loc.ex.progression); }
+          for(var pi=0;pi<pbs.length;pi++) pbs[pi].classList.toggle('active', pbs[pi].dataset.mode===loc.ex.progression);
+          propagateProgression(loc.week, loc.ex); }
         break;
       case 'addSet': addSet(loc); break;
       case 'delSet': deleteSet(loc); break;
