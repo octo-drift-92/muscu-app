@@ -302,6 +302,24 @@
   .gym { position:fixed; inset:0; z-index:300; background:var(--bg); display:flex; flex-direction:column; overflow:hidden; }
   .gym[hidden] { display:none; }
   html.gym-open, html.gym-open body { overflow:hidden; height:100%; overscroll-behavior:none; }
+  .composer { position:fixed; inset:0; z-index:280; background:rgba(0,0,0,.55); display:flex; align-items:flex-end; justify-content:center; }
+  .composer[hidden] { display:none; }
+  .composer-card { background:var(--bg); width:100%; max-width:520px; max-height:92vh; border-radius:18px 18px 0 0; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 -8px 40px rgba(0,0,0,.4); }
+  .composer-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px; border-bottom:1px solid var(--border); }
+  .composer-head h2 { font-size:17px; font-weight:800; margin:0; }
+  .composer-body { padding:16px; overflow:auto; overscroll-behavior:contain; display:flex; flex-direction:column; gap:15px; }
+  .composer-intro { font-size:13px; color:var(--text-dim); line-height:1.45; margin:0; }
+  .composer-row { display:flex; flex-direction:column; gap:6px; font-size:12.5px; font-weight:700; color:var(--text-dim); }
+  .composer-input { background:var(--surface); border:1px solid var(--border); border-radius:9px; color:var(--text); padding:10px 12px; font:inherit; font-size:15px; font-weight:700; }
+  .composer-input:focus { outline:none; border-color:var(--accent); }
+  .composer-base { font-size:15px; font-weight:800; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:10px 12px; }
+  .composer-check { flex-direction:row; align-items:center; gap:10px; font-weight:600; color:var(--text); font-size:14px; }
+  .composer-check input { width:20px; height:20px; flex:0 0 auto; accent-color:var(--accent); }
+  .composer-link { align-self:flex-start; background:none; border:none; color:var(--accent); font:inherit; font-size:12.5px; cursor:pointer; padding:2px 0 0; text-align:left; }
+  .composer-hint { font-size:12px; color:var(--text-faint); line-height:1.4; margin:0; }
+  .composer-preview { background:color-mix(in srgb,var(--accent) 10%,var(--surface)); border:1px solid var(--border); border-radius:10px; padding:11px 13px; font-size:13px; color:var(--text); line-height:1.5; }
+  .composer-foot { display:flex; gap:10px; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--border); }
+  .composer-foot .btn { flex:1; justify-content:center; }
   .gym-top { display:flex; align-items:center; gap:10px; padding:12px 14px; padding-top:calc(12px + env(safe-area-inset-top)); border-bottom:1px solid var(--border); }
   .gym-x { width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:17px; cursor:pointer; flex:0 0 auto; }
   .gym-title { font-weight:800; font-size:15px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -406,6 +424,7 @@
 <input type="file" id="file-json" accept=".json,application/json" hidden>
 <div id="toast"></div>
 <div id="gym" class="gym" hidden></div>
+<div id="composer" class="composer" hidden></div>
 
 <script>
 (function () {
@@ -595,7 +614,8 @@
     grip:'<circle cx="9" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="15" cy="18" r="1.3"/>',
     bookmark:'<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
     trend:'<polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/>',
-    move:'<polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/>'
+    move:'<polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/>',
+    layers:'<path d="M12 3 3 8l9 5 9-5-9-5z"/><polyline points="3 12 12 17 21 12"/><polyline points="3 16 12 21 21 16"/>'
   };
 
   /* ---------- render: programme ---------- */
@@ -610,6 +630,7 @@
       '<button class="icon-btn" data-act="weekNext" title="Semaine suivante">'+ic(P.right)+'</button>' +
       '<button class="btn btn-sm" data-act="addWeek">'+ic(P.plus)+'Semaine</button>' +
       '<button class="btn btn-sm primary" data-act="dup" title="Crée la semaine suivante en appliquant la progression de chaque exercice">'+ic(P.copy)+'Dupliquer la semaine</button>' +
+      '<button class="btn btn-sm" data-act="composerOpen" title="Générer un bloc de plusieurs semaines (build + deload) à partir de cette semaine">'+ic(P.layers)+'Composer un cycle</button>' +
       '<button class="btn btn-sm danger ghost" data-act="delWeek" title="Supprimer la semaine">'+ic(P.trash)+'</button>';
   }
 
@@ -909,6 +930,67 @@
     var i = state.weeks.findIndex(function(x){return x.id===w.id;});
     state.weeks.splice(i+1,0,nw); state.currentWeekId=nw.id; save(); renderProgramme();
     toast('Semaine dupliquée');
+  }
+
+  /* ---------- compositeur de cycle (load / deload) ---------- */
+  var composerCfg = { buildWeeks:6, deload:true, startDate:'' };
+  function blockWeek(src, date, mode){
+    var wk = { id:uid(), name:weekNameFromDate(date)+(mode==='deload'?' · deload':''), startDate:date, collapsed:false,
+      days: src.days.map(function(d){
+        return { id:uid(), name:d.name, date:'', note:d.note, collapsed:false,
+          exercises: d.exercises.map(function(x){
+            var exMode=x.progression||'none', sets;
+            if(mode==='progress'){ sets=x.sets.map(function(s){ return exMode==='none'?setCopy(s):setProgress(s,exMode); }); }
+            else if(mode==='deload'){ if(isWarmup(x.name)){ sets=x.sets.map(setCopy); } else { var keep=Math.max(1,Math.round(x.sets.length/2)); sets=x.sets.slice(0,keep).map(setCopy); } }
+            else { sets=x.sets.map(setCopy); }
+            return { id:uid(), name:x.name, note:x.note, progression:exMode, sets:sets };
+          }) };
+      }) };
+    autoDateWeek(wk); return wk;
+  }
+  function composerPreviewHTML(){
+    var n=Math.max(1,Math.min(12,composerCfg.buildWeeks|0)), dl=composerCfg.deload, total=n+(dl?1:0);
+    var start=mondayISO(composerCfg.startDate||uniqueWeekDate(defaultNextMonday()));
+    var end=addDaysISO(start,(total-1)*7);
+    return '<b>'+total+' semaines</b> créées : '+n+' de build'+(dl?' + 1 deload (vol. −50 %)':'')+'<br>du <b>'+formatDateFR(start).slice(0,5)+'</b> au <b>'+formatDateFR(end).slice(0,5)+'</b>.';
+  }
+  function renderComposer(){
+    var ov=$('composer'); if(!ov) return; var base=curWeek(); if(!base) return;
+    ov.innerHTML='<div class="composer-card">'
+      +'<div class="composer-head"><h2>Composer un cycle</h2><button class="gym-x" data-act="composerClose" aria-label="Fermer">✕</button></div>'
+      +'<div class="composer-body">'
+        +'<p class="composer-intro">Génère un bloc complet depuis une semaine modèle : des semaines de <b>build</b> qui progressent + un <b>deload</b>, datées automatiquement. Tu pourras éditer chaque semaine ensuite.</p>'
+        +'<div class="composer-row"><span>Semaine modèle</span><div class="composer-base">'+esc(base.name||'Semaine')+'</div><button class="composer-link" data-act="composerBlank">Plutôt partir d\'une semaine vierge à remplir →</button></div>'
+        +'<label class="composer-row"><span>Semaines de build</span><input class="composer-input" type="number" min="1" max="12" step="1" data-cfield="build" value="'+composerCfg.buildWeeks+'"></label>'
+        +'<label class="composer-row composer-check"><input type="checkbox" data-cfield="deload"'+(composerCfg.deload?' checked':'')+'> <span>Ajouter un <b>deload</b> final (volume −50 %)</span></label>'
+        +'<label class="composer-row"><span>Démarrage (lundi)</span><input class="composer-input" type="date" data-cfield="start" value="'+escA(composerCfg.startDate)+'"></label>'
+        +'<p class="composer-hint">Chaque semaine de build applique le mode de progression de chaque exercice (Pareil / Volume +1 rep / Poids +1 kg).</p>'
+        +'<div class="composer-preview">'+composerPreviewHTML()+'</div>'
+      +'</div>'
+      +'<div class="composer-foot"><button class="btn" data-act="composerClose">Annuler</button><button class="btn primary" data-act="composerGenerate">Générer le bloc</button></div>'
+    +'</div>';
+  }
+  function openComposer(){ if(!curWeek()){ toast('Crée d\'abord une semaine'); return; } composerCfg.startDate=uniqueWeekDate(defaultNextMonday()); renderComposer(); var ov=$('composer'); if(ov) ov.hidden=false; }
+  function closeComposer(){ var ov=$('composer'); if(ov){ ov.hidden=true; ov.innerHTML=''; } }
+  function composerSet(f, el){
+    if(f==='build') composerCfg.buildWeeks=Math.max(1,Math.min(12,parseInt(el.value,10)||6));
+    else if(f==='deload') composerCfg.deload=!!el.checked;
+    else if(f==='start'){ if(el.value) composerCfg.startDate=mondayISO(el.value); }
+    var pv=document.querySelector('#composer .composer-preview'); if(pv) pv.innerHTML=composerPreviewHTML();
+  }
+  function composerStartBlank(){ closeComposer(); addWeek(); toast('Construis ta semaine, puis rouvre « Composer un cycle »'); }
+  function generateBlock(){
+    var base=curWeek(); if(!base||!base.days||!base.days.length){ toast('Aucune semaine modèle'); return; }
+    var hasContent=base.days.some(function(d){ return (d.exercises||[]).some(function(x){ return !isWarmup(x.name) && (x.sets||[]).length; }); });
+    if(!hasContent){ toast('Ta semaine modèle est vide — ajoute des exercices d\'abord'); return; }
+    var n=Math.max(1,Math.min(12,composerCfg.buildWeeks|0));
+    var date=mondayISO(composerCfg.startDate||uniqueWeekDate(defaultNextMonday()));
+    var made=[], prev=base;
+    for(var i=0;i<n;i++){ var wk=blockWeek(prev, date, i===0?'copy':'progress'); made.push(wk); prev=wk; date=addDaysISO(date,7); }
+    if(composerCfg.deload) made.push(blockWeek(prev, date, 'deload'));
+    made.forEach(function(w){ state.weeks.push(w); });
+    state.currentWeekId=made[0].id; save(); closeComposer(); renderProgramme();
+    toast(made.length+' semaines générées 💪');
   }
   function deleteWeek(){
     var w=curWeek(); if(!w) return;
@@ -1398,6 +1480,7 @@
   /* ---------- events ---------- */
   document.addEventListener('click', function(e){
     if(!e.target.closest('.menu-wrap')) closeMenus();
+    if(e.target.id==='composer'){ closeComposer(); return; }
     var b=e.target.closest('[data-act]'); if(!b) return;
     var act=b.dataset.act;
     if(act==='done'||act==='weekSelect') return;
@@ -1415,6 +1498,10 @@
       case 'addWeek': addWeek(); break;
       case 'dup': duplicateWeek(); break;
       case 'delWeek': deleteWeek(); break;
+      case 'composerOpen': openComposer(); break;
+      case 'composerClose': closeComposer(); break;
+      case 'composerGenerate': generateBlock(); break;
+      case 'composerBlank': composerStartBlank(); break;
       case 'addDay': addDay(); break;
       case 'reorderToggle': reorderMode=true; renderProgramme(); break;
       case 'reorderDone': reorderMode=false; renderProgramme(); break;
@@ -1465,6 +1552,8 @@
     }
   });
   document.addEventListener('input', function(e){ if(e.target.dataset && e.target.dataset.field) applyField(e.target); });
+  document.addEventListener('input', function(e){ var f=e.target.dataset&&e.target.dataset.cfield; if(f) composerSet(f,e.target); });
+  document.addEventListener('change', function(e){ var f=e.target.dataset&&e.target.dataset.cfield; if(f) composerSet(f,e.target); });
   document.addEventListener('change', function(e){
     var el=e.target;
     if(el.dataset.act==='done'){ toggleDone(el); return; }
