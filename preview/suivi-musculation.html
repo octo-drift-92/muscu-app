@@ -993,10 +993,10 @@
     toast(made.length+' semaines générées 💪');
   }
   // change de mode/charge sur une semaine → recalcule ce même exercice dans les semaines suivantes (non commencées)
-  function propagateProgression(fromWeek, ex){
+  function propagateProgression(fromWeek, ex, baseSet){
     if(!fromWeek || !ex || !fromWeek.startDate || !ex.sets || !ex.sets.length) return;
     var mode=ex.progression||'none', name=(ex.name||'').trim(); if(!name) return;
-    var base=ex.sets[0], curR=(base.planReps!=null?base.planReps:null), curW=(base.planWeight!=null?base.planWeight:null);
+    var base=baseSet||ex.sets[0], curR=(base.planReps!=null?base.planReps:null), curW=(base.planWeight!=null?base.planWeight:null);
     var later=state.weeks.filter(function(w){ return w.startDate && w.startDate>fromWeek.startDate; }).sort(function(a,b){ return a.startDate<b.startDate?-1:1; });
     var snaps=[], changed=0;
     for(var i=0;i<later.length;i++){
@@ -1588,6 +1588,7 @@
     if(el.id==='prog-exercise'){ progSelected=el.value; renderProgBody(); return; }
     if(el.dataset.field==='exName'){ addLibrary(el.value); return; }
     if(el.dataset.field) applyField(el);
+    if(el.dataset.field==='planReps'||el.dataset.field==='planWeight'){ var _pl=locate(el); if(_pl.week&&_pl.ex&&_pl.set) propagateProgression(_pl.week,_pl.ex,_pl.set); }
     if(el.dataset.field==='dayName'){ var _w=curWeek(); if(_w && sortWeekDays(_w)){ save(); renderProgramme(); } }
   });
   document.addEventListener('keydown', function(e){
