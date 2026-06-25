@@ -256,6 +256,16 @@
 
   /* ----- UX joyeuse : transitions, validation, célébration ----- */
   .btn, .icon-btn, .mini-btn, .collapse-btn, nav.tabs button, .prog-btn, .segmented button, .set-done, .day-card, .ex-block { transition:background .18s ease, border-color .18s ease, color .18s ease, box-shadow .2s ease, transform .12s ease; }
+  /* ---- passe feel : retour à l'appui + tap-highlight + entrée des modales ---- */
+  button, .btn, .mini-btn, .icon-btn, .collapse-btn, .prog-btn, .fb-btn, .gym-pm, [role="button"], select, summary { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+  .fb-btn, .gym-x, .help-q, .toast-undo, .reo-add, .composer-link, .gym-pm, .composer-input { transition:transform .09s ease, background-color .14s ease, border-color .14s ease, color .14s ease, filter .12s ease; }
+  .btn:active, .icon-btn:active, .mini-btn:active, .collapse-btn:active, nav.tabs button:active, .prog-btn:active, .segmented button:active, .fb-btn:active, .reo-add:active, .composer-link:active, .gym-x:active, .help-q:active, .toast-undo:active, .week-bar select:active { transform:scale(.95); filter:brightness(.92); }
+  .gym-pm:active { transform:scale(.96); }
+  @keyframes sheetUp { from { transform:translateY(30px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+  @keyframes backdropIn { from { opacity:0; } to { opacity:1; } }
+  .composer:not([hidden]) { animation:backdropIn .18s ease; }
+  .composer:not([hidden]) .composer-card { animation:sheetUp .24s cubic-bezier(.22,.61,.36,1); }
+  @media (prefers-reduced-motion: reduce) { .composer:not([hidden]), .composer:not([hidden]) .composer-card { animation:none; } *:active { transform:none !important; } }
   @keyframes popDone { 0%{transform:scale(1);} 35%{transform:scale(1.13);} 100%{transform:scale(1);} }
   .set-done.pop { animation:popDone .34s cubic-bezier(.34,1.56,.64,1); }
   .day-card.day-complete { border-color:var(--success-line); box-shadow:0 0 0 1px var(--success-line), 0 10px 30px rgba(52,211,153,.10); }
