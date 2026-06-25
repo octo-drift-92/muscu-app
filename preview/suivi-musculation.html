@@ -320,6 +320,15 @@
   .composer-preview { background:color-mix(in srgb,var(--accent) 10%,var(--surface)); border:1px solid var(--border); border-radius:10px; padding:11px 13px; font-size:13px; color:var(--text); line-height:1.5; }
   .composer-foot { display:flex; gap:10px; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--border); }
   .composer-foot .btn { flex:1; justify-content:center; }
+  .rir-badge { flex:0 0 auto; font-size:11px; font-weight:800; color:var(--accent); background:color-mix(in srgb,var(--accent) 14%,transparent); border:1px solid color-mix(in srgb,var(--accent) 35%,var(--border)); border-radius:7px; padding:2px 7px; white-space:nowrap; }
+  .gym-rir { display:inline-block; font-size:12px; font-weight:800; color:var(--accent); background:color-mix(in srgb,var(--accent) 13%,var(--surface)); border-radius:7px; padding:2px 9px; margin-left:8px; }
+  .gym-finish { margin:0 14px calc(14px + env(safe-area-inset-bottom)); flex:0 0 auto; }
+  #feedback.composer { z-index:320; }
+  .fb-ex { display:flex; flex-direction:column; gap:7px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+  .fb-ex-name { font-weight:700; font-size:14px; }
+  .fb-seg { display:flex; gap:6px; }
+  .fb-btn { flex:1; padding:10px 6px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--text-dim); font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .fb-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
   .gym-top { display:flex; align-items:center; gap:10px; padding:12px 14px; padding-top:calc(12px + env(safe-area-inset-top)); border-bottom:1px solid var(--border); }
   .gym-x { width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:17px; cursor:pointer; flex:0 0 auto; }
   .gym-title { font-weight:800; font-size:15px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -425,6 +434,7 @@
 <div id="toast"></div>
 <div id="gym" class="gym" hidden></div>
 <div id="composer" class="composer" hidden></div>
+<div id="feedback" class="composer" hidden></div>
 
 <script>
 (function () {
@@ -722,6 +732,7 @@
         '<input class="name-input" data-field="weekName" value="'+escA(w.name)+'" placeholder="Nom de la semaine">' +
         '<input class="date-input" type="date" data-field="weekDate" value="'+escA(w.startDate)+'" title="Premier jour de la semaine — définit le nom (Sem. du …)">' +
         '<span class="sum" id="week-sum">'+weekSumHTML(w)+'</span>' +
+        (w.rirTarget!=null?'<span class="rir-badge" title="RIR cible de la semaine — à quel point pousser (reps en réserve)">RIR '+w.rirTarget+'</span>':'') +
         '<button class="btn btn-sm ghost" data-act="reorderToggle" style="margin-left:auto" title="Réorganiser / déplacer les exercices">'+ic(P.move)+'Réorganiser</button>' +
         '<button class="btn btn-sm" data-act="addDay">'+ic(P.plus)+'Ajouter un jour</button>' +
       '</div>' +
@@ -789,7 +800,7 @@
     var day=ts.day, st=dayStats(day);
     var badge = st.total===0 ? 'à planifier' : (st.done>=st.total ? '✓ terminée' : (st.done>0 ? 'en cours' : 'à faire'));
     var btn = st.total>0 ? '<button class="btn primary today-go" data-act="gymStartToday" data-d="'+day.id+'" data-w="'+ts.week.id+'">'+(st.done>=st.total?'Revoir la séance':(st.done>0?'▶ Reprendre la séance':'▶ Commencer la séance'))+'</button>' : '';
-    return '<div class="today-card"><div class="today-head"><span class="today-label">Aujourd\'hui · '+esc(day.name||'Séance')+'</span><span class="today-badge">'+badge+'</span>'+sk+'</div><p class="today-prog">'+st.done+' / '+st.total+' séries · '+esc(ts.week.name||'')+'</p>'+btn+'</div>';
+    return '<div class="today-card"><div class="today-head"><span class="today-label">Aujourd\'hui · '+esc(day.name||'Séance')+'</span><span class="today-badge">'+badge+'</span>'+sk+'</div><p class="today-prog">'+st.done+' / '+st.total+' séries · '+esc(ts.week.name||'')+(ts.week.rirTarget!=null?' · 🎯 '+ts.week.rirTarget+' RIR':'')+'</p>'+btn+'</div>';
   }
   function gymStartToday(btn){ var wid=btn.dataset.w, did=btn.dataset.d; if(wid && state.currentWeekId!==wid){ state.currentWeekId=wid; save(); renderProgramme(); } var w=curWeek(); var day=w&&w.days.filter(function(d){return d.id===did;})[0]; if(day && day.exercises.length){ gymMode={dayId:did, exIndex:gymFirstTodo(day)}; gymRestStart=0; renderGym(); } }
   function helpTopic(t){ var el=document.querySelector('.help-box[data-help="'+t+'"]'); if(el) el.hidden=!el.hidden; }
@@ -817,6 +828,60 @@
   function gymStartRest(){ gymRestStart=Date.now(); gymStopTimer(); gymTimer=setInterval(gymTick,1000); }
   function gymStopTimer(){ if(gymTimer){ clearInterval(gymTimer); gymTimer=null; } }
   function gymTick(){ var el=$('gym-rest'); if(!el) return; if(!gymRestStart){ el.textContent='repos —'; return; } var t=Math.floor((Date.now()-gymRestStart)/1000); el.textContent='repos '+Math.floor(t/60)+':'+String(t%60).padStart(2,'0'); }
+  function gymRirBadge(){ var w=curWeek(); return (w&&w.rirTarget!=null)?'<span class="gym-rir">🎯 vise '+w.rirTarget+' RIR</span>':''; }
+  /* ---------- bilan de séance / auto-régulation du volume ---------- */
+  var fbState={ ratings:{}, joint:false };
+  function openSessionFeedback(){
+    var day=gymDay(); if(!day){ gymExit(); return; }
+    fbState={ ratings:{}, joint:false };
+    renderFeedback();
+    var fv=$('feedback'); if(fv) fv.hidden=false;
+    var gv=$('gym'); if(gv) gv.hidden=true;
+  }
+  function closeFeedback(){ var fv=$('feedback'); if(fv){ fv.hidden=true; fv.innerHTML=''; } }
+  function renderFeedback(){
+    var fv=$('feedback'); if(!fv) return; var day=gymDay(); if(!day) return;
+    var exs=(day.exercises||[]).filter(function(x){ return !isWarmup(x.name); });
+    var rows=exs.map(function(ex){
+      var r=fbState.ratings[ex.id]||'ok';
+      function bt(v,l){ return '<button class="fb-btn'+(r===v?' active':'')+'" data-act="fbRate" data-ex="'+ex.id+'" data-rate="'+v+'">'+l+'</button>'; }
+      return '<div class="fb-ex"><div class="fb-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+'</div><div class="fb-seg">'+bt('easy','Facile')+bt('ok','Juste')+bt('hard','Dur')+'</div></div>';
+    }).join('') || '<p class="composer-hint">Aucun exercice à noter.</p>';
+    fv.innerHTML='<div class="composer-card">'
+      +'<div class="composer-head"><h2>Bilan de séance</h2><button class="gym-x" data-act="feedbackClose" aria-label="Fermer">✕</button></div>'
+      +'<div class="composer-body">'
+        +'<p class="composer-intro">Comment chaque exercice s\'est passé ? Ça ajuste le <b>volume de la semaine prochaine</b> — <i>Facile</i> → +1 série, <i>Dur</i> → −1.</p>'
+        +rows
+        +'<label class="composer-check fb-joint"><input type="checkbox" id="fb-joint"'+(fbState.joint?' checked':'')+'> <span>Gêne articulaire pendant la séance (bloque les ajouts)</span></label>'
+      +'</div>'
+      +'<div class="composer-foot"><button class="btn" data-act="feedbackClose">Plus tard</button><button class="btn primary" data-act="feedbackSubmit">Valider</button></div>'
+    +'</div>';
+  }
+  function applySessionFeedback(){
+    var w=curWeek(), day=gymDay();
+    if(!w||!day){ closeFeedback(); gymExit(); return; }
+    var DELTA={easy:1, ok:0, hard:-1};
+    var later=state.weeks.filter(function(W){ return W.startDate&&w.startDate&&W.startDate>w.startDate; }).sort(function(a,b){ return a.startDate<b.startDate?-1:1; });
+    var snaps=[], changed=0;
+    (day.exercises||[]).forEach(function(ex){
+      if(isWarmup(ex.name)) return;
+      var d=DELTA[fbState.ratings[ex.id]||'ok']||0;
+      if(fbState.joint) d=Math.min(d,0);
+      if(d===0) return;
+      var name=(ex.name||'').trim(), target=null;
+      for(var i=0;i<later.length && !target;i++){ var W=later[i]; for(var di=0;di<W.days.length && !target;di++){ var exsW=W.days[di].exercises; for(var xi=0;xi<exsW.length;xi++){ if((exsW[xi].name||'').trim()===name){ target=exsW[xi]; break; } } } }
+      if(!target || target.sets.some(function(s){return s.done;})) return;
+      var oldSets=target.sets.slice();
+      if(d>0){ var last=target.sets[target.sets.length-1]; target.sets.push({ id:uid(), planReps:last?last.planReps:null, planWeight:last?last.planWeight:null, done:false, realReps:null, realWeight:null, comment:'' }); }
+      else if(target.sets.length>1){ target.sets.pop(); }
+      else return;
+      snaps.push({ ex:target, oldSets:oldSets }); changed++;
+    });
+    day.feedback={ joint:fbState.joint, ratings:fbState.ratings };
+    save(); closeFeedback(); gymExit();
+    if(changed){ toastUndo(changed+' exercice'+(changed>1?'s':'')+' ajusté'+(changed>1?'s':'')+' pour la semaine prochaine', function(){ snaps.forEach(function(sn){ sn.ex.sets=sn.oldSets; }); save(); renderProgramme(); }); }
+    else { toast('Bilan enregistré 👍'); }
+  }
   function renderGym(){
     var ov=$('gym'); if(!ov) return;
     var day=gymDay();
@@ -842,14 +907,15 @@
       +'</div>'
       +'<div class="gym-progress"><i style="width:'+(totalSets?Math.round(doneSets/totalSets*100):0)+'%"></i></div>'
       +'<div class="gym-body">'
-        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span><h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+'</h2>'+lastSessionHTML(ex.name, day)+'</div>'
+        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+'<h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+'</h2>'+lastSessionHTML(ex.name, day)+'</div>'
         +'<div class="gym-sets">'+setsH+'</div>'
       +'</div>'
       +'<div class="gym-nav">'
         +'<button class="btn" data-act="gymPrev"'+(gymMode.exIndex<=0?' disabled':'')+'>◀</button>'
         +'<span class="gym-count">'+doneSets+' / '+totalSets+' séries</span>'
         +'<button class="btn" data-act="gymNext"'+(gymMode.exIndex>=day.exercises.length-1?' disabled':'')+'>▶</button>'
-      +'</div>';
+      +'</div>'
+      +'<button class="btn primary gym-finish" data-act="gymFinish">Terminer &amp; noter la séance</button>';
     ov.hidden=false; document.documentElement.classList.add('gym-open');
     ov.setAttribute('data-exidx', String(gymMode.exIndex)); var _nb=ov.querySelector('.gym-body'); if(_nb) _nb.scrollTop=_keep;
     gymTick();
@@ -933,7 +999,8 @@
   }
 
   /* ---------- compositeur de cycle (load / deload) ---------- */
-  var composerCfg = { buildWeeks:6, deload:true, startDate:'' };
+  var composerCfg = { buildWeeks:6, deload:true, startDate:'', rir:true };
+  function buildRir(i,n){ if(n<=1) return 2; return Math.max(0, Math.round(3*(1 - i/(n-1)))); }
   function blockWeek(src, date, mode){
     var wk = { id:uid(), name:weekNameFromDate(date)+(mode==='deload'?' · deload':''), startDate:date, collapsed:false,
       days: src.days.map(function(d){
@@ -952,7 +1019,7 @@
     var n=Math.max(1,Math.min(12,composerCfg.buildWeeks|0)), dl=composerCfg.deload, total=n+(dl?1:0);
     var start=mondayISO(composerCfg.startDate||uniqueWeekDate(defaultNextMonday()));
     var end=addDaysISO(start,(total-1)*7);
-    return '<b>'+total+' semaines</b> créées : '+n+' de build'+(dl?' + 1 deload (vol. −50 %)':'')+'<br>du <b>'+formatDateFR(start).slice(0,5)+'</b> au <b>'+formatDateFR(end).slice(0,5)+'</b>.';
+    return '<b>'+total+' semaines</b> créées : '+n+' de build'+(dl?' + 1 deload (vol. −50 %)':'')+'<br>du <b>'+formatDateFR(start).slice(0,5)+'</b> au <b>'+formatDateFR(end).slice(0,5)+'</b>'+(composerCfg.rir?' · RIR dégressif 3→0':'')+'.';
   }
   function renderComposer(){
     var ov=$('composer'); if(!ov) return; var base=curWeek(); if(!base) return;
@@ -963,6 +1030,7 @@
         +'<div class="composer-row"><span>Semaine modèle</span><div class="composer-base">'+esc(base.name||'Semaine')+'</div><button class="composer-link" data-act="composerBlank">Plutôt partir d\'une semaine vierge à remplir →</button></div>'
         +'<label class="composer-row"><span>Semaines de build</span><input class="composer-input" type="number" min="1" max="12" step="1" data-cfield="build" value="'+composerCfg.buildWeeks+'"></label>'
         +'<label class="composer-row composer-check"><input type="checkbox" data-cfield="deload"'+(composerCfg.deload?' checked':'')+'> <span>Ajouter un <b>deload</b> final (volume −50 %)</span></label>'
+        +'<label class="composer-row composer-check"><input type="checkbox" data-cfield="rir"'+(composerCfg.rir?' checked':'')+'> <span><b>RIR dégressif</b> (3→0 sur le build, deload facile)</span></label>'
         +'<label class="composer-row"><span>Démarrage (lundi)</span><input class="composer-input" type="date" data-cfield="start" value="'+escA(composerCfg.startDate)+'"></label>'
         +'<p class="composer-hint">Chaque semaine de build applique le mode de progression de chaque exercice (Pareil / Volume +1 rep / Poids +1 kg).</p>'
         +'<div class="composer-preview">'+composerPreviewHTML()+'</div>'
@@ -975,6 +1043,7 @@
   function composerSet(f, el){
     if(f==='build') composerCfg.buildWeeks=Math.max(1,Math.min(12,parseInt(el.value,10)||6));
     else if(f==='deload') composerCfg.deload=!!el.checked;
+    else if(f==='rir') composerCfg.rir=!!el.checked;
     else if(f==='start'){ if(el.value) composerCfg.startDate=mondayISO(el.value); }
     var pv=document.querySelector('#composer .composer-preview'); if(pv) pv.innerHTML=composerPreviewHTML();
   }
@@ -986,8 +1055,8 @@
     var n=Math.max(1,Math.min(12,composerCfg.buildWeeks|0));
     var date=mondayISO(composerCfg.startDate||uniqueWeekDate(defaultNextMonday()));
     var made=[], prev=base;
-    for(var i=0;i<n;i++){ var wk=blockWeek(prev, date, i===0?'copy':'progress'); made.push(wk); prev=wk; date=addDaysISO(date,7); }
-    if(composerCfg.deload) made.push(blockWeek(prev, date, 'deload'));
+    for(var i=0;i<n;i++){ var wk=blockWeek(prev, date, i===0?'copy':'progress'); if(composerCfg.rir) wk.rirTarget=buildRir(i,n); made.push(wk); prev=wk; date=addDaysISO(date,7); }
+    if(composerCfg.deload){ var dl=blockWeek(prev, date, 'deload'); if(composerCfg.rir) dl.rirTarget=4; made.push(dl); }
     made.forEach(function(w){ state.weeks.push(w); });
     state.currentWeekId=made[0].id; save(); closeComposer(); renderProgramme();
     toast(made.length+' semaines générées 💪');
@@ -1526,6 +1595,10 @@
       case 'composerClose': closeComposer(); break;
       case 'composerGenerate': generateBlock(); break;
       case 'composerBlank': composerStartBlank(); break;
+      case 'gymFinish': openSessionFeedback(); break;
+      case 'fbRate': fbState.ratings[b.dataset.ex]=b.dataset.rate; var fbSeg=b.closest('.fb-seg'); if(fbSeg){ var fbBs=fbSeg.querySelectorAll('.fb-btn'); for(var fbI=0;fbI<fbBs.length;fbI++) fbBs[fbI].classList.toggle('active', fbBs[fbI].dataset.rate===b.dataset.rate); } break;
+      case 'feedbackSubmit': applySessionFeedback(); break;
+      case 'feedbackClose': closeFeedback(); gymExit(); break;
       case 'addDay': addDay(); break;
       case 'reorderToggle': reorderMode=true; renderProgramme(); break;
       case 'reorderDone': reorderMode=false; renderProgramme(); break;
@@ -1583,6 +1656,7 @@
     var el=e.target;
     if(el.dataset.act==='done'){ toggleDone(el); return; }
     if(el.dataset.act==='weekSelect'){ selectWeek(el.value); return; }
+    if(el.id==='fb-joint'){ fbState.joint=el.checked; return; }
     if(el.id==='period-from'||el.id==='period-to'){ setPeriodCustom(); return; }
     if(el.id==='period-week'){ if(el.value) setPeriodWeek(el.value); return; }
     if(el.id==='prog-exercise'){ progSelected=el.value; renderProgBody(); return; }
