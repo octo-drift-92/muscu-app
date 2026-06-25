@@ -243,7 +243,10 @@
     .num, .set-comment, .ex-note, .day-note, .ex-head .name-input { font-size:16px; }
     .mini-btn, .collapse-btn { width:40px; height:40px; }
     .mini-btn .icon, .collapse-btn .icon { width:18px; height:18px; }
-    .set-done input { width:26px; height:26px; }
+    .set-done input { width:30px; height:30px; }
+    .prog-btn { padding:8px 13px; font-size:13px; }
+    .reo-acts .mini-btn { width:38px; height:38px; }
+    .help-q { width:28px; height:28px; }
   }
 
   /* ----- iOS plein écran (écran d'accueil) + safe-area ----- */
@@ -275,6 +278,11 @@
   #toast.party { background:var(--accent-grad); color:#fff; }
   .last-session { font-size:12px; color:var(--text-faint); margin:-2px 2px 9px; line-height:1.4; }
   .prog-section-title { font-size:15px; font-weight:800; margin:8px 2px 12px; padding-top:20px; border-top:1px solid var(--border); letter-spacing:.2px; }
+  .prog-tabs { display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:0 0 12px; scrollbar-width:none; }
+  .prog-tabs::-webkit-scrollbar { display:none; }
+  .prog-tabs button { flex:0 0 auto; padding:8px 14px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--text-dim); font:inherit; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+  .prog-tabs button.active { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  .prog-tabs button:active { transform:scale(.95); }
   .period-bar { display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; margin-bottom:14px; }
   .period-presets button { font-size:13px; padding:7px 12px; }
   .period-dates { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
@@ -434,6 +442,13 @@
       </div>
       <div class="period-dates"><label>Du <input type="date" id="period-from"></label><label>au <input type="date" id="period-to"></label></div>
       <label class="period-week-wrap">Isoler une semaine <select id="period-week"></select></label>
+    </div>
+    <div class="prog-tabs" id="prog-tabs">
+      <button data-act="progTab" data-ptab="bilan">Bilan</button>
+      <button data-act="progTab" data-ptab="volume" class="active">Volume</button>
+      <button data-act="progTab" data-ptab="equilibre">Équilibre</button>
+      <button data-act="progTab" data-ptab="plateaux">Plateaux</button>
+      <button data-act="progTab" data-ptab="parexo">Par exo</button>
     </div>
     <div id="prog-global"></div>
     <h3 class="prog-section-title" id="prog-detail-label">Progression par exercice</h3>
@@ -750,11 +765,14 @@
     return state.templates.map(function(t){ return '<button data-act="addFromTpl" data-tpl="'+t.id+'">'+esc(t.name)+'<span>'+t.exercises.length+' exercice'+(t.exercises.length>1?'s':'')+'</span></button>'; }).join('');
   }
   var reorderMode=false;
+  var arrangedWeeks={};
+  function focusDayId(w){ var t=todayISO(); for(var i=0;i<w.days.length;i++){ if(w.days[i].date===t) return w.days[i].id; } for(var j=0;j<w.days.length;j++){ if(!dayIsComplete(w.days[j])) return w.days[j].id; } return w.days[0]?w.days[0].id:null; }
   function renderProgramme(){
     renderWeekBar();
     var box = $('week-view');
     var w = curWeek();
     if(!w){ box.innerHTML = '<div class="empty">'+ic('<path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/>')+'<p>Bienvenue 💪 Crée ta première semaine pour démarrer.</p></div>'; return; }
+    if(!reorderMode && !arrangedWeeks[w.id] && w.days.length>1){ var fd=focusDayId(w); w.days.forEach(function(d){ d.collapsed=(d.id!==fd); }); arrangedWeeks[w.id]=true; }
     var y = window.scrollY;
     box.innerHTML = reorderMode ? renderReorderBoard(w) : (
       todayCardHTML() +
@@ -1392,7 +1410,7 @@
   function globalProgCards(){
     var html='', R=resolveRange();
     var B=monthlyBilan(bilanOffset);
-    html+='<div class="card" style="padding:10px 12px"><div class="section-label" style="display:flex;align-items:center;gap:8px">Bilan — '+esc(B.label)+'<span style="margin-left:auto;display:flex;gap:6px"><button class="mini-btn" data-act="bilanPrev" aria-label="Mois précédent">◀</button><button class="mini-btn" data-act="bilanNext"'+(bilanOffset>=0?' disabled':'')+' aria-label="Mois suivant">▶</button></span></div><div class="bilan-stats"><div><b>'+B.seances+'</b><span>séances</span></div><div><b>'+B.sets+'</b><span>séries faites</span></div><div><b>'+fmtKg(B.tonnage)+'</b><span>kg soulevés</span></div></div>'+(B.records.length?('<div style="margin-top:10px;font-weight:700;font-size:11.5px;color:var(--text-faint);letter-spacing:.3px">RECORDS DE CHARGE DU MOIS ('+B.records.length+')</div><table class="hist"><tbody>'+B.records.slice(0,8).map(function(r){return '<tr><td>'+esc(r.nm)+'</td><td style="text-align:right;color:var(--success);font-weight:700">'+fmt(r.kg)+' kg</td><td style="text-align:right;color:var(--text-faint)">'+(r.prev?'+'+fmt(r.kg-r.prev):'1er')+'</td></tr>';}).join('')+'</tbody></table>'):'<p class="hint" style="margin-top:8px">Aucun nouveau record de charge ce mois.</p>')+'</div>';
+    html+='<div class="card prog-sec" data-psec="bilan" style="padding:10px 12px"><div class="section-label" style="display:flex;align-items:center;gap:8px">Bilan — '+esc(B.label)+'<span style="margin-left:auto;display:flex;gap:6px"><button class="mini-btn" data-act="bilanPrev" aria-label="Mois précédent">◀</button><button class="mini-btn" data-act="bilanNext"'+(bilanOffset>=0?' disabled':'')+' aria-label="Mois suivant">▶</button></span></div><div class="bilan-stats"><div><b>'+B.seances+'</b><span>séances</span></div><div><b>'+B.sets+'</b><span>séries faites</span></div><div><b>'+fmtKg(B.tonnage)+'</b><span>kg soulevés</span></div></div>'+(B.records.length?('<div style="margin-top:10px;font-weight:700;font-size:11.5px;color:var(--text-faint);letter-spacing:.3px">RECORDS DE CHARGE DU MOIS ('+B.records.length+')</div><table class="hist"><tbody>'+B.records.slice(0,8).map(function(r){return '<tr><td>'+esc(r.nm)+'</td><td style="text-align:right;color:var(--success);font-weight:700">'+fmt(r.kg)+' kg</td><td style="text-align:right;color:var(--text-faint)">'+(r.prev?'+'+fmt(r.kg-r.prev):'1er')+'</td></tr>';}).join('')+'</tbody></table>'):'<p class="hint" style="margin-top:8px">Aucun nouveau record de charge ce mois.</p>')+'</div>';
     var V=volumeByGroupOverRange(R.from, R.to), avg=V.avg;
     var sub=(R.preset===null)?R.label:('moyenne/sem · '+R.label);
     var total=0; Object.keys(avg).forEach(function(k){ total+=avg[k]; });
@@ -1400,9 +1418,9 @@
     keys.sort(function(a,b){return (avg[b]||0)-(avg[a]||0);});
     if(total>0){
       var rows=keys.map(function(g){ var n=avg[g]||0, s=volStatus(g,n); return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+fmtSets(n)+'</td><td class="vol-cell">'+volBar(g,n)+'<div class="vol-stat" style="color:'+s.col+'">'+s.lbl+'</div></td></tr>'; }).join('');
-      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><div class="help-box" data-help="volume" hidden>Séries éq./sem = volume hebdo par muscle (direct = 1, indirect = 0,5 ; échauffements exclus). Tous les groupes sont affichés (0 = non travaillé). La barre situe ton volume entre les repères RP : <b>MEV</b> (minimum efficace) · <b>MAV</b> (zone optimale) · <b>MRV</b> (max récupérable). Sous MEV = léger, MEV–MAV = productif, MAV–MRV = optimal, au-delà = élevé. Gros muscles : MEV 6 / MRV 20 · petits : MEV 4 / MRV 16. Moyenne sur '+V.weeks+' semaines.</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:center">Cible MEV→MRV</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><div class="help-box" data-help="volume" hidden>Séries éq./sem = volume hebdo par muscle (direct = 1, indirect = 0,5 ; échauffements exclus). Tous les groupes sont affichés (0 = non travaillé). La barre situe ton volume entre les repères RP : <b>MEV</b> (minimum efficace) · <b>MAV</b> (zone optimale) · <b>MRV</b> (max récupérable). Sous MEV = léger, MEV–MAV = productif, MAV–MRV = optimal, au-delà = élevé. Gros muscles : MEV 6 / MRV 20 · petits : MEV 4 / MRV 16. Moyenne sur '+V.weeks+' semaines.</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:center">Cible MEV→MRV</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
     } else {
-      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><p class="hint">Aucune donnée sur cette période.</p></div>';
+      html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><p class="hint">Aucune donnée sur cette période.</p></div>';
     }
     function balanceRow(label,a,b,vCol,vIco,vTxt){
       var tot=a+b; if(tot<=0) return ''; var pa=Math.round(a/tot*100);
@@ -1430,12 +1448,12 @@
     }
     if(glob||pairs){
       var det=(glob&&pairs)?'<div style="border-top:1px solid var(--border);margin-bottom:10px"></div><div style="font-weight:700;font-size:11.5px;letter-spacing:.4px;margin-bottom:9px;color:var(--text-faint)">PAR PAIRE ANTAGONISTE</div>':'';
-      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Équilibre <button class="help-q" data-act="help" data-topic="equilibre">?</button></div><div class="help-box" data-help="equilibre" hidden>Le global = tout ce qui pousse (pecs, épaules av., triceps) vs tout ce qui tire (dos, biceps, arrière d\'épaule). On vise au moins autant de tirage que de poussée (ratio ≥ 1:1, bon pour les épaules). Les paires comparent chaque muscle à son antagoniste — vert si l\'un ne dépasse pas 2× l\'autre.</div>'+glob+det+pairs+'</div>';
+      html+='<div class="card prog-sec" data-psec="equilibre" style="padding:10px 12px"><div class="section-label">Équilibre <button class="help-q" data-act="help" data-topic="equilibre">?</button></div><div class="help-box" data-help="equilibre" hidden>Le global = tout ce qui pousse (pecs, épaules av., triceps) vs tout ce qui tire (dos, biceps, arrière d\'épaule). On vise au moins autant de tirage que de poussée (ratio ≥ 1:1, bon pour les épaules). Les paires comparent chaque muscle à son antagoniste — vert si l\'un ne dépasse pas 2× l\'autre.</div>'+glob+det+pairs+'</div>';
     }
     var plats=[];
     allExerciseNames().forEach(function(nm){ if(isWarmup(nm)) return; var pts=sessionsOf(nm).filter(function(p){ return ptInRange(p.iso, R.from, R.to); }); if(pts.length<4) return; var mx=0,idx=0; pts.forEach(function(p,i){ if(p.maxWeight>mx){mx=p.maxWeight;idx=i;} }); var since=pts.length-1-idx; if(since>=4 && mx>0) plats.push({nm:nm,kg:mx,since:since}); });
     plats.sort(function(a,b){return b.since-a.since;});
-    html+='<div class="card" style="padding:10px 12px"><div class="section-label">Plateaux (charge bloquée ≥ 4 séances)</div>'+(plats.length?('<table class="hist"><tbody>'+plats.map(function(p){return '<tr><td>'+esc(p.nm)+'</td><td style="text-align:right">'+fmt(p.kg)+' kg</td><td style="text-align:right;color:var(--warning)">'+p.since+' séances</td></tr>';}).join('')+'</tbody></table><p class="hint" style="margin-top:8px">→ tente d\'abord +1-2 reps, puis +1-2 kg.</p>'):'<p class="hint">Aucun plateau sur la période 👍</p>')+'</div>';
+    html+='<div class="card prog-sec" data-psec="plateaux" style="padding:10px 12px"><div class="section-label">Plateaux (charge bloquée ≥ 4 séances)</div>'+(plats.length?('<table class="hist"><tbody>'+plats.map(function(p){return '<tr><td>'+esc(p.nm)+'</td><td style="text-align:right">'+fmt(p.kg)+' kg</td><td style="text-align:right;color:var(--warning)">'+p.since+' séances</td></tr>';}).join('')+'</tbody></table><p class="hint" style="margin-top:8px">→ tente d\'abord +1-2 reps, puis +1-2 kg.</p>'):'<p class="hint">Aucun plateau sur la période 👍</p>')+'</div>';
     return html;
   }
   function buildChartSVG(points, metric){
@@ -1458,6 +1476,16 @@
     var circ=points.map(function(p,i){return '<circle class="pt" cx="'+xF(i).toFixed(1)+'" cy="'+yF(vals[i]).toFixed(1)+'" r="3.6"><title>'+esc(p.full+' : '+fmt(vals[i])+(metric==='volume'?'':' kg'))+'</title></circle>';}).join('');
     return '<svg class="chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity="0.28"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>'+grid+'<polygon class="area" points="'+area+'"/><polyline class="line" points="'+lp+'"/>'+circ+xl+'</svg>';
   }
+  var progTab='volume';
+  function setProgTab(t){ progTab=t; applyProgTab(); }
+  function applyProgTab(){
+    var secs=document.querySelectorAll('#prog-global [data-psec]');
+    for(var i=0;i<secs.length;i++){ secs[i].style.display=(progTab!=='parexo' && secs[i].getAttribute('data-psec')===progTab)?'':'none'; }
+    var detail=(progTab==='parexo');
+    var dl=$('prog-detail-label'), ctrls=document.querySelector('#view-progression .controls'), body=$('prog-body');
+    [dl,ctrls,body].forEach(function(el){ if(el) el.style.display=detail?'':'none'; });
+    var tb=document.querySelectorAll('#prog-tabs button'); for(var k=0;k<tb.length;k++) tb[k].classList.toggle('active', tb[k].getAttribute('data-ptab')===progTab);
+  }
   function renderProgression(){
     var names=allExerciseNames(), sel=$('prog-exercise'), dl=$('prog-detail-label');
     syncPeriodUI();
@@ -1468,6 +1496,7 @@
     sel.innerHTML=names.map(function(n){return '<option value="'+escA(n)+'"'+(n===progSelected?' selected':'')+'>'+esc(n)+'</option>';}).join('');
     var segs=document.querySelectorAll('#metric-seg button'); for(var i=0;i<segs.length;i++) segs[i].classList.toggle('active', segs[i].dataset.metric===state.settings.metric);
     renderProgBody();
+    applyProgTab();
   }
   function renderProgBody(){
     var R=resolveRange(), pts=sessionsOf(progSelected).filter(function(p){ return ptInRange(p.iso, R.from, R.to); }), metric=state.settings.metric, box=$('prog-body');
@@ -1624,6 +1653,7 @@
       case 'palette': setPalette(b.dataset.pal); break;
       case 'metric': setMetric(b.dataset.metric); break;
       case 'period': setPeriod(b.dataset.weeks); break;
+      case 'progTab': setProgTab(b.dataset.ptab); break;
       case 'bilanPrev': bilanOffset--; renderProgression(); break;
       case 'bilanNext': if(bilanOffset<0) bilanOffset++; renderProgression(); break;
       case 'weekPrev': navWeek(-1); break;
