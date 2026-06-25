@@ -66,7 +66,8 @@
   .view { display:none; }
   .view.active { display:block; }
 
-  .week-bar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+  .week-bar { display:flex; align-items:center; gap:8px; flex-wrap:nowrap; margin-bottom:18px; }
+  .week-bar #week-select { flex:1 1 auto; min-width:0; }
   .week-bar select, .controls select { font:inherit; font-weight:700; font-size:15px; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:9px 34px 9px 13px; cursor:pointer; appearance:none; -webkit-appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239aa4b2' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 11px center; min-width:170px; }
   .controls select { min-width:220px; }
   .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; font:inherit; font-weight:600; font-size:14px; padding:9px 14px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); cursor:pointer; white-space:nowrap; }
@@ -86,6 +87,10 @@
   .menu button { display:block; width:100%; text-align:left; background:none; border:none; color:var(--text); font:inherit; font-size:14px; font-weight:600; padding:9px 11px; border-radius:8px; cursor:pointer; }
   .menu button:hover { background:var(--surface-2); }
   .menu button span { display:block; font-size:12px; font-weight:500; color:var(--text-faint); margin-top:1px; }
+  .menu button > .icon { width:16px; height:16px; margin-right:9px; vertical-align:-3px; opacity:.75; }
+  .menu .menu-sep { height:1px; background:var(--border); margin:5px 6px; }
+  .menu .menu-danger { color:var(--danger); }
+  .menu .menu-danger > .icon { opacity:.95; }
   .menu-empty { padding:10px 11px; font-size:13px; color:var(--text-faint); max-width:250px; line-height:1.5; }
 
   .week-head { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border); }
@@ -647,10 +652,16 @@
       '<button class="icon-btn" data-act="weekPrev" title="Semaine précédente">'+ic(P.left)+'</button>' +
       '<select id="week-select" data-act="weekSelect" aria-label="Choisir la semaine">'+opts+'</select>' +
       '<button class="icon-btn" data-act="weekNext" title="Semaine suivante">'+ic(P.right)+'</button>' +
-      '<button class="btn btn-sm" data-act="addWeek">'+ic(P.plus)+'Semaine</button>' +
-      '<button class="btn btn-sm primary" data-act="dup" title="Crée la semaine suivante en appliquant la progression de chaque exercice">'+ic(P.copy)+'Dupliquer la semaine</button>' +
-      '<button class="btn btn-sm" data-act="composerOpen" title="Générer un bloc de plusieurs semaines (build + deload) à partir de cette semaine">'+ic(P.layers)+'Composer un cycle</button>' +
-      '<button class="btn btn-sm danger ghost" data-act="delWeek" title="Supprimer la semaine">'+ic(P.trash)+'</button>';
+      '<div class="menu-wrap" style="margin-left:auto">' +
+        '<button class="btn btn-sm primary" data-act="weekMenu" title="Ajouter / gérer une semaine" aria-label="Ajouter ou gérer une semaine">'+ic(P.plus)+ic(P.down)+'</button>' +
+        '<div class="menu menu-right" id="week-menu" hidden>' +
+          '<button data-act="addWeek">'+ic(P.plus)+'Nouvelle semaine (vide)</button>' +
+          '<button data-act="dup">'+ic(P.copy)+'Dupliquer la semaine</button>' +
+          '<button data-act="composerOpen">'+ic(P.layers)+'Composer un cycle…</button>' +
+          '<div class="menu-sep"></div>' +
+          '<button class="menu-danger" data-act="delWeek">'+ic(P.trash)+'Supprimer la semaine</button>' +
+        '</div>' +
+      '</div>';
   }
 
   function setRowHTML(set, idx){
@@ -1049,7 +1060,7 @@
       +'<div class="composer-foot"><button class="btn" data-act="composerClose">Annuler</button><button class="btn primary" data-act="composerGenerate">Générer le bloc</button></div>'
     +'</div>';
   }
-  function openComposer(){ if(!curWeek()){ toast('Crée d\'abord une semaine'); return; } composerCfg.startDate=uniqueWeekDate(defaultNextMonday()); renderComposer(); var ov=$('composer'); if(ov) ov.hidden=false; }
+  function openComposer(){ if(!curWeek()){ toast('Crée d\'abord une semaine'); return; } closeMenus(); composerCfg.startDate=uniqueWeekDate(defaultNextMonday()); renderComposer(); var ov=$('composer'); if(ov) ov.hidden=false; }
   function closeComposer(){ var ov=$('composer'); if(ov){ ov.hidden=true; ov.innerHTML=''; } }
   function composerSet(f, el){
     if(f==='build') composerCfg.buildWeeks=Math.max(1,Math.min(12,parseInt(el.value,10)||6));
@@ -1608,6 +1619,7 @@
       case 'weekPrev': navWeek(-1); break;
       case 'weekNext': navWeek(1); break;
       case 'addWeek': addWeek(); break;
+      case 'weekMenu': toggleMenu('week-menu'); break;
       case 'dup': duplicateWeek(); break;
       case 'delWeek': deleteWeek(); break;
       case 'composerOpen': openComposer(); break;
