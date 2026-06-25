@@ -329,6 +329,15 @@
   .fb-seg { display:flex; gap:6px; }
   .fb-btn { flex:1; padding:10px 6px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--text-dim); font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
   .fb-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .vol-cell { width:118px; }
+  .vol-bar { position:relative; height:9px; border-radius:5px; }
+  .vol-zones { display:flex; height:100%; border-radius:5px; overflow:hidden; }
+  .vol-zones .vz { display:block; height:100%; }
+  .vol-zones .z-low { background:color-mix(in srgb,var(--text-faint) 28%,transparent); }
+  .vol-zones .z-mid { background:color-mix(in srgb,var(--success) 35%,transparent); }
+  .vol-zones .z-opt { background:color-mix(in srgb,var(--success) 65%,transparent); }
+  .vol-marker { position:absolute; top:-3px; width:3px; height:15px; background:var(--text); border-radius:2px; transform:translateX(-50%); box-shadow:0 0 0 1.5px var(--surface); }
+  .vol-stat { font-size:10px; font-weight:700; text-align:center; margin-top:3px; }
   .gym-top { display:flex; align-items:center; gap:10px; padding:12px 14px; padding-top:calc(12px + env(safe-area-inset-top)); border-bottom:1px solid var(--border); }
   .gym-x { width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:17px; cursor:pointer; flex:0 0 auto; }
   .gym-title { font-weight:800; font-size:15px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -999,8 +1008,9 @@
   }
 
   /* ---------- compositeur de cycle (load / deload) ---------- */
-  var composerCfg = { buildWeeks:6, deload:true, startDate:'', rir:true };
+  var composerCfg = { buildWeeks:6, deload:true, startDate:'', rir:true, volRamp:false };
   function buildRir(i,n){ if(n<=1) return 2; return Math.max(0, Math.round(3*(1 - i/(n-1)))); }
+  function addSetToWeek(wk){ (wk.days||[]).forEach(function(d){ (d.exercises||[]).forEach(function(x){ if(isWarmup(x.name)) return; var last=x.sets[x.sets.length-1]; if(last) x.sets.push({ id:uid(), planReps:last.planReps, planWeight:last.planWeight, done:false, realReps:null, realWeight:null, comment:'' }); }); }); }
   function blockWeek(src, date, mode){
     var wk = { id:uid(), name:weekNameFromDate(date)+(mode==='deload'?' · deload':''), startDate:date, collapsed:false,
       days: src.days.map(function(d){
@@ -1019,7 +1029,7 @@
     var n=Math.max(1,Math.min(12,composerCfg.buildWeeks|0)), dl=composerCfg.deload, total=n+(dl?1:0);
     var start=mondayISO(composerCfg.startDate||uniqueWeekDate(defaultNextMonday()));
     var end=addDaysISO(start,(total-1)*7);
-    return '<b>'+total+' semaines</b> créées : '+n+' de build'+(dl?' + 1 deload (vol. −50 %)':'')+'<br>du <b>'+formatDateFR(start).slice(0,5)+'</b> au <b>'+formatDateFR(end).slice(0,5)+'</b>'+(composerCfg.rir?' · RIR dégressif 3→0':'')+'.';
+    return '<b>'+total+' semaines</b> créées : '+n+' de build'+(dl?' + 1 deload (vol. −50 %)':'')+'<br>du <b>'+formatDateFR(start).slice(0,5)+'</b> au <b>'+formatDateFR(end).slice(0,5)+'</b>'+(composerCfg.rir?' · RIR dégressif 3→0':'')+(composerCfg.volRamp?' · +1 série/sem':'')+'.';
   }
   function renderComposer(){
     var ov=$('composer'); if(!ov) return; var base=curWeek(); if(!base) return;
@@ -1031,6 +1041,7 @@
         +'<label class="composer-row"><span>Semaines de build</span><input class="composer-input" type="number" min="1" max="12" step="1" data-cfield="build" value="'+composerCfg.buildWeeks+'"></label>'
         +'<label class="composer-row composer-check"><input type="checkbox" data-cfield="deload"'+(composerCfg.deload?' checked':'')+'> <span>Ajouter un <b>deload</b> final (volume −50 %)</span></label>'
         +'<label class="composer-row composer-check"><input type="checkbox" data-cfield="rir"'+(composerCfg.rir?' checked':'')+'> <span><b>RIR dégressif</b> (3→0 sur le build, deload facile)</span></label>'
+        +'<label class="composer-row composer-check"><input type="checkbox" data-cfield="volramp"'+(composerCfg.volRamp?' checked':'')+'> <span><b>Progression du volume</b> (+1 série/semaine, modèle MEV→MRV)</span></label>'
         +'<label class="composer-row"><span>Démarrage (lundi)</span><input class="composer-input" type="date" data-cfield="start" value="'+escA(composerCfg.startDate)+'"></label>'
         +'<p class="composer-hint">Chaque semaine de build applique le mode de progression de chaque exercice (Pareil / Volume +1 rep / Poids +1 kg).</p>'
         +'<div class="composer-preview">'+composerPreviewHTML()+'</div>'
@@ -1044,6 +1055,7 @@
     if(f==='build') composerCfg.buildWeeks=Math.max(1,Math.min(12,parseInt(el.value,10)||6));
     else if(f==='deload') composerCfg.deload=!!el.checked;
     else if(f==='rir') composerCfg.rir=!!el.checked;
+    else if(f==='volramp') composerCfg.volRamp=!!el.checked;
     else if(f==='start'){ if(el.value) composerCfg.startDate=mondayISO(el.value); }
     var pv=document.querySelector('#composer .composer-preview'); if(pv) pv.innerHTML=composerPreviewHTML();
   }
@@ -1055,7 +1067,7 @@
     var n=Math.max(1,Math.min(12,composerCfg.buildWeeks|0));
     var date=mondayISO(composerCfg.startDate||uniqueWeekDate(defaultNextMonday()));
     var made=[], prev=base;
-    for(var i=0;i<n;i++){ var wk=blockWeek(prev, date, i===0?'copy':'progress'); if(composerCfg.rir) wk.rirTarget=buildRir(i,n); made.push(wk); prev=wk; date=addDaysISO(date,7); }
+    for(var i=0;i<n;i++){ var wk=blockWeek(prev, date, i===0?'copy':'progress'); if(composerCfg.rir) wk.rirTarget=buildRir(i,n); if(composerCfg.volRamp && i>0) addSetToWeek(wk); made.push(wk); prev=wk; date=addDaysISO(date,7); }
     if(composerCfg.deload){ var dl=blockWeek(prev, date, 'deload'); if(composerCfg.rir) dl.rirTarget=4; made.push(dl); }
     made.forEach(function(w){ state.weeks.push(w); });
     state.currentWeekId=made[0].id; save(); closeComposer(); renderProgramme();
@@ -1333,6 +1345,13 @@
     if(n<=high) return {lbl:'optimal', col:'var(--success)'};
     return {lbl:'élevé', col:'var(--accent)'};
   }
+  function volLandmarks(group){ var gros={'Pectoraux':1,'Dos':1,'Quadriceps':1,'Ischios':1,'Fessiers':1}[group]; return { mev:gros?6:4, mav:gros?12:10, mrv:gros?20:16 }; }
+  function volBar(group, n){
+    if(group==='Autre') return '';
+    var L=volLandmarks(group), s=volStatus(group,n);
+    var mk = n>0 ? '<span class="vol-marker" style="left:'+Math.min(100,Math.round(n/L.mrv*100))+'%"></span>' : '';
+    return '<div class="vol-bar" title="'+s.lbl+' · MEV '+L.mev+' · MAV '+L.mav+' · MRV '+L.mrv+'"><span class="vol-zones"><i class="vz z-low" style="flex:'+L.mev+'"></i><i class="vz z-mid" style="flex:'+(L.mav-L.mev)+'"></i><i class="vz z-opt" style="flex:'+(L.mrv-L.mav)+'"></i></span>'+mk+'</div>';
+  }
   var bilanOffset=0;
   function fmtKg(n){ return Math.round(n).toLocaleString('fr-FR'); }
   function bilanMonth(off){ var d=new Date(), dt=new Date(d.getFullYear(), d.getMonth()+off, 1); return { key: dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0'), label: dt.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}) }; }
@@ -1359,8 +1378,8 @@
     var keys=MUSCLE_GROUPS.slice(); Object.keys(avg).forEach(function(g){ if(keys.indexOf(g)===-1) keys.push(g); });
     keys.sort(function(a,b){return (avg[b]||0)-(avg[a]||0);});
     if(total>0){
-      var rows=keys.map(function(g){ var n=avg[g]||0, s=volStatus(g,n); return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+fmtSets(n)+'</td><td style="text-align:right;color:'+s.col+'">'+s.lbl+'</td></tr>'; }).join('');
-      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><div class="help-box" data-help="volume" hidden>Séries éq./sem = volume hebdo par muscle (direct = 1, indirect = 0,5 ; échauffements exclus). Tous les groupes sont affichés (0 = non travaillé). Repère : moins de 6 = léger · 6-12 = productif · 12-20 = optimal (un peu moins pour les petits muscles). Moyenne sur '+V.weeks+' semaines.</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:right">Statut</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      var rows=keys.map(function(g){ var n=avg[g]||0, s=volStatus(g,n); return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+fmtSets(n)+'</td><td class="vol-cell">'+volBar(g,n)+'<div class="vol-stat" style="color:'+s.col+'">'+s.lbl+'</div></td></tr>'; }).join('');
+      html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><div class="help-box" data-help="volume" hidden>Séries éq./sem = volume hebdo par muscle (direct = 1, indirect = 0,5 ; échauffements exclus). Tous les groupes sont affichés (0 = non travaillé). La barre situe ton volume entre les repères RP : <b>MEV</b> (minimum efficace) · <b>MAV</b> (zone optimale) · <b>MRV</b> (max récupérable). Sous MEV = léger, MEV–MAV = productif, MAV–MRV = optimal, au-delà = élevé. Gros muscles : MEV 6 / MRV 20 · petits : MEV 4 / MRV 16. Moyenne sur '+V.weeks+' semaines.</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:center">Cible MEV→MRV</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
     } else {
       html+='<div class="card" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><p class="hint">Aucune donnée sur cette période.</p></div>';
     }
