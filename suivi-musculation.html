@@ -67,8 +67,20 @@
   .view.active { display:block; animation:viewIn .26s cubic-bezier(.22,.61,.36,1); }
   @keyframes viewIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 
-  .week-bar { display:flex; align-items:center; gap:8px; flex-wrap:nowrap; margin-bottom:18px; }
-  .week-bar #week-select { flex:1 1 auto; min-width:0; }
+  .week-bar { display:flex; flex-direction:column; align-items:stretch; gap:10px; margin-bottom:18px; }
+  .week-nav-row { display:flex; align-items:center; gap:8px; }
+  .week-nav-row #week-select { flex:1 1 auto; min-width:0; }
+  .week-scrub-wrap { display:flex; align-items:center; gap:8px; }
+  .wk-today-btn { flex:0 0 auto; font:inherit; font-weight:800; font-size:12px; color:var(--accent); background:color-mix(in srgb,var(--accent) 12%,var(--surface)); border:1px solid color-mix(in srgb,var(--accent) 35%,var(--border)); border-radius:9px; padding:7px 11px; cursor:pointer; white-space:nowrap; -webkit-tap-highlight-color:transparent; }
+  .wk-today-btn:active { transform:scale(.94); }
+  .week-scrub { position:relative; flex:1 1 auto; min-width:0; display:flex; gap:6px; overflow-x:auto; overflow-y:hidden; padding:3px 2px 7px; scroll-behavior:smooth; -webkit-overflow-scrolling:touch; scrollbar-width:thin; }
+  .wk-pill { position:relative; flex:0 0 auto; font:inherit; font-weight:700; font-size:12px; font-variant-numeric:tabular-nums; color:var(--text-faint); background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:6px 9px; cursor:pointer; white-space:nowrap; -webkit-tap-highlight-color:transparent; }
+  .wk-pill.done { color:var(--text); border-color:color-mix(in srgb,var(--success) 45%,var(--border)); background:color-mix(in srgb,var(--success) 10%,var(--surface)); }
+  .wk-pill.future { border-style:dashed; }
+  .wk-pill.today { box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 42%,transparent); }
+  .wk-pill.cur { color:var(--on-accent); background:var(--accent); border-color:transparent; }
+  .wk-pill.cur.today { box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 28%,transparent); }
+  .wk-pill .wk-dl { margin-left:4px; font-size:9px; font-weight:800; opacity:.85; vertical-align:super; }
   .week-bar select, .controls select { font:inherit; font-weight:700; font-size:15px; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:9px 34px 9px 13px; cursor:pointer; appearance:none; -webkit-appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239aa4b2' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 11px center; min-width:170px; }
   .controls select { min-width:220px; }
   .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; font:inherit; font-weight:600; font-size:14px; padding:9px 14px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); cursor:pointer; white-space:nowrap; }
@@ -620,6 +632,7 @@
   }
   var saveWarned=false;
   function save(){
+    sortWeeks();
     if(!SYNC_SUSPEND){ state.updatedAt = Date.now(); }
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){ if(!saveWarned){ saveWarned=true; try{ toast('Sauvegarde locale indisponible ici (aperçu) — ouvre l\'app via son lien.'); }catch(_){} } }
     if(!SYNC_SUSPEND){ schedulePush(); }
@@ -699,25 +712,44 @@
   };
 
   /* ---------- render: programme ---------- */
+  function weekSortKey(w){ if(w&&w.startDate) return w.startDate; var m=(((w&&w.name)||'').match(/(\d{2})\/(\d{2})\/(\d{4})/)); return m?(m[3]+'-'+m[2]+'-'+m[1]):'9999-99-99'; }
+  function sortWeeks(){ state.weeks.sort(function(a,b){ var ka=weekSortKey(a), kb=weekSortKey(b); return ka<kb?-1:(ka>kb?1:0); }); }
+  function weekContainsToday(w){ if(!w||!w.startDate) return false; var t=todayISO(); return w.startDate<=t && t<=addDaysISO(w.startDate,6); }
+  function todayWeekId(){ var t=todayISO(), best=null, bestKey=''; state.weeks.forEach(function(w){ if(weekContainsToday(w)) best=w; }); if(best) return best.id; state.weeks.forEach(function(w){ var k=weekSortKey(w); if(k<=t && k>=bestKey){ bestKey=k; best=w; } }); return best?best.id:((state.weeks[0]&&state.weeks[0].id)||null); }
+  function goToday(){ var id=todayWeekId(); if(id){ state.currentWeekId=id; save(); renderProgramme(); toast('Semaine en cours'); } }
+  function weekProgress(w){ var t=0,dn=0; (w.days||[]).forEach(function(d){ (d.exercises||[]).forEach(function(x){ if(isWarmup(x.name))return; (x.sets||[]).forEach(function(s){ t++; if(s.done)dn++; }); }); }); return {t:t,dn:dn}; }
+  function weekScrubHTML(){
+    var t=todayISO();
+    var pills=state.weeks.map(function(w){
+      var isCur=(w.id===state.currentWeekId), isToday=weekContainsToday(w), isFuture=(w.startDate&&w.startDate>t), pr=weekProgress(w), isDone=(pr.t>0&&pr.dn>=pr.t), isDeload=/deload/i.test(w.name||'');
+      var lbl=w.startDate?formatDateFR(w.startDate).slice(0,5):esc((w.name||'?').slice(0,5));
+      return '<button class="wk-pill'+(isCur?' cur':'')+(isToday?' today':'')+(isDone?' done':'')+(isFuture?' future':'')+'" data-act="weekJump" data-wid="'+w.id+'" title="'+escA(w.name)+'">'+lbl+(isDeload?'<i class="wk-dl">D</i>':'')+'</button>';
+    }).join('');
+    return '<div class="week-scrub-wrap"><button class="wk-today-btn" data-act="weekToday" title="Aller à la semaine en cours">Auj.</button><div class="week-scrub" id="week-scrub">'+pills+'</div></div>';
+  }
   function renderWeekBar(){
     var bar = $('week-bar');
     if(!state.weeks.length){ bar.innerHTML = '<button class="btn primary" data-act="addWeek">'+ic(P.plus)+'Nouvelle semaine</button>'; return; }
     var w = curWeek();
     var opts = state.weeks.map(function(x){ return '<option value="'+x.id+'"'+(x.id===w.id?' selected':'')+'>'+esc(x.name)+'</option>'; }).join('');
     bar.innerHTML =
-      '<button class="icon-btn" data-act="weekPrev" title="Semaine précédente">'+ic(P.left)+'</button>' +
-      '<select id="week-select" data-act="weekSelect" aria-label="Choisir la semaine">'+opts+'</select>' +
-      '<button class="icon-btn" data-act="weekNext" title="Semaine suivante">'+ic(P.right)+'</button>' +
-      '<div class="menu-wrap" style="margin-left:auto">' +
-        '<button class="btn btn-sm primary" data-act="weekMenu" title="Ajouter / gérer une semaine" aria-label="Ajouter ou gérer une semaine">'+ic(P.plus)+ic(P.down)+'</button>' +
-        '<div class="menu menu-right" id="week-menu" hidden>' +
-          '<button data-act="addWeek">'+ic(P.plus)+'Nouvelle semaine (vide)</button>' +
-          '<button data-act="dup">'+ic(P.copy)+'Dupliquer la semaine</button>' +
-          '<button data-act="composerOpen">'+ic(P.layers)+'Composer un cycle…</button>' +
-          '<div class="menu-sep"></div>' +
-          '<button class="menu-danger" data-act="delWeek">'+ic(P.trash)+'Supprimer la semaine</button>' +
+      '<div class="week-nav-row">' +
+        '<button class="icon-btn" data-act="weekPrev" title="Semaine précédente">'+ic(P.left)+'</button>' +
+        '<select id="week-select" data-act="weekSelect" aria-label="Choisir la semaine">'+opts+'</select>' +
+        '<button class="icon-btn" data-act="weekNext" title="Semaine suivante">'+ic(P.right)+'</button>' +
+        '<div class="menu-wrap" style="margin-left:auto">' +
+          '<button class="btn btn-sm primary" data-act="weekMenu" title="Ajouter / gérer une semaine" aria-label="Ajouter ou gérer une semaine">'+ic(P.plus)+ic(P.down)+'</button>' +
+          '<div class="menu menu-right" id="week-menu" hidden>' +
+            '<button data-act="addWeek">'+ic(P.plus)+'Nouvelle semaine (vide)</button>' +
+            '<button data-act="dup">'+ic(P.copy)+'Dupliquer la semaine</button>' +
+            '<button data-act="composerOpen">'+ic(P.layers)+'Composer un cycle…</button>' +
+            '<div class="menu-sep"></div>' +
+            '<button class="menu-danger" data-act="delWeek">'+ic(P.trash)+'Supprimer la semaine</button>' +
+          '</div>' +
         '</div>' +
-      '</div>';
+      '</div>' +
+      weekScrubHTML();
+    var sc=$('week-scrub'); if(sc){ var cur=sc.querySelector('.wk-pill.cur'); if(cur){ sc.scrollLeft=Math.max(0, cur.offsetLeft - sc.clientWidth/2 + cur.offsetWidth/2); } }
   }
 
   function setRowHTML(set, idx){
@@ -800,6 +832,7 @@
   var arrangedWeeks={};
   function focusDayId(w){ var t=todayISO(); for(var i=0;i<w.days.length;i++){ if(w.days[i].date===t) return w.days[i].id; } for(var j=0;j<w.days.length;j++){ if(!dayIsComplete(w.days[j])) return w.days[j].id; } return w.days[0]?w.days[0].id:null; }
   function renderProgramme(){
+    sortWeeks();
     renderWeekBar();
     var box = $('week-view');
     var w = curWeek();
@@ -1698,6 +1731,8 @@
       case 'bilanNext': if(bilanOffset<0) bilanOffset++; renderProgression(); break;
       case 'weekPrev': navWeek(-1); break;
       case 'weekNext': navWeek(1); break;
+      case 'weekJump': selectWeek(b.dataset.wid); break;
+      case 'weekToday': goToday(); break;
       case 'addWeek': addWeek(); break;
       case 'weekMenu': toggleMenu('week-menu'); break;
       case 'dup': duplicateWeek(); break;
