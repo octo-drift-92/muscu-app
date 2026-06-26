@@ -73,7 +73,7 @@
   .week-scrub-wrap { display:flex; align-items:center; gap:8px; }
   .wk-today-btn { flex:0 0 auto; font:inherit; font-weight:800; font-size:12px; color:var(--accent); background:color-mix(in srgb,var(--accent) 12%,var(--surface)); border:1px solid color-mix(in srgb,var(--accent) 35%,var(--border)); border-radius:9px; padding:7px 11px; cursor:pointer; white-space:nowrap; -webkit-tap-highlight-color:transparent; }
   .wk-today-btn:active { transform:scale(.94); }
-  .week-scrub { position:relative; flex:1 1 auto; min-width:0; display:flex; gap:6px; overflow-x:auto; overflow-y:hidden; padding:3px 2px 7px; scroll-behavior:smooth; -webkit-overflow-scrolling:touch; scrollbar-width:thin; }
+  .week-scrub { position:relative; flex:1 1 auto; min-width:0; display:flex; gap:6px; overflow-x:auto; overflow-y:hidden; padding:3px 2px 7px; -webkit-overflow-scrolling:touch; scrollbar-width:thin; }
   .wk-pill { position:relative; flex:0 0 auto; font:inherit; font-weight:700; font-size:12px; font-variant-numeric:tabular-nums; color:var(--text-faint); background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:6px 9px; cursor:pointer; white-space:nowrap; -webkit-tap-highlight-color:transparent; }
   .wk-pill.cur { color:var(--on-accent); background:var(--accent); border-color:transparent; }
   .week-bar select, .controls select { font:inherit; font-weight:700; font-size:15px; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:9px 34px 9px 13px; cursor:pointer; appearance:none; -webkit-appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239aa4b2' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 11px center; min-width:170px; }
@@ -712,37 +712,46 @@
   function weekContainsToday(w){ if(!w||!w.startDate) return false; var t=todayISO(); return w.startDate<=t && t<=addDaysISO(w.startDate,6); }
   function todayWeekId(){ var t=todayISO(), best=null, bestKey=''; state.weeks.forEach(function(w){ if(weekContainsToday(w)) best=w; }); if(best) return best.id; state.weeks.forEach(function(w){ var k=weekSortKey(w); if(k<=t && k>=bestKey){ bestKey=k; best=w; } }); return best?best.id:((state.weeks[0]&&state.weeks[0].id)||null); }
   function goToday(){ var id=todayWeekId(); if(id){ state.currentWeekId=id; save(); renderProgramme(); toast('Semaine en cours'); } }
-  function weekScrubHTML(){
-    var pills=state.weeks.map(function(w){
+  function weekScrubPills(){
+    return state.weeks.map(function(w){
       var isCur=(w.id===state.currentWeekId);
       var lbl=w.startDate?formatDateFR(w.startDate).slice(0,5):esc((w.name||'?').slice(0,5));
       return '<button class="wk-pill'+(isCur?' cur':'')+'" data-act="weekJump" data-wid="'+w.id+'" title="'+escA(w.name)+'">'+lbl+'</button>';
     }).join('');
-    return '<div class="week-scrub-wrap"><button class="wk-today-btn" data-act="weekToday" title="Aller à la semaine en cours">Auj.</button><div class="week-scrub" id="week-scrub">'+pills+'</div></div>';
+  }
+  function weekScrubSig(){ return state.weeks.map(function(w){return w.id+':'+(w.startDate||'');}).join('|')+'#'+state.currentWeekId; }
+  function renderWeekScrub(){
+    var wrap=$('week-scrub-wrap'); if(!wrap) return;
+    var sig=weekScrubSig();
+    if(wrap.getAttribute('data-sig')===sig && $('week-scrub')) return; // semaines + courante inchangées → on garde le DOM et la position de scroll
+    wrap.innerHTML='<button class="wk-today-btn" data-act="weekToday" title="Aller à la semaine en cours">Auj.</button><div class="week-scrub" id="week-scrub">'+weekScrubPills()+'</div>';
+    wrap.setAttribute('data-sig', sig);
+    var sc=$('week-scrub'); if(sc){ var cur=sc.querySelector('.wk-pill.cur'); if(cur){ sc.scrollLeft=Math.max(0, cur.offsetLeft - sc.clientWidth/2 + cur.offsetWidth/2); } }
   }
   function renderWeekBar(){
     var bar = $('week-bar');
     if(!state.weeks.length){ bar.innerHTML = '<button class="btn primary" data-act="addWeek">'+ic(P.plus)+'Nouvelle semaine</button>'; return; }
     var w = curWeek();
     var opts = state.weeks.map(function(x){ return '<option value="'+x.id+'"'+(x.id===w.id?' selected':'')+'>'+esc(x.name)+'</option>'; }).join('');
-    bar.innerHTML =
-      '<div class="week-nav-row">' +
-        '<button class="icon-btn" data-act="weekPrev" title="Semaine précédente">'+ic(P.left)+'</button>' +
-        '<select id="week-select" data-act="weekSelect" aria-label="Choisir la semaine">'+opts+'</select>' +
-        '<button class="icon-btn" data-act="weekNext" title="Semaine suivante">'+ic(P.right)+'</button>' +
-        '<div class="menu-wrap" style="margin-left:auto">' +
-          '<button class="btn btn-sm primary" data-act="weekMenu" title="Ajouter / gérer une semaine" aria-label="Ajouter ou gérer une semaine">'+ic(P.plus)+ic(P.down)+'</button>' +
-          '<div class="menu menu-right" id="week-menu" hidden>' +
-            '<button data-act="addWeek">'+ic(P.plus)+'Nouvelle semaine (vide)</button>' +
-            '<button data-act="dup">'+ic(P.copy)+'Dupliquer la semaine</button>' +
-            '<button data-act="composerOpen">'+ic(P.layers)+'Composer un cycle…</button>' +
-            '<div class="menu-sep"></div>' +
-            '<button class="menu-danger" data-act="delWeek">'+ic(P.trash)+'Supprimer la semaine</button>' +
-          '</div>' +
+    var navInner =
+      '<button class="icon-btn" data-act="weekPrev" title="Semaine précédente">'+ic(P.left)+'</button>' +
+      '<select id="week-select" data-act="weekSelect" aria-label="Choisir la semaine">'+opts+'</select>' +
+      '<button class="icon-btn" data-act="weekNext" title="Semaine suivante">'+ic(P.right)+'</button>' +
+      '<div class="menu-wrap" style="margin-left:auto">' +
+        '<button class="btn btn-sm primary" data-act="weekMenu" title="Ajouter / gérer une semaine" aria-label="Ajouter ou gérer une semaine">'+ic(P.plus)+ic(P.down)+'</button>' +
+        '<div class="menu menu-right" id="week-menu" hidden>' +
+          '<button data-act="addWeek">'+ic(P.plus)+'Nouvelle semaine (vide)</button>' +
+          '<button data-act="dup">'+ic(P.copy)+'Dupliquer la semaine</button>' +
+          '<button data-act="composerOpen">'+ic(P.layers)+'Composer un cycle…</button>' +
+          '<div class="menu-sep"></div>' +
+          '<button class="menu-danger" data-act="delWeek">'+ic(P.trash)+'Supprimer la semaine</button>' +
         '</div>' +
-      '</div>' +
-      weekScrubHTML();
-    var sc=$('week-scrub'); if(sc){ var cur=sc.querySelector('.wk-pill.cur'); if(cur){ sc.scrollLeft=Math.max(0, cur.offsetLeft - sc.clientWidth/2 + cur.offsetWidth/2); } }
+      '</div>';
+    if(!$('week-nav-row') || !$('week-scrub-wrap')){
+      bar.innerHTML = '<div class="week-nav-row" id="week-nav-row"></div><div class="week-scrub-wrap" id="week-scrub-wrap"></div>';
+    }
+    $('week-nav-row').innerHTML = navInner;
+    renderWeekScrub();
   }
 
   function setRowHTML(set, idx){
