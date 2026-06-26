@@ -1121,20 +1121,22 @@
     var mode=ex.progression||'none', name=(ex.name||'').trim(); if(!name) return;
     var base=baseSet||ex.sets[0], curR=(base.planReps!=null?base.planReps:null), curW=(base.planWeight!=null?base.planWeight:null);
     var later=state.weeks.filter(function(w){ return w.startDate && w.startDate>fromWeek.startDate; }).sort(function(a,b){ return a.startDate<b.startDate?-1:1; });
-    var snaps=[], changed=0;
+    var snaps=[], changed=0, broken=false;
     for(var i=0;i<later.length;i++){
       var w=later[i], target=null;
       for(var di=0; di<w.days.length && !target; di++){ var exs=w.days[di].exercises; for(var xi=0; xi<exs.length; xi++){ if((exs[xi].name||'').trim()===name){ target=exs[xi]; break; } } }
-      if(!target) break;
-      if(target.sets.some(function(s){ return s.done; })) break;
-      if(!/deload/i.test(w.name||'')){
-        if(mode==='volume'){ if(curR!=null) curR=curR+1; }
-        else if(mode==='weight'){ if(curW!=null) curW=curW+1; curR=8; }
-      }
-      var nR=curR, nW=curW;
+      if(!target){ broken=true; continue; }
+      if(target.sets.some(function(s){ return s.done; })){ broken=true; continue; }
       snaps.push({ ex:target, oldProg:target.progression, oldSets:target.sets });
       target.progression=mode;
-      target.sets=target.sets.map(function(){ return { id:uid(), planReps:nR, planWeight:nW, done:false, realReps:null, realWeight:null, comment:'' }; });
+      if(!broken){
+        if(!/deload/i.test(w.name||'')){
+          if(mode==='volume'){ if(curR!=null) curR=curR+1; }
+          else if(mode==='weight'){ if(curW!=null) curW=curW+1; curR=8; }
+        }
+        var nR=curR, nW=curW;
+        target.sets=target.sets.map(function(){ return { id:uid(), planReps:nR, planWeight:nW, done:false, realReps:null, realWeight:null, comment:'' }; });
+      }
       changed++;
     }
     if(changed){ save(); toastUndo(changed+' semaine'+(changed>1?'s':'')+' suivante'+(changed>1?'s':'')+' adaptée'+(changed>1?'s':''), function(){ snaps.forEach(function(s){ s.ex.progression=s.oldProg; s.ex.sets=s.oldSets; }); save(); renderProgramme(); }); }
