@@ -284,6 +284,9 @@
   .prog-tabs button { flex:0 0 auto; padding:8px 14px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--text-dim); font:inherit; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
   .prog-tabs button.active { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   .prog-tabs button:active { transform:scale(.95); }
+  .vol-switch { display:flex; margin:4px 0 6px; }
+  .vol-switch button { flex:1; }
+  .muscle-map { display:block; width:100%; max-width:330px; margin:6px auto 2px; }
   .period-bar { display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; margin-bottom:14px; }
   .period-presets button { font-size:13px; padding:7px 12px; }
   .period-dates { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
@@ -1350,6 +1353,30 @@
     recs.sort(function(a,b){return b.kg-a.kg;});
     return { label:tm.label, seances:Object.keys(days).length, sets:sets, tonnage:tonnage, records:recs };
   }
+  var volView='carte';
+  function volColor(g,n){ var lbl=volStatus(g,n).lbl; return {'absent':'#3f4a59','léger':'#5d8a73','productif':'#2f9e6b','optimal':'#16c281','élevé':'#f0a838'}[lbl]||'#3f4a59'; }
+  var GREY_BODY='<ellipse cx="105" cy="33" rx="13" ry="15"/><path d="M99,46 L111,46 L114,58 L96,58 Z"/><path d="M74,68 C72,70 71,74 72,80 L77,116 C79,130 82,140 89,149 L92,162 C93,168 98,170 105,170 C112,170 117,168 118,162 L121,149 C128,140 131,130 133,116 L138,80 C139,74 138,70 136,68 C120,64 108,65 105,65 C102,65 90,64 74,68 Z"/><path d="M70,68 C60,71 56,86 58,104 C60,116 65,124 71,124 C75,120 76,106 75,90 C74,78 76,70 70,68 Z"/><path d="M140,68 C150,71 154,86 152,104 C150,116 145,124 139,124 C135,120 134,106 135,90 C136,78 134,70 140,68 Z"/><path d="M58,120 C52,126 50,142 53,158 C54,168 59,176 64,176 C68,172 69,158 68,144 C67,132 63,122 58,120 Z"/><path d="M152,120 C158,126 160,142 157,158 C156,168 151,176 146,176 C142,172 141,158 142,144 C143,132 147,122 152,120 Z"/><path d="M88,166 C77,170 73,186 74,206 C75,226 80,244 88,252 C95,246 97,226 96,206 C95,186 95,170 88,166 Z"/><path d="M122,166 C133,170 137,186 136,206 C135,226 130,244 122,252 C115,246 113,226 114,206 C115,186 115,170 122,166 Z"/><path d="M85,250 C80,256 78,272 80,292 C81,308 84,322 89,324 C94,320 95,304 94,290 C93,272 90,256 85,250 Z"/><path d="M125,250 C130,256 132,272 130,292 C129,308 126,322 121,324 C116,320 115,304 116,290 C117,272 120,256 125,250 Z"/>';
+  function muscleMapSVG(avg){
+    function c(g){ return volColor(g, avg[g]||0); }
+    return '<svg class="muscle-map" viewBox="0 0 380 388" role="img" aria-label="Carte musculaire du volume hebdomadaire">'
+      +'<g fill="#3f4a59">'+GREY_BODY+'</g><g fill="#3f4a59" transform="translate(160,0)">'+GREY_BODY+'</g>'
+      +'<g fill="'+c('Deltoïde ant.')+'"><path d="M72,64 C62,66 57,77 59,89 C61,98 71,101 80,96 C87,91 88,75 83,66 C81,62 76,63 72,64 Z"/><path d="M138,64 C148,66 153,77 151,89 C149,98 139,101 130,96 C123,91 122,75 127,66 C129,62 134,63 138,64 Z"/></g>'
+      +'<g fill="'+c('Pectoraux')+'"><path d="M103,76 L103,102 C103,107 95,109 87,107 C79,105 76,94 78,85 C80,77 86,74 93,73 C99,72 101,73 103,76 Z"/><path d="M107,76 L107,102 C107,107 115,109 123,107 C131,105 134,94 132,85 C130,77 124,74 117,73 C111,72 109,73 107,76 Z"/></g>'
+      +'<g fill="'+c('Biceps')+'"><path d="M68,76 C61,79 59,89 61,100 C63,109 67,114 72,113 C75,109 76,98 74,88 C73,80 71,76 68,76 Z"/><path d="M142,76 C149,79 151,89 149,100 C147,109 143,114 138,113 C135,109 134,98 136,88 C137,80 139,76 142,76 Z"/></g>'
+      +'<g fill="'+c('Quadriceps')+'"><path d="M88,172 C79,176 76,190 77,208 C78,224 82,238 88,246 C94,240 96,224 95,208 C94,190 94,176 88,172 Z"/><path d="M122,172 C131,176 134,190 133,208 C132,224 128,238 122,246 C116,240 114,224 115,208 C116,190 116,176 122,172 Z"/></g>'
+      +'<path d="M95,108 C95,105 100,104 105,104 C110,104 115,105 115,108 L114,152 C114,158 110,160 105,160 C100,160 96,158 96,152 Z" fill="'+c('Abdos')+'"/><g stroke="#2b3440" stroke-width="1.4" fill="none" stroke-linecap="round"><path d="M105,107 L105,158"/><path d="M96,120 L114,120"/><path d="M97,133 L113,133"/><path d="M98,146 L112,146"/></g>'
+      +'<path d="M265,58 C273,60 282,67 286,74 C281,88 274,102 265,112 C256,102 249,88 244,74 C248,67 257,60 265,58 Z" fill="'+c('Trapèzes')+'"/>'
+      +'<g fill="'+c('Dos')+'"><path d="M247,82 C240,88 237,100 238,116 C239,128 246,138 258,142 L262,112 C263,100 259,88 253,82 C251,79 249,80 247,82 Z"/><path d="M283,82 C290,88 293,100 292,116 C291,128 284,138 272,142 L268,112 C267,100 271,88 277,82 C279,79 281,80 283,82 Z"/></g>'
+      +'<g fill="'+c('Deltoïde post.')+'"><path d="M232,64 C222,66 217,77 219,89 C221,98 231,101 240,96 C247,91 248,75 243,66 C241,62 236,63 232,64 Z"/><path d="M298,64 C308,66 313,77 311,89 C309,98 299,101 290,96 C283,91 282,75 287,66 C289,62 294,63 298,64 Z"/></g>'
+      +'<g fill="'+c('Triceps')+'"><path d="M228,76 C221,79 219,89 221,100 C223,109 227,114 232,113 C235,109 236,98 234,88 C233,80 231,76 228,76 Z"/><path d="M302,76 C309,79 311,89 309,100 C307,109 303,114 298,113 C295,109 294,98 296,88 C297,80 299,76 302,76 Z"/></g>'
+      +'<path d="M257,138 C257,135 261,134 265,134 C269,134 273,135 273,138 L271,158 C271,161 268,162 265,162 C262,162 259,161 259,158 Z" fill="'+c('Lombaires')+'"/>'
+      +'<g fill="'+c('Fessiers')+'"><path d="M254,160 C246,162 242,170 244,179 C246,188 253,192 261,189 C267,187 268,178 265,170 C263,163 259,160 254,160 Z"/><path d="M276,160 C284,162 288,170 286,179 C284,188 277,192 269,189 C263,187 262,178 265,170 C267,163 271,160 276,160 Z"/></g>'
+      +'<g fill="'+c('Ischios')+'"><path d="M251,194 C243,198 240,212 242,228 C244,242 249,252 255,256 C260,250 261,230 259,212 C257,200 256,194 251,194 Z"/><path d="M279,194 C287,198 290,212 288,228 C286,242 281,252 275,256 C270,250 269,230 271,212 C273,200 274,194 279,194 Z"/></g>'
+      +'<g fill="'+c('Mollets')+'"><path d="M250,262 C245,268 244,284 248,296 C250,302 255,304 259,299 C263,292 263,276 259,266 C257,261 253,260 250,262 Z"/><path d="M280,262 C285,268 286,284 282,296 C280,302 275,304 271,299 C267,292 267,276 271,266 C273,261 277,260 280,262 Z"/></g>'
+      +'<text x="105" y="350" text-anchor="middle" fill="var(--text-dim)" font-size="13" font-weight="700">Face</text><text x="265" y="350" text-anchor="middle" fill="var(--text-dim)" font-size="13" font-weight="700">Dos</text>'
+      +'<rect x="40" y="368" width="12" height="12" rx="3" fill="#3f4a59"/><text x="56" y="378" fill="var(--text-faint)" font-size="11">Non trav.</text><rect x="128" y="368" width="12" height="12" rx="3" fill="#2f9e6b"/><text x="144" y="378" fill="var(--text-faint)" font-size="11">Productif</text><rect x="216" y="368" width="12" height="12" rx="3" fill="#16c281"/><text x="232" y="378" fill="var(--text-faint)" font-size="11">Optimal</text><rect x="298" y="368" width="12" height="12" rx="3" fill="#f0a838"/><text x="314" y="378" fill="var(--text-faint)" font-size="11">Élevé</text>'
+      +'</svg>';
+  }
   function globalProgCards(){
     var html='', R=resolveRange();
     var B=monthlyBilan(bilanOffset);
@@ -1361,7 +1388,7 @@
     keys.sort(function(a,b){return (avg[b]||0)-(avg[a]||0);});
     if(total>0){
       var rows=keys.map(function(g){ var n=avg[g]||0, s=volStatus(g,n); return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+fmtSets(n)+'</td><td class="vol-cell">'+volBar(g,n)+'<div class="vol-stat" style="color:'+s.col+'">'+s.lbl+'</div></td></tr>'; }).join('');
-      html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><div class="help-box" data-help="volume" hidden>Séries éq./sem = volume hebdo par muscle (direct = 1, indirect = 0,5 ; échauffements exclus). Tous les groupes sont affichés (0 = non travaillé). La barre situe ton volume entre les repères RP : <b>MEV</b> (minimum efficace) · <b>MAV</b> (zone optimale) · <b>MRV</b> (max récupérable). Sous MEV = léger, MEV–MAV = productif, MAV–MRV = optimal, au-delà = élevé. Gros muscles : MEV 6 / MRV 20 · petits : MEV 4 / MRV 16. Moyenne sur '+V.weeks+' semaines.</div><table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:center">Cible MEV→MRV</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><div class="help-box" data-help="volume" hidden>Séries éq./sem = volume hebdo par muscle (direct = 1, indirect = 0,5 ; échauffements exclus). Tous les groupes sont affichés (0 = non travaillé). La barre situe ton volume entre les repères RP : <b>MEV</b> (minimum efficace) · <b>MAV</b> (zone optimale) · <b>MRV</b> (max récupérable). Sous MEV = léger, MEV–MAV = productif, MAV–MRV = optimal, au-delà = élevé. Gros muscles : MEV 6 / MRV 20 · petits : MEV 4 / MRV 16. Moyenne sur '+V.weeks+' semaines. La carte montre les groupes majeurs (deltoïde latéral et avant-bras restent dans le tableau).</div><div class="segmented vol-switch"><button data-act="volView" data-vv="carte"'+(volView==='carte'?' class="active"':'')+'>Carte</button><button data-act="volView" data-vv="tableau"'+(volView==='tableau'?' class="active"':'')+'>Tableau</button></div>'+(volView==='carte'?muscleMapSVG(avg):'<table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:center">Cible MEV→MRV</th></tr></thead><tbody>'+rows+'</tbody></table>')+'</div>';
     } else {
       html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><p class="hint">Aucune donnée sur cette période.</p></div>';
     }
@@ -1598,6 +1625,7 @@
       case 'metric': setMetric(b.dataset.metric); break;
       case 'period': setPeriod(b.dataset.weeks); break;
       case 'progTab': setProgTab(b.dataset.ptab); break;
+      case 'volView': volView=b.dataset.vv; renderProgression(); break;
       case 'bilanPrev': bilanOffset--; renderProgression(); break;
       case 'bilanNext': if(bilanOffset<0) bilanOffset++; renderProgression(); break;
       case 'weekPrev': navWeek(-1); break;
