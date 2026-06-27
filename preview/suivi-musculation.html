@@ -392,6 +392,9 @@
   .gym-pm:active { background:var(--surface); }
   .gym-val { flex:1; text-align:center; font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; display:flex; flex-direction:column; line-height:1; min-width:0; }
   .gym-val small { font-size:10px; font-weight:600; color:var(--text-faint); margin-top:3px; }
+  .gym-num { width:100%; min-width:0; background:transparent; border:none; color:inherit; font:inherit; font-weight:800; text-align:center; padding:2px 0; margin:0; -moz-appearance:textfield; appearance:textfield; }
+  .gym-num:focus { outline:none; background:color-mix(in srgb,var(--accent) 14%,transparent); border-radius:7px; }
+  .gym-num::-webkit-outer-spin-button, .gym-num::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
   .gym-done { flex:0 0 100%; height:50px; border-radius:12px; border:1px solid var(--accent); background:var(--accent); color:var(--on-accent); font-size:16px; font-weight:800; cursor:pointer; display:grid; place-items:center; user-select:none; -webkit-user-select:none; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
   .gym-done.on { background:var(--success); border-color:var(--success); }
   .gym-nav { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; padding-bottom:calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--border); background:var(--surface); }
@@ -952,11 +955,12 @@
   function gymExit(){ gymMode=null; gymStopTimer(); var ov=$('gym'); if(ov){ ov.hidden=true; ov.innerHTML=''; } document.documentElement.classList.remove('gym-open'); renderProgramme(); }
   function gymNav(d){ var day=gymDay(); if(!day) return; var ni=Math.max(0, Math.min(day.exercises.length-1, gymMode.exIndex+d)); if(ni===gymMode.exIndex) return; gymNavDir=d>0?1:-1; gymMode.exIndex=ni; renderGym(); }
   function gymStep(btn){ var ex=gymCurEx(); if(!ex) return; var si=+btn.dataset.si, f=btn.dataset.f, d=+btn.dataset.d, s=ex.sets[si]; if(!s) return;
-    var disp;
-    if(f==='reps'){ var v=(s.realReps!=null?s.realReps:s.planReps)||0; s.realReps=Math.max(0, Math.round(v+d)); disp=intStr(s.realReps)+'<small>reps</small>'; }
-    else { var w=(s.realWeight!=null?s.realWeight:s.planWeight)||0; s.realWeight=Math.max(0, Math.round((w+d)*2)/2); disp=(numStr(s.realWeight)||'—')+'<small>kg</small>'; }
+    var val;
+    if(f==='reps'){ var v=(s.realReps!=null?s.realReps:s.planReps)||0; s.realReps=Math.max(0, Math.round(v+d)); val=intStr(s.realReps); }
+    else { var w=(s.realWeight!=null?s.realWeight:s.planWeight)||0; s.realWeight=Math.max(0, Math.round((w+d)*2)/2); val=numStr(s.realWeight); }
     save();
-    var el=btn.parentNode.querySelector('.gym-val'); if(el) el.innerHTML=disp; }
+    var inp=btn.parentNode.querySelector('.gym-num'); if(inp) inp.value=val; }
+  function gymNumEdit(inp){ var ex=gymCurEx(); if(!ex) return; var si=+inp.dataset.si, f=inp.dataset.gf, s=ex.sets[si]; if(!s) return; if(f==='reps'){ s.realReps=toInt(inp.value); } else { s.realWeight=toNumN(inp.value); } save(); }
   function gymDone(btn){ var day=gymDay(), ex=gymCurEx(); if(!ex) return; var si=+btn.dataset.si, s=ex.sets[si]; if(!s) return;
     s.done=!s.done;
     if(s.done){ if(s.realReps==null) s.realReps=s.planReps; if(s.realWeight==null) s.realWeight=s.planWeight; gymStartRest(); var _nm=(ex.name||'').trim(), _wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0; if(_nm && _wt>0){ var _pb=exBestBefore(_nm, day.date); if(_pb>0 && _wt>_pb) toastParty('🎉 Record '+_nm+' : '+fmt(_wt)+' kg !'); } }
@@ -1011,8 +1015,8 @@
       var isPR=s.done && (rw||0)>0 && gymRec>0 && (rw||0)>gymRec;
       return '<div class="gym-set'+(s.done?' done':'')+(isPR?' pr':'')+'">'
         +'<div class="gym-set-n">Série '+(i+1)+(isPR?' <span class="pr-badge">🏆 PR</span>':'')+'</div>'
-        +'<div class="gym-stepper"><div class="gym-pm" role="button" aria-label="moins" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="-1">−</div><span class="gym-val">'+intStr(rr)+'<small>reps</small></span><div class="gym-pm" role="button" aria-label="plus" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="1">+</div></div>'
-        +'<div class="gym-stepper"><div class="gym-pm" role="button" aria-label="moins" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="-2.5">−</div><span class="gym-val">'+(numStr(rw)||'—')+'<small>kg</small></span><div class="gym-pm" role="button" aria-label="plus" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="2.5">+</div></div>'
+        +'<div class="gym-stepper"><div class="gym-pm" role="button" aria-label="moins" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="-1">−</div><span class="gym-val"><input class="gym-num" data-gf="reps" data-si="'+i+'" inputmode="numeric" value="'+escA(intStr(rr))+'" aria-label="reps série '+(i+1)+'"><small>reps</small></span><div class="gym-pm" role="button" aria-label="plus" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="1">+</div></div>'
+        +'<div class="gym-stepper"><div class="gym-pm" role="button" aria-label="moins" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="-2.5">−</div><span class="gym-val"><input class="gym-num" data-gf="weight" data-si="'+i+'" inputmode="decimal" value="'+escA(numStr(rw))+'" aria-label="charge série '+(i+1)+'"><small>kg</small></span><div class="gym-pm" role="button" aria-label="plus" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="2.5">+</div></div>'
         +'<div class="gym-done'+(s.done?' on':'')+'" role="button" data-act="gymDone" data-si="'+i+'">'+(s.done?'✓ Fait':'Fait')+'</div>'
         +'</div>';
     }).join('');
@@ -1845,6 +1849,7 @@
   document.addEventListener('change', function(e){
     var el=e.target;
     if(el.dataset.act==='done'){ toggleDone(el); return; }
+    if(el.dataset.gf){ gymNumEdit(el); return; }
     if(el.dataset.act==='weekSelect'){ selectWeek(el.value); return; }
     if(el.id==='period-from'||el.id==='period-to'){ setPeriodCustom(); return; }
     if(el.id==='period-week'){ if(el.value) setPeriodWeek(el.value); return; }
@@ -1856,6 +1861,8 @@
   });
   document.addEventListener('keydown', function(e){
     if(e.key==='Enter' && e.target.dataset && ['planReps','planWeight','realReps','realWeight'].indexOf(e.target.dataset.field)>-1){ e.preventDefault(); addSet(locate(e.target)); }
+    if(gymMode && (e.key==='ArrowLeft'||e.key==='ArrowRight') && !/^(input|textarea|select)$/i.test(e.target.tagName||'')){ e.preventDefault(); gymNav(e.key==='ArrowRight'?1:-1); }
+    if(e.key==='Enter' && e.target.classList && e.target.classList.contains('gym-num')){ e.preventDefault(); e.target.blur(); }
     if(e.key==='Escape') closeMenus();
   });
   $('file-csv').addEventListener('change', function(){ readFile(this, importCSV); });
