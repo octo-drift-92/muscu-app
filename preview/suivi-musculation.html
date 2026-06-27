@@ -1367,6 +1367,7 @@
     if(/face pull|oiseau|reverse fly|l-?fly|rotation ext|coiffe|rotateur|lever lateral|rear delt|reverse pec/.test(n)) return P('Deltoïde post.');
     if(/elevations? laterales?|lateral raise/.test(n)) return P('Deltoïde lat.');
     if(/elevations? frontales?|front raise/.test(n)) return P('Deltoïde ant.');
+    if(/elevation/.test(n) && !/jambe|cuisse|mollet|genou|bassin|hanche|hip|pelv|gainage|buste|tronc/.test(n)) return P('Deltoïde lat.');
     if(/leg curl|leg-curl/.test(n)) return P('Ischios');
     if(/jambes tendues|romanian|\brdl\b|souleve de terre roumain|good ?morning/.test(n)) return [{g:'Ischios',w:1},{g:'Fessiers',w:.5},{g:'Lombaires',w:.5}];
     if(/souleve de terre|deadlift|\bsdt\b/.test(n)) return [{g:'Lombaires',w:1},{g:'Fessiers',w:.5},{g:'Ischios',w:.5},{g:'Trapèzes',w:.5}];
