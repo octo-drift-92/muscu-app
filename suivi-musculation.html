@@ -303,6 +303,38 @@
   .period-dates { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
   .period-dates label { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text-faint); }
   .period-dates input[type=date] { padding:6px 9px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--text); font:inherit; }
+  .mens-guide-wrap { margin-bottom:12px; }
+  .mens-guide-btn { width:100%; text-align:left; font:inherit; font-weight:700; font-size:14px; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:11px 14px; cursor:pointer; display:flex; align-items:center; gap:8px; }
+  .mens-chev { margin-left:auto; color:var(--text-faint); font-size:12px; }
+  .mens-guide { background:var(--surface); border:1px solid var(--border); border-top:none; border-radius:0 0 12px 12px; margin-top:-1px; padding:12px 14px; }
+  .mens-gen { font-size:12.5px; color:var(--text-faint); line-height:1.5; margin:0 0 10px; }
+  .mens-gitem { font-size:12.5px; line-height:1.5; color:var(--text); margin-bottom:7px; }
+  .mens-gitem b { color:var(--accent); }
+  .mens-form { padding:12px 14px; }
+  .mens-date-lbl { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-faint); font-weight:600; margin-bottom:12px; }
+  .mens-date-lbl input { padding:7px 10px; border-radius:9px; border:1px solid var(--border); background:var(--bg); color:var(--text); font:inherit; }
+  .mens-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(148px,1fr)); gap:10px; margin-bottom:14px; }
+  .mens-field { display:flex; flex-direction:column; gap:5px; }
+  .mens-flabel { font-size:12.5px; font-weight:600; color:var(--text-faint); }
+  .mens-inwrap { display:flex; align-items:center; gap:6px; background:var(--bg); border:1px solid var(--border); border-radius:9px; padding:0 10px; }
+  .mens-inwrap:focus-within { border-color:var(--accent); }
+  .mens-in { flex:1; min-width:0; background:transparent; border:none; color:var(--text); font:inherit; font-weight:700; font-size:16px; padding:9px 0; }
+  .mens-in:focus { outline:none; }
+  .mens-inwrap small { color:var(--text-faint); font-size:12px; }
+  .mens-save { width:100%; justify-content:center; }
+  .mens-prog { padding:12px 14px; }
+  .mens-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(132px,1fr)); gap:10px; margin-bottom:14px; }
+  .mens-card { background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 12px; }
+  .mens-card-k { font-size:12px; color:var(--text-faint); font-weight:600; }
+  .mens-card-v { font-size:20px; font-weight:800; font-variant-numeric:tabular-nums; margin-top:2px; }
+  .mens-card-d { font-size:12px; font-weight:700; margin-top:2px; }
+  .mens-card-d.up { color:var(--success); }
+  .mens-card-d.down { color:var(--warning); }
+  .mens-card-d.faint { color:var(--text-faint); font-weight:600; }
+  .mens-hist-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .mens-hist { min-width:520px; }
+  .mens-hist th, .mens-hist td { text-align:center; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .mens-hist th:first-child, .mens-hist td:first-child { text-align:left; }
   .reorder-bar { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:12px; font-size:12.5px; color:var(--text-faint); line-height:1.4; }
   .reorder-board { display:flex; flex-direction:column; gap:12px; }
   .reo-day { border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--surface); }
@@ -473,6 +505,7 @@
     <nav class="tabs">
       <button data-act="view" data-view="programme" class="active"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>Programme</span></button>
       <button data-act="view" data-view="progression"><svg class="icon" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><polyline points="6 14 10 10 13 13 18 7"/></svg><span>Progression</span></button>
+      <button data-act="view" data-view="mensurations"><svg class="icon" viewBox="0 0 24 24"><rect x="2" y="8" width="20" height="8" rx="1.5"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/></svg><span>Mesures</span></button>
       <button data-act="view" data-view="reglages"><svg class="icon" viewBox="0 0 24 24"><path d="M4 6h11M4 12h7M4 18h13"/><circle cx="18" cy="6" r="2.4"/><circle cx="13" cy="12" r="2.4"/><circle cx="19" cy="18" r="2.4"/></svg><span>Réglages</span></button>
     </nav>
     <div class="grow"></div>
@@ -525,6 +558,10 @@
     <div id="prog-body"></div>
   </section>
 
+  <section id="view-mensurations" class="view">
+    <div id="mens-body"></div>
+  </section>
+
   <section id="view-reglages" class="view">
     <div id="reglages-body"></div>
   </section>
@@ -554,7 +591,7 @@
   var ICON_MOON = '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
   var ICON_SUN  = '<circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
 
-  var state = { weeks: [], library: [], templates: [], settings: { theme:'dark', metric:'weight' }, currentWeekId: null };
+  var state = { weeks: [], library: [], templates: [], measurements: [], settings: { theme:'dark', metric:'weight' }, currentWeekId: null };
   var progSelected = null;
 
   /* ---------- helpers ---------- */
@@ -643,6 +680,7 @@
           state.weeks = p.weeks;
           state.library = (Array.isArray(p.library) && p.library.length) ? p.library : DEFAULT_LIB.slice();
           state.templates = Array.isArray(p.templates) ? p.templates : [];
+          state.measurements = Array.isArray(p.measurements) ? p.measurements : [];
           state.settings = Object.assign({theme:'dark',metric:'weight'}, p.settings||{});
           state.currentWeekId = p.currentWeekId || (p.weeks[0] && p.weeks[0].id) || null;
           return;
@@ -677,6 +715,7 @@
     var v=document.querySelectorAll('.view'); for(var i=0;i<v.length;i++) v[i].classList.toggle('active', v[i].id==='view-'+name);
     var t=document.querySelectorAll('nav.tabs button'); for(var j=0;j<t.length;j++) t[j].classList.toggle('active', t[j].dataset.view===name);
     if(name==='progression') renderProgression();
+    if(name==='mensurations') renderMensurations();
     if(name==='reglages') renderReglages();
   }
 
@@ -1645,6 +1684,58 @@
     state.weeks.forEach(function(w){ days+=w.days.length; w.days.forEach(function(d){ var s=dayStats(d); exs+=d.exercises.length; sets+=s.total; done+=s.done; rv+=s.realVol; }); });
     return { weeks:weeks,days:days,exs:exs,sets:sets,done:done,rv:rv };
   }
+  /* ---------- mensurations ---------- */
+  var MENS_PARTS=[
+    {k:'poitrine',label:'Poitrine',tip:"Ruban horizontal autour de la poitrine, au niveau des mamelons (pointe des pectoraux). Bras relâchés le long du corps, à la fin d'une expiration normale — sans gonfler le torse."},
+    {k:'epaules',label:'Épaules',tip:"Autour de la partie la plus large des épaules (deltoïdes), ruban bien horizontal, bras relâchés."},
+    {k:'bras',label:'Bras (contracté)',tip:"Bras fléchi à ~90°, biceps contracté à fond. Ruban au point le plus large du bras. Mesure toujours le même bras."},
+    {k:'avantbras',label:'Avant-bras',tip:"Bras tendu, poing serré. Ruban au point le plus large de l'avant-bras, juste sous le coude."},
+    {k:'taille',label:'Taille',tip:"Point le plus étroit du torse (souvent juste au-dessus du nombril). Ruban horizontal, ventre relâché (ne pas rentrer), fin d'expiration."},
+    {k:'hanches',label:'Hanches / Fessiers',tip:"Point le plus large des fessiers, pieds joints. Ruban bien horizontal."},
+    {k:'cuisse',label:'Cuisse',tip:"Debout, poids réparti sur les 2 jambes. Ruban au point le plus large (haut de cuisse, sous le pli fessier). Même jambe et même hauteur à chaque fois."},
+    {k:'mollet',label:'Mollet',tip:"Debout, poids réparti (ou assis, genou à 90°). Ruban au point le plus large du mollet. Même jambe."},
+    {k:'cou',label:'Cou',tip:"Autour de la base du cou, ruban relâché, sans serrer."}
+  ];
+  var mensGuideOpen=false;
+  function sortedMens(){ return (state.measurements||[]).slice().sort(function(a,b){ return (a.date||'')<(b.date||'')?-1:((a.date||'')>(b.date||'')?1:0); }); }
+  function renderMensurations(){
+    var box=$('mens-body'); if(!box) return;
+    var sorted=sortedMens(), last=sorted[sorted.length-1]||null;
+    var guide='<div class="mens-guide-wrap"><button class="mens-guide-btn" data-act="mensGuide">📏 Comment prendre les mesures <span class="mens-chev">'+(mensGuideOpen?'▲':'▼')+'</span></button>'+
+      (mensGuideOpen?('<div class="mens-guide"><p class="mens-gen">À froid, de préférence le matin avant l\'entraînement. Ruban bien à plat et horizontal, serré mais sans comprimer la peau. Refais toujours dans les mêmes conditions (même moment, même côté) pour comparer ce qui est comparable. Tout en centimètres.</p>'+
+        MENS_PARTS.map(function(p){ return '<div class="mens-gitem"><b>'+esc(p.label)+'</b> — '+esc(p.tip)+'</div>'; }).join('')+'</div>'):'')+'</div>';
+    var form='<div class="card mens-form"><div class="section-label">Nouvelle mesure</div>'+
+      '<label class="mens-date-lbl">Date <input type="date" id="mens-date" value="'+escA(todayISO())+'"></label>'+
+      '<div class="mens-grid">'+MENS_PARTS.map(function(p){ var v=(last&&last.vals&&last.vals[p.k]!=null)?numStr(last.vals[p.k]):''; return '<label class="mens-field" title="'+escA(p.tip)+'"><span class="mens-flabel">'+esc(p.label)+'</span><span class="mens-inwrap"><input class="mens-in" data-k="'+p.k+'" inputmode="decimal" value="'+escA(v)+'" placeholder="—"><small>cm</small></span></label>'; }).join('')+'</div>'+
+      '<button class="btn primary mens-save" data-act="mensSave">'+ic(P.plus)+'Enregistrer</button></div>';
+    var prog;
+    if(sorted.length){
+      var cards=MENS_PARTS.map(function(p){
+        var series=sorted.filter(function(m){return m.vals&&m.vals[p.k]!=null;}); if(!series.length) return '';
+        var latest=series[series.length-1].vals[p.k], first=series[0].vals[p.k], d=Math.round((latest-first)*10)/10;
+        var goodUp=(p.k!=='taille'), good=(goodUp?d>0:d<0), cls=(d===0?'':(good?'up':'down')), sg=(d>0?'+':'');
+        return '<div class="mens-card"><div class="mens-card-k">'+esc(p.label)+'</div><div class="mens-card-v">'+numStr(latest)+' <small>cm</small></div>'+(series.length>1?'<div class="mens-card-d '+cls+'">'+sg+numStr(d)+' cm</div>':'<div class="mens-card-d faint">1ʳᵉ mesure</div>')+'</div>';
+      }).join('');
+      var hist='<div class="mens-hist-wrap"><table class="hist mens-hist"><thead><tr><th>Date</th>'+MENS_PARTS.map(function(p){return '<th title="'+escA(p.label)+'">'+esc(p.label.split(' ')[0].slice(0,5))+'</th>';}).join('')+'<th></th></tr></thead><tbody>'+
+        sorted.slice().reverse().map(function(m){ return '<tr><td>'+esc(m.date?formatDateFR(m.date).slice(0,5):'?')+'</td>'+MENS_PARTS.map(function(p){ return '<td>'+((m.vals&&m.vals[p.k]!=null)?numStr(m.vals[p.k]):'·')+'</td>'; }).join('')+'<td><button class="mini-btn del" data-act="mensDel" data-id="'+m.id+'" title="Supprimer cette mesure">'+ic(P.trash)+'</button></td></tr>'; }).join('')+'</tbody></table></div>';
+      prog='<div class="card mens-prog"><div class="section-label">Progression <small style="font-weight:400;color:var(--text-faint)">('+sorted.length+' mesure'+(sorted.length>1?'s':'')+')</small></div><div class="mens-cards">'+cards+'</div>'+hist+'</div>';
+    } else {
+      prog='<div class="card"><p class="hint">Aucune mesure encore. Enregistre ta première pour lancer le suivi — et pense à noter tes conditions (même moment, même côté) pour bien comparer ensuite.</p></div>';
+    }
+    box.innerHTML=guide+form+prog;
+  }
+  function mensSave(){
+    var dateEl=$('mens-date'); var date=dateEl?dateEl.value:''; if(!date){ toast('Choisis une date'); return; }
+    var vals={};
+    document.querySelectorAll('#mens-body .mens-in').forEach(function(inp){ var raw=(inp.value||'').trim().replace(',','.'); var v=parseFloat(raw); if(raw!=='' && !isNaN(v) && v>0) vals[inp.dataset.k]=Math.round(v*10)/10; });
+    if(!Object.keys(vals).length){ toast('Saisis au moins une mesure'); return; }
+    state.measurements=state.measurements||[];
+    var ex=state.measurements.filter(function(m){return m.date===date;})[0];
+    if(ex){ ex.vals=vals; } else { state.measurements.push({id:uid(), date:date, vals:vals, note:''}); }
+    save(); renderMensurations(); toast('Mesure du '+formatDateFR(date).slice(0,5)+' enregistrée ✓');
+  }
+  function mensDelete(id){ state.measurements=(state.measurements||[]).filter(function(m){return m.id!==id;}); save(); renderMensurations(); toast('Mesure supprimée'); }
+  function mensGuideToggle(){ mensGuideOpen=!mensGuideOpen; renderMensurations(); }
   function renderReglages(){
     var g=globalStats();
     var libChips=state.library.map(function(e){ return '<span class="chip">'+esc(e)+'<button data-act="delLib" data-lib="'+escA(e)+'" title="Retirer">×</button></span>'; }).join('') || '<span class="hint">Aucun exercice.</span>';
@@ -1775,6 +1866,9 @@
       case 'progWeekPrev': progWeekNav(-1); break;
       case 'progWeekNext': progWeekNav(1); break;
       case 'progThisWeek': progThisWeek(); break;
+      case 'mensSave': mensSave(); break;
+      case 'mensDel': mensDelete(b.dataset.id); break;
+      case 'mensGuide': mensGuideToggle(); break;
       case 'progTab': setProgTab(b.dataset.ptab); break;
       case 'volView': volView=b.dataset.vv; renderProgression(); break;
       case 'bilanPrev': bilanOffset--; renderProgression(); break;
@@ -1950,6 +2044,7 @@
     state.weeks=remote.weeks;
     state.library=(Array.isArray(remote.library)&&remote.library.length)?remote.library:DEFAULT_LIB.slice();
     state.templates=Array.isArray(remote.templates)?remote.templates:[];
+    state.measurements=Array.isArray(remote.measurements)?remote.measurements:[];
     state.settings=Object.assign({theme:'dark',metric:'weight'}, remote.settings||{});
     state.currentWeekId=remote.currentWeekId||(remote.weeks[0]&&remote.weeks[0].id)||null;
     state.updatedAt=remote.updatedAt||Date.now();
