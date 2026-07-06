@@ -983,7 +983,7 @@
     else { el.className='gym-rest over'; el.innerHTML='<span class="gr-ic">✓</span><span class="gr-t">+'+mmss(-rem)+'</span>'; if(!gymRestDone){ gymRestDone=true; if(navigator.vibrate){ try{ navigator.vibrate([130,70,130]); }catch(e){} } } }
   }
   function gymRirBadge(){ var w=curWeek(); return (w&&w.rirTarget!=null)?'<span class="gym-rir">🎯 vise '+w.rirTarget+' RIR</span>':''; }
-  var GROUP_COLORS={'Pectoraux':'#ef6f6c','Dos':'#4f86c6','Deltoïde ant.':'#e8973a','Deltoïde lat.':'#f0b54e','Deltoïde post.':'#cf7d2e','Biceps':'#9b6dd6','Triceps':'#19b8aa','Quadriceps':'#3fa869','Ischios':'#7cc24a','Fessiers':'#e070a8','Mollets':'#b08152','Abdos':'#e6c64a','Lombaires':'#8090a6','Trapèzes':'#3fb1ca','Avant-bras':'#9aa3ad','Autre':'#8090a6'};
+  var GROUP_COLORS={'Pectoraux':'#ef6f6c','Grand dorsal':'#4f86c6','Milieu du dos':'#6f9fd8','Deltoïde ant.':'#e8973a','Deltoïde lat.':'#f0b54e','Deltoïde post.':'#cf7d2e','Biceps':'#9b6dd6','Triceps':'#19b8aa','Quadriceps':'#3fa869','Ischios':'#7cc24a','Fessiers':'#e070a8','Mollets':'#b08152','Abdos':'#e6c64a','Lombaires':'#8090a6','Trapèzes':'#3fb1ca','Avant-bras':'#9aa3ad','Autre':'#8090a6'};
   function exPrimaryGroup(name){ var c=muscleContribs(name); return (c&&c.length)?c[0].g:'Autre'; }
   function groupColor(g){ return GROUP_COLORS[g]||'#8090a6'; }
   function exDot(name, cls){ var g=exPrimaryGroup(name); return '<span class="'+(cls||'ex-dot')+'" style="background:'+groupColor(g)+'" title="'+escA(g)+'"></span>'; }
@@ -1378,7 +1378,7 @@
     return out;
   }
   /* ---------- analyses : groupe musculaire, dernière séance, plateaux ---------- */
-  var MUSCLE_GROUPS=['Pectoraux','Dos','Trapèzes','Deltoïde ant.','Deltoïde lat.','Deltoïde post.','Biceps','Triceps','Avant-bras','Quadriceps','Ischios','Fessiers','Mollets','Abdos','Lombaires'];
+  var MUSCLE_GROUPS=['Pectoraux','Grand dorsal','Milieu du dos','Trapèzes','Deltoïde ant.','Deltoïde lat.','Deltoïde post.','Biceps','Triceps','Avant-bras','Quadriceps','Ischios','Fessiers','Mollets','Abdos','Lombaires'];
   function isWarmup(name){ return /echauffement|warm-?up|mobilit|activation|etirement|stretch/.test((name||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')); }
   function muscleContribs(name){
     var n=(name||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
@@ -1392,9 +1392,9 @@
     if(/souleve de terre|deadlift|\bsdt\b/.test(n)) return [{g:'Lombaires',w:1},{g:'Fessiers',w:.5},{g:'Ischios',w:.5},{g:'Trapèzes',w:.5}];
     if(/hip thrust|pont fessier|abduction|fessier|glute/.test(n)) return P('Fessiers');
     if(/shrug|haussement|trapeze/.test(n)) return P('Trapèzes');
-    if(/rowing|\brow\b/.test(n)) return [{g:'Dos',w:1},{g:'Biceps',w:.5},{g:'Deltoïde post.',w:.5},{g:'Trapèzes',w:.5}];
-    if(/tirage|traction|pulldown|pull-?up|\blat\b/.test(n)) return [{g:'Dos',w:1},{g:'Biceps',w:.5}];
-    if(/pull-?over/.test(n)) return [{g:'Dos',w:1},{g:'Pectoraux',w:.5}];
+    if(/rowing|\brow\b/.test(n)) return [{g:'Milieu du dos',w:1},{g:'Grand dorsal',w:.5},{g:'Biceps',w:.5},{g:'Deltoïde post.',w:.5},{g:'Trapèzes',w:.5}];
+    if(/tirage|traction|pulldown|pull-?up|\blat\b/.test(n)) return [{g:'Grand dorsal',w:1},{g:'Biceps',w:.5}];
+    if(/pull-?over/.test(n)) return [{g:'Grand dorsal',w:1},{g:'Pectoraux',w:.5}];
     if(/ecarte|pec deck|butterfly|\bfly\b/.test(n)) return P('Pectoraux');
     if(/developpe couche|developpe incline|chest press|chess press|\bdips?\b|pompe|bench/.test(n)) return [{g:'Pectoraux',w:1},{g:'Triceps',w:.5},{g:'Deltoïde ant.',w:.5}];
     if(/militaire|overhead press|developpe epaule|arnold|shoulder press/.test(n)) return [{g:'Deltoïde ant.',w:1},{g:'Deltoïde lat.',w:.5},{g:'Triceps',w:.5}];
@@ -1460,14 +1460,14 @@
   function volStatus(group, n){
     if(group==='Autre') return {lbl:'—', col:'var(--text-faint)'};
     if(n<=0) return {lbl:'absent', col:'var(--text-faint)'};
-    var gros={'Pectoraux':1,'Dos':1,'Quadriceps':1,'Ischios':1,'Fessiers':1}[group];
+    var gros={'Pectoraux':1,'Grand dorsal':1,'Milieu du dos':1,'Quadriceps':1,'Ischios':1,'Fessiers':1}[group];
     var low=gros?6:4, optLo=gros?12:10, high=gros?20:16;
     if(n<low) return {lbl:'léger', col:'var(--text-faint)'};
     if(n<optLo) return {lbl:'productif', col:'var(--success)'};
     if(n<=high) return {lbl:'optimal', col:'var(--success)'};
     return {lbl:'élevé', col:'var(--accent)'};
   }
-  function volLandmarks(group){ var gros={'Pectoraux':1,'Dos':1,'Quadriceps':1,'Ischios':1,'Fessiers':1}[group]; return { mev:gros?6:4, mav:gros?12:10, mrv:gros?20:16 }; }
+  function volLandmarks(group){ var gros={'Pectoraux':1,'Grand dorsal':1,'Milieu du dos':1,'Quadriceps':1,'Ischios':1,'Fessiers':1}[group]; return { mev:gros?6:4, mav:gros?12:10, mrv:gros?20:16 }; }
   function volBar(group, n){
     if(group==='Autre') return '';
     var L=volLandmarks(group), s=volStatus(group,n);
@@ -1503,7 +1503,7 @@
       +'<g fill="'+c('Quadriceps')+'"><path d="M88,172 C79,176 76,190 77,208 C78,224 82,238 88,246 C94,240 96,224 95,208 C94,190 94,176 88,172 Z"/><path d="M122,172 C131,176 134,190 133,208 C132,224 128,238 122,246 C116,240 114,224 115,208 C116,190 116,176 122,172 Z"/></g>'
       +'<path d="M95,108 C95,105 100,104 105,104 C110,104 115,105 115,108 L114,152 C114,158 110,160 105,160 C100,160 96,158 96,152 Z" fill="'+c('Abdos')+'"/><g stroke="#2b3440" stroke-width="1.4" fill="none" stroke-linecap="round"><path d="M105,107 L105,158"/><path d="M96,120 L114,120"/><path d="M97,133 L113,133"/><path d="M98,146 L112,146"/></g>'
       +'<path d="M265,58 C273,60 282,67 286,74 C281,88 274,102 265,112 C256,102 249,88 244,74 C248,67 257,60 265,58 Z" fill="'+c('Trapèzes')+'"/>'
-      +'<g fill="'+c('Dos')+'"><path d="M247,82 C240,88 237,100 238,116 C239,128 246,138 258,142 L262,112 C263,100 259,88 253,82 C251,79 249,80 247,82 Z"/><path d="M283,82 C290,88 293,100 292,116 C291,128 284,138 272,142 L268,112 C267,100 271,88 277,82 C279,79 281,80 283,82 Z"/></g>'
+      +'<g fill="'+c('Grand dorsal')+'"><path d="M247,82 C240,88 237,100 238,116 C239,128 246,138 258,142 L262,112 C263,100 259,88 253,82 C251,79 249,80 247,82 Z"/><path d="M283,82 C290,88 293,100 292,116 C291,128 284,138 272,142 L268,112 C267,100 271,88 277,82 C279,79 281,80 283,82 Z"/></g>'
       +'<g fill="'+c('Deltoïde post.')+'"><path d="M232,64 C222,66 217,77 219,89 C221,98 231,101 240,96 C247,91 248,75 243,66 C241,62 236,63 232,64 Z"/><path d="M298,64 C308,66 313,77 311,89 C309,98 299,101 290,96 C283,91 282,75 287,66 C289,62 294,63 298,64 Z"/></g>'
       +'<g fill="'+c('Triceps')+'"><path d="M228,76 C221,79 219,89 221,100 C223,109 227,114 232,113 C235,109 236,98 234,88 C233,80 231,76 228,76 Z"/><path d="M302,76 C309,79 311,89 309,100 C307,109 303,114 298,113 C295,109 294,98 296,88 C297,80 299,76 302,76 Z"/></g>'
       +'<path d="M257,138 C257,135 261,134 265,134 C269,134 273,135 273,138 L271,158 C271,161 268,162 265,162 C262,162 259,161 259,158 Z" fill="'+c('Lombaires')+'"/>'
@@ -1525,7 +1525,7 @@
     keys.sort(function(a,b){return (avg[b]||0)-(avg[a]||0);});
     if(total>0){
       var rows=keys.map(function(g){ var n=avg[g]||0, s=volStatus(g,n); return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+fmtSets(n)+'</td><td class="vol-cell">'+volBar(g,n)+'<div class="vol-stat" style="color:'+s.col+'">'+s.lbl+'</div></td></tr>'; }).join('');
-      html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><div class="help-box" data-help="volume" hidden>Séries éq./sem = volume hebdo par muscle (direct = 1, indirect = 0,5 ; échauffements exclus). Tous les groupes sont affichés (0 = non travaillé). La barre situe ton volume entre les repères RP : <b>MEV</b> (minimum efficace) · <b>MAV</b> (zone optimale) · <b>MRV</b> (max récupérable). Sous MEV = léger, MEV–MAV = productif, MAV–MRV = optimal, au-delà = élevé. Gros muscles : MEV 6 / MRV 20 · petits : MEV 4 / MRV 16. Moyenne sur '+V.weeks+' semaines. La carte montre les groupes majeurs (deltoïde latéral et avant-bras restent dans le tableau).</div><div class="segmented vol-switch"><button data-act="volView" data-vv="carte"'+(volView==='carte'?' class="active"':'')+'>Carte</button><button data-act="volView" data-vv="tableau"'+(volView==='tableau'?' class="active"':'')+'>Tableau</button></div>'+(volView==='carte'?muscleMapSVG(avg):'<table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:center">Cible MEV→MRV</th></tr></thead><tbody>'+rows+'</tbody></table>')+'</div>';
+      html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><div class="help-box" data-help="volume" hidden>Séries éq./sem = volume hebdo par muscle (direct = 1, indirect = 0,5 ; échauffements exclus). Tous les groupes sont affichés (0 = non travaillé). La barre situe ton volume entre les repères RP : <b>MEV</b> (minimum efficace) · <b>MAV</b> (zone optimale) · <b>MRV</b> (max récupérable). Sous MEV = léger, MEV–MAV = productif, MAV–MRV = optimal, au-delà = élevé. Gros muscles : MEV 6 / MRV 20 · petits : MEV 4 / MRV 16. Moyenne sur '+V.weeks+' semaines. La carte montre les groupes majeurs (deltoïde latéral, milieu du dos et avant-bras restent dans le tableau).</div><div class="segmented vol-switch"><button data-act="volView" data-vv="carte"'+(volView==='carte'?' class="active"':'')+'>Carte</button><button data-act="volView" data-vv="tableau"'+(volView==='tableau'?' class="active"':'')+'>Tableau</button></div>'+(volView==='carte'?muscleMapSVG(avg):'<table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:center">Cible MEV→MRV</th></tr></thead><tbody>'+rows+'</tbody></table>')+'</div>';
     } else {
       html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><p class="hint">Aucune donnée sur cette période.</p></div>';
     }
@@ -1545,7 +1545,8 @@
       else { var ra=a/b; if(ra>=0.5&&ra<=2){ vCol='var(--success)'; vIco='✓'; vTxt='équilibré'; } else { vCol='var(--warning)'; vIco='⚠'; vTxt=(ra>2?bN:aN)+' en retard'; } }
       return balanceRow(aN+' ↔ '+bN, a, b, vCol, vIco, vTxt);
     }
-    var pairs=pairHTML('Dos','Dos','Pecs','Pectoraux')+pairHTML('Épaule arr.','Deltoïde post.','Épaule av.','Deltoïde ant.')+pairHTML('Biceps','Biceps','Triceps','Triceps')+pairHTML('Ischios','Ischios','Quadri','Quadriceps');
+    avg['Dos']=(avg['Grand dorsal']||0)+(avg['Milieu du dos']||0);
+    var pairs=pairHTML('Grand dorsal (largeur)','Grand dorsal','Milieu du dos (épaisseur)','Milieu du dos')+pairHTML('Dos','Dos','Pecs','Pectoraux')+pairHTML('Épaule arr.','Deltoïde post.','Épaule av.','Deltoïde ant.')+pairHTML('Biceps','Biceps','Triceps','Triceps')+pairHTML('Ischios','Ischios','Quadri','Quadriceps');
     var pushG=(avg['Pectoraux']||0)+(avg['Deltoïde ant.']||0)+(avg['Deltoïde lat.']||0)+(avg['Triceps']||0), pullG=(avg['Dos']||0)+(avg['Trapèzes']||0)+(avg['Deltoïde post.']||0)+(avg['Biceps']||0), glob='';
     if(pushG+pullG>0){
       var gr=(pushG>0)?pullG/pushG:99, gok=(gr>=0.8&&gr<=2.5);
