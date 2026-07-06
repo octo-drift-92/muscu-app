@@ -335,6 +335,10 @@
   .mens-hist { min-width:520px; }
   .mens-hist th, .mens-hist td { text-align:center; font-variant-numeric:tabular-nums; white-space:nowrap; }
   .mens-hist th:first-child, .mens-hist td:first-child { text-align:left; }
+  .mens-cond-lbl { display:flex; flex-direction:column; gap:5px; font-size:12.5px; font-weight:600; color:var(--text-faint); margin-bottom:14px; }
+  .mens-cond { padding:9px 11px; border-radius:9px; border:1px solid var(--border); background:var(--bg); color:var(--text); font:inherit; font-size:14px; font-weight:500; }
+  .mens-cond:focus { outline:none; border-color:var(--accent); }
+  .mens-hist .mens-note-row td { text-align:left; font-size:11.5px; color:var(--text-faint); font-style:italic; white-space:normal; padding:0 8px 9px; }
   .reorder-bar { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:12px; font-size:12.5px; color:var(--text-faint); line-height:1.4; }
   .reorder-board { display:flex; flex-direction:column; gap:12px; }
   .reo-day { border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--surface); }
@@ -1707,6 +1711,7 @@
     var form='<div class="card mens-form"><div class="section-label">Nouvelle mesure</div>'+
       '<label class="mens-date-lbl">Date <input type="date" id="mens-date" value="'+escA(todayISO())+'"></label>'+
       '<div class="mens-grid">'+MENS_PARTS.map(function(p){ var v=(last&&last.vals&&last.vals[p.k]!=null)?numStr(last.vals[p.k]):''; return '<label class="mens-field" title="'+escA(p.tip)+'"><span class="mens-flabel">'+esc(p.label)+'</span><span class="mens-inwrap"><input class="mens-in" data-k="'+p.k+'" inputmode="decimal" value="'+escA(v)+'" placeholder="—"><small>cm</small></span></label>'; }).join('')+'</div>'+
+      '<label class="mens-cond-lbl">Conditions de mesure <input class="mens-cond" id="mens-cond" value="'+escA(last&&last.note?last.note:'')+'" placeholder="ex. le matin à jeun, à froid, bras droit…"></label>'+
       '<button class="btn primary mens-save" data-act="mensSave">'+ic(P.plus)+'Enregistrer</button></div>';
     var prog;
     if(sorted.length){
@@ -1717,7 +1722,7 @@
         return '<div class="mens-card"><div class="mens-card-k">'+esc(p.label)+'</div><div class="mens-card-v">'+numStr(latest)+' <small>cm</small></div>'+(series.length>1?'<div class="mens-card-d '+cls+'">'+sg+numStr(d)+' cm</div>':'<div class="mens-card-d faint">1ʳᵉ mesure</div>')+'</div>';
       }).join('');
       var hist='<div class="mens-hist-wrap"><table class="hist mens-hist"><thead><tr><th>Date</th>'+MENS_PARTS.map(function(p){return '<th title="'+escA(p.label)+'">'+esc(p.label.split(' ')[0].slice(0,5))+'</th>';}).join('')+'<th></th></tr></thead><tbody>'+
-        sorted.slice().reverse().map(function(m){ return '<tr><td>'+esc(m.date?formatDateFR(m.date).slice(0,5):'?')+'</td>'+MENS_PARTS.map(function(p){ return '<td>'+((m.vals&&m.vals[p.k]!=null)?numStr(m.vals[p.k]):'·')+'</td>'; }).join('')+'<td><button class="mini-btn del" data-act="mensDel" data-id="'+m.id+'" title="Supprimer cette mesure">'+ic(P.trash)+'</button></td></tr>'; }).join('')+'</tbody></table></div>';
+        sorted.slice().reverse().map(function(m){ var vrow='<tr><td>'+esc(m.date?formatDateFR(m.date).slice(0,5):'?')+'</td>'+MENS_PARTS.map(function(p){ return '<td>'+((m.vals&&m.vals[p.k]!=null)?numStr(m.vals[p.k]):'·')+'</td>'; }).join('')+'<td><button class="mini-btn del" data-act="mensDel" data-id="'+m.id+'" title="Supprimer cette mesure">'+ic(P.trash)+'</button></td></tr>'; var nrow=(m.note&&m.note.trim())?'<tr class="mens-note-row"><td colspan="'+(MENS_PARTS.length+2)+'">📝 '+esc(m.note)+'</td></tr>':''; return vrow+nrow; }).join('')+'</tbody></table></div>';
       prog='<div class="card mens-prog"><div class="section-label">Progression <small style="font-weight:400;color:var(--text-faint)">('+sorted.length+' mesure'+(sorted.length>1?'s':'')+')</small></div><div class="mens-cards">'+cards+'</div>'+hist+'</div>';
     } else {
       prog='<div class="card"><p class="hint">Aucune mesure encore. Enregistre ta première pour lancer le suivi — et pense à noter tes conditions (même moment, même côté) pour bien comparer ensuite.</p></div>';
@@ -1730,8 +1735,9 @@
     document.querySelectorAll('#mens-body .mens-in').forEach(function(inp){ var raw=(inp.value||'').trim().replace(',','.'); var v=parseFloat(raw); if(raw!=='' && !isNaN(v) && v>0) vals[inp.dataset.k]=Math.round(v*10)/10; });
     if(!Object.keys(vals).length){ toast('Saisis au moins une mesure'); return; }
     state.measurements=state.measurements||[];
+    var condEl=$('mens-cond'), note=condEl?(condEl.value||'').trim():'';
     var ex=state.measurements.filter(function(m){return m.date===date;})[0];
-    if(ex){ ex.vals=vals; } else { state.measurements.push({id:uid(), date:date, vals:vals, note:''}); }
+    if(ex){ ex.vals=vals; ex.note=note; } else { state.measurements.push({id:uid(), date:date, vals:vals, note:note}); }
     save(); renderMensurations(); toast('Mesure du '+formatDateFR(date).slice(0,5)+' enregistrée ✓');
   }
   function mensDelete(id){ state.measurements=(state.measurements||[]).filter(function(m){return m.id!==id;}); save(); renderMensurations(); toast('Mesure supprimée'); }
