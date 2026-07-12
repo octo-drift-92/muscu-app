@@ -451,6 +451,14 @@
   .gym-stat b { color:var(--text); font-weight:800; font-variant-numeric:tabular-nums; }
   .gym-set.pr { border-color:var(--accent); }
   .pr-badge { font-size:10.5px; font-weight:800; color:var(--accent); margin-left:6px; }
+  .gym-target { background:color-mix(in srgb,var(--accent) 14%,var(--surface)); border:1px solid color-mix(in srgb,var(--accent) 40%,var(--border)); border-radius:12px; padding:9px 12px; margin:8px 0 4px; font-size:13.5px; color:var(--text); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .gym-target b { color:var(--accent); font-weight:800; }
+  .gym-target-hint { margin-left:auto; font-size:11px; color:var(--text-faint); font-weight:700; background:var(--bg); border-radius:6px; padding:2px 8px; white-space:nowrap; }
+  .gym-target.new { background:var(--surface); border-color:var(--border); }
+  .gym-set.active { border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent); }
+  .gym-set.done { opacity:.6; }
+  .gym-set-go { font-size:15px; }
+  .gym-set-active-tag { font-size:10px; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:.4px; }
   .recap-ov[hidden] { display:none; }
   .recap-ov { position:fixed; inset:0; z-index:340; background:color-mix(in srgb,var(--bg) 84%,#000); display:flex; align-items:center; justify-content:center; padding:20px; padding-top:calc(20px + env(safe-area-inset-top)); padding-bottom:calc(20px + env(safe-area-inset-bottom)); overflow:auto; -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
   .recap-card { width:100%; max-width:420px; background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:22px 20px calc(16px + env(safe-area-inset-bottom)); box-shadow:0 18px 50px rgba(0,0,0,.5); }
@@ -1054,6 +1062,12 @@
   function e1rm(w, reps){ w=+w||0; reps=+reps||0; if(w<=0||reps<=0) return 0; if(reps===1) return Math.round(w); return Math.round(w*(1+reps/30)); }
   function exBestE1RM(name, beforeISO){ name=(name||'').trim(); if(!name) return 0; var best=0; state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||''; if(beforeISO && di && di>=beforeISO) return; d.exercises.forEach(function(x){ if((x.name||'').trim()!==name) return; x.sets.forEach(function(s){ if(s.done){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0, e=e1rm(wt,rp); if(e>best) best=e; } }); }); }); }); return best; }
   function gymHeadStats(ex){ var nm=(ex.name||'').trim(); if(!nm) return ''; var pr=exBestBefore(nm,''), e=exBestE1RM(nm,''), out=[]; if(pr>0) out.push('<span class="gym-stat">🏆 Record <b>'+fmt(pr)+' kg</b></span>'); if(e>0) out.push('<span class="gym-stat">💪 1RM est. <b>~'+fmt(e)+' kg</b></span>'); return out.length?('<div class="gym-stats">'+out.join('')+'</div>'):''; }
+  function gymTargetCue(ex, day){
+    var nm=(ex.name||'').trim(); if(!nm) return '';
+    var lw=lastWorkWeight(nm, day&&day.date), lr=lastWorkReps(nm, day&&day.date);
+    if(lw==null||lr==null) return '<div class="gym-target new">🎯 Première fois sur cet exo — pose ta charge de référence.</div>';
+    return '<div class="gym-target">🎯 <span>Objectif : <b>battre '+numStr(lw)+' kg × '+intStr(lr)+'</b></span><span class="gym-target-hint">+1 rep ou +2,5 kg</span></div>';
+  }
   function showSessionSummary(day){
     var ov=$('recap'); if(!ov || !day) return;
     var setsDone=0, tonnage=0, exNames=0, prs=[], grp={};
@@ -1074,11 +1088,13 @@
     var ex=day.exercises[gymMode.exIndex];
     var totalSets=0, doneSets=0; day.exercises.forEach(function(x){ x.sets.forEach(function(s){ totalSets++; if(s.done) doneSets++; }); });
     var gymRec=exBestBefore((ex.name||'').trim(), day.date);
+    var gymActiveIdx=-1; for(var _gi=0;_gi<ex.sets.length;_gi++){ if(!ex.sets[_gi].done){ gymActiveIdx=_gi; break; } }
     var setsH=ex.sets.map(function(s,i){
       var rr=gymSetReps(s, ex, day), rw=gymSetWeight(s, ex, day);
       var isPR=s.done && (rw||0)>0 && gymRec>0 && (rw||0)>gymRec;
-      return '<div class="gym-set'+(s.done?' done':'')+(isPR?' pr':'')+'">'
-        +'<div class="gym-set-n">Série '+(i+1)+(isPR?' <span class="pr-badge">🏆 PR</span>':'')+'</div>'
+      var isActive=(i===gymActiveIdx);
+      return '<div class="gym-set'+(s.done?' done':'')+(isPR?' pr':'')+(isActive?' active':'')+'">'
+        +'<div class="gym-set-n">'+(isActive?'<span class="gym-set-go">👉</span> ':'')+'Série '+(i+1)+(isPR?' <span class="pr-badge">🏆 PR</span>':'')+(isActive?' <span class="gym-set-active-tag">à faire</span>':'')+'</div>'
         +'<div class="gym-stepper"><div class="gym-pm" role="button" aria-label="moins" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="-1">−</div><span class="gym-val"><input class="gym-num" data-gf="reps" data-si="'+i+'" inputmode="numeric" value="'+escA(intStr(rr))+'" aria-label="reps série '+(i+1)+'"><small>reps</small></span><div class="gym-pm" role="button" aria-label="plus" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="1">+</div></div>'
         +'<div class="gym-stepper"><div class="gym-pm" role="button" aria-label="moins" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="-2.5">−</div><span class="gym-val"><input class="gym-num" data-gf="weight" data-si="'+i+'" inputmode="decimal" value="'+escA(numStr(rw))+'" aria-label="charge série '+(i+1)+'"><small>kg</small></span><div class="gym-pm" role="button" aria-label="plus" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="2.5">+</div></div>'
         +'<div class="gym-done'+(s.done?' on':'')+'" role="button" data-act="gymDone" data-si="'+i+'">'+(s.done?'✓ Fait':'Fait')+'</div>'
@@ -1094,7 +1110,7 @@
       +'</div>'
       +'<div class="gym-progress"><i style="width:'+(totalSets?Math.round(doneSets/totalSets*100):0)+'%"></i></div>'
       +'<div class="gym-body">'
-        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+'<h2 class="gym-ex-name">'+exDot(ex.name,'gym-dot')+(esc((ex.name||'').trim())||'Exercice')+'</h2>'+gymHeadStats(ex)+lastSessionHTML(ex.name, day)+'</div>'
+        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+'<h2 class="gym-ex-name">'+exDot(ex.name,'gym-dot')+(esc((ex.name||'').trim())||'Exercice')+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(ex.name, day)+'</div>'
         +'<div class="gym-sets">'+setsH+'</div>'
       +'</div>'
       +'<div class="gym-nav">'
