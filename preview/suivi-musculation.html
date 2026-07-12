@@ -1005,16 +1005,24 @@
     var lw=lastWorkWeight((ex.name||'').trim(), day&&day.date); // sinon : report de la charge de la dernière séance
     return (lw!=null)?lw:(s.planWeight!=null?s.planWeight:null);
   }
+  function lastWorkReps(name, beforeISO){ var last=lastDoneBefore(name, beforeISO); if(!last||!last.sets||!last.sets.length) return null; var best=null; last.sets.forEach(function(s){ if(best==null || (s.w||0)>(best.w||0)) best=s; }); return best?best.r:null; }
+  function gymSetReps(s, ex, day){
+    if(s.realReps!=null) return s.realReps;
+    var w=curWeek(), dl=w&&(/deload/i.test(w.name||'')||(w.rirTarget!=null&&w.rirTarget>=4));
+    if(dl && s.planReps!=null) return s.planReps;
+    var lr=lastWorkReps((ex.name||'').trim(), day&&day.date);
+    return (lr!=null)?lr:(s.planReps!=null?s.planReps:null);
+  }
   function gymStep(btn){ var ex=gymCurEx(); if(!ex) return; var si=+btn.dataset.si, f=btn.dataset.f, d=+btn.dataset.d, s=ex.sets[si]; if(!s) return;
-    var val;
-    if(f==='reps'){ var v=(s.realReps!=null?s.realReps:s.planReps)||0; s.realReps=Math.max(0, Math.round(v+d)); val=intStr(s.realReps); }
-    else { var day=gymDay(); var w=(gymSetWeight(s,ex,day)||0); s.realWeight=Math.max(0, Math.round((w+d)*2)/2); val=numStr(s.realWeight); }
+    var val, day=gymDay();
+    if(f==='reps'){ var v=(gymSetReps(s,ex,day)||0); s.realReps=Math.max(0, Math.round(v+d)); val=intStr(s.realReps); }
+    else { var w=(gymSetWeight(s,ex,day)||0); s.realWeight=Math.max(0, Math.round((w+d)*2)/2); val=numStr(s.realWeight); }
     save();
     var inp=btn.parentNode.querySelector('.gym-num'); if(inp) inp.value=val; }
   function gymNumEdit(inp){ var ex=gymCurEx(); if(!ex) return; var si=+inp.dataset.si, f=inp.dataset.gf, s=ex.sets[si]; if(!s) return; if(f==='reps'){ s.realReps=toInt(inp.value); } else { s.realWeight=toNumN(inp.value); } save(); }
   function gymDone(btn){ var day=gymDay(), ex=gymCurEx(); if(!ex) return; var si=+btn.dataset.si, s=ex.sets[si]; if(!s) return;
     s.done=!s.done;
-    if(s.done){ if(s.realReps==null) s.realReps=s.planReps; if(s.realWeight==null) s.realWeight=gymSetWeight(s,ex,day); gymStartRest(); var _nm=(ex.name||'').trim(), _wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0; if(_nm && _wt>0){ var _pb=exBestBefore(_nm, day.date); if(_pb>0 && _wt>_pb) toastParty('🎉 Record '+_nm+' : '+fmt(_wt)+' kg !'); } }
+    if(s.done){ if(s.realReps==null) s.realReps=gymSetReps(s,ex,day); if(s.realWeight==null) s.realWeight=gymSetWeight(s,ex,day); gymStartRest(); var _nm=(ex.name||'').trim(), _wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0; if(_nm && _wt>0){ var _pb=exBestBefore(_nm, day.date); if(_pb>0 && _wt>_pb) toastParty('🎉 Record '+_nm+' : '+fmt(_wt)+' kg !'); } }
     var justDone=s.done && dayIsComplete(day);
     save(); updateDaySummary(day.id); updateWeekSummary();
     if(s.done && ex.sets.length && ex.sets.every(function(z){return z.done;}) && gymMode.exIndex<day.exercises.length-1){ gymMode.exIndex++; }
@@ -1062,7 +1070,7 @@
     var totalSets=0, doneSets=0; day.exercises.forEach(function(x){ x.sets.forEach(function(s){ totalSets++; if(s.done) doneSets++; }); });
     var gymRec=exBestBefore((ex.name||'').trim(), day.date);
     var setsH=ex.sets.map(function(s,i){
-      var rr=(s.realReps!=null?s.realReps:s.planReps), rw=gymSetWeight(s, ex, day);
+      var rr=gymSetReps(s, ex, day), rw=gymSetWeight(s, ex, day);
       var isPR=s.done && (rw||0)>0 && gymRec>0 && (rw||0)>gymRec;
       return '<div class="gym-set'+(s.done?' done':'')+(isPR?' pr':'')+'">'
         +'<div class="gym-set-n">Série '+(i+1)+(isPR?' <span class="pr-badge">🏆 PR</span>':'')+'</div>'
