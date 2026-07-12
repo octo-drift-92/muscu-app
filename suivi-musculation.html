@@ -161,6 +161,13 @@
 
   .set-head, .setrow { display:grid; grid-template-columns:26px minmax(118px,150px) 58px minmax(118px,150px) 1fr 30px; gap:9px; align-items:center; }
   .set-head { padding:0 4px 6px; font-size:11px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:var(--text-faint); }
+  .sets-lite { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:10px; }
+  .sets-lite-lbl { font-size:12px; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:.3px; }
+  .sets-stepper { display:inline-flex; align-items:center; gap:4px; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:3px; }
+  .sl-btn { width:34px; height:34px; border-radius:8px; font-size:18px; font-weight:700; display:grid; place-items:center; }
+  .sl-btn[disabled] { opacity:.35; pointer-events:none; }
+  .sets-lite-n { min-width:30px; text-align:center; font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .sets-lite-hint { font-size:11.5px; color:var(--text-faint); font-style:italic; }
   .setrow { padding:5px 4px; border-radius:9px; }
   .setrow.done { background:var(--success-bg); box-shadow:inset 2px 0 0 var(--success-line); }
   .set-idx { font-size:13px; font-weight:700; color:var(--text-faint); text-align:center; }
@@ -864,11 +871,9 @@
         '<button class="prog-btn'+(prog==='volume'?' active':'')+'" data-act="prog" data-mode="volume" title="Volume : +1 répétition vs prévu à chaque duplication">Vol</button>' +
         '<button class="prog-btn'+(prog==='weight'?' active':'')+'" data-act="prog" data-mode="weight" title="Poids : +1 kg vs prévu, répétitions remises à 8">Poids</button>' +
       '</div>' +
-      lastSessionHTML(ex.name, day) +
       '<input class="ex-note" data-field="exNote" value="'+escA(ex.note)+'" placeholder="Note (technique, tempo, repos…)">' +
-      '<div class="set-head"><span></span><span>Prévu</span><span style="text-align:center">Fait</span><span>Réalisé</span><span>Commentaire</span><span></span></div>' +
-      ex.sets.map(setRowHTML).join('') +
-      '<div class="add-row"><button class="btn ghost add-set" data-act="addSet">'+ic(P.plus)+'Série</button></div>' +
+      lastSessionHTML(ex.name, day) +
+      '<div class="sets-lite"><span class="sets-lite-lbl">Séries</span><div class="sets-stepper"><button class="mini-btn sl-btn" data-act="setsMinus"'+(ex.sets.length<=1?' disabled':'')+' title="Retirer une série">−</button><span class="sets-lite-n">'+ex.sets.length+'</span><button class="mini-btn sl-btn" data-act="setsPlus" title="Ajouter une série">+</button></div><span class="sets-lite-hint">Poids &amp; reps : en séance (report auto)</span></div>' +
       '</div>' +
     '</div>';
   }
@@ -1304,6 +1309,8 @@
   function deleteExercise(loc){ if(!loc.ex||!loc.day) return; var d=loc.day, i=d.exercises.findIndex(function(e){return e.id===loc.ex.id;}); var ex=loc.ex; d.exercises.splice(i,1); save(); renderProgramme(); toastUndo('Exercice supprimé', function(){ d.exercises.splice(i,0,ex); save(); renderProgramme(); }); }
 
   function addSet(loc){ if(!loc.ex) return; var last=loc.ex.sets[loc.ex.sets.length-1]; var ns=last?freshSet(last.planReps,last.planWeight):freshSet(10,null); loc.ex.sets.push(ns); save(); renderProgramme(); if(loc.day) updateDaySummary(loc.day.id); focusField('[data-s="'+ns.id+'"] [data-field="planWeight"]'); }
+  function setsAdd(loc){ if(!loc.ex) return; var last=loc.ex.sets[loc.ex.sets.length-1]; var ns=last?freshSet(last.planReps,last.planWeight):freshSet(10,null); loc.ex.sets.push(ns); save(); renderProgramme(); if(loc.day) updateDaySummary(loc.day.id); }
+  function setsRemove(loc){ if(!loc.ex||loc.ex.sets.length<=1) return; loc.ex.sets.pop(); save(); renderProgramme(); if(loc.day) updateDaySummary(loc.day.id); updateWeekSummary(); }
   function deleteSet(loc){ if(!loc.ex||!loc.set) return; var ex=loc.ex, i=ex.sets.findIndex(function(x){return x.id===loc.set.id;}); var set=loc.set; ex.sets.splice(i,1); save(); renderProgramme(); if(loc.day) updateDaySummary(loc.day.id); updateWeekSummary(); toastUndo('Série supprimée', function(){ ex.sets.splice(i,0,set); save(); renderProgramme(); }); }
 
   /* ---------- templates ---------- */
@@ -1945,6 +1952,8 @@
           propagateProgression(loc.week, loc.ex); }
         break;
       case 'addSet': addSet(loc); break;
+      case 'setsPlus': setsAdd(loc); break;
+      case 'setsMinus': setsRemove(loc); break;
       case 'delSet': deleteSet(loc); break;
       case 'addLib': addLibFromInput(); break;
       case 'delLib': delLibrary(b.dataset.lib); break;
