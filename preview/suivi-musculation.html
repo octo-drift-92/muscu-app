@@ -1046,7 +1046,7 @@
     var hero;
     if(ts){
       var day=ts.day, st=dayStats(day);
-      var exos=day.exercises.filter(function(x){return !isWarmup(x.name)&&(x.name||'').trim();}).map(function(x){ return '<li>'+exDot(x.name)+'<span>'+esc((x.name||'').trim())+'</span><b>'+x.sets.length+' séries</b></li>'; }).join('');
+      var exos=day.exercises.filter(function(x){return !isWarmup(x.name)&&(x.name||'').trim();}).map(function(x){ return '<li><span>'+esc((x.name||'').trim())+'</span><b>'+x.sets.length+' séries</b></li>'; }).join('');
       var lbl=st.total===0?'':(st.done>=st.total?'Revoir la séance':(st.done>0?'▶ Reprendre':'▶ Démarrer la séance'));
       var btn=st.total>0?'<button class="btn primary acc-go" data-act="gymStartToday" data-d="'+day.id+'" data-w="'+ts.week.id+'">'+lbl+'</button>':'';
       hero='<div class="card acc-hero"><div class="acc-hero-top"><span class="acc-hero-k">Séance du jour</span>'+(st.total>0?'<span class="acc-hero-badge'+(st.done>=st.total?' ok':'')+'">'+(st.done>=st.total?'✓ terminée':st.done+'/'+st.total+' séries')+'</span>':'')+'</div>'
