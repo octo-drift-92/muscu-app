@@ -346,6 +346,35 @@
   .mens-cond { padding:9px 11px; border-radius:9px; border:1px solid var(--border); background:var(--bg); color:var(--text); font:inherit; font-size:14px; font-weight:500; }
   .mens-cond:focus { outline:none; border-color:var(--accent); }
   .mens-hist .mens-note-row td { text-align:left; font-size:11.5px; color:var(--text-faint); font-style:italic; white-space:normal; padding:0 8px 9px; }
+  .acc-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:16px; }
+  .acc-hi { font-size:22px; font-weight:800; }
+  .acc-date { font-size:13px; color:var(--text-faint); font-weight:600; margin-top:1px; }
+  .acc-streak { font-size:12px; font-weight:800; color:var(--accent); background:color-mix(in srgb,var(--accent) 13%,var(--surface)); border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border)); border-radius:8px; padding:5px 9px; white-space:nowrap; flex:0 0 auto; }
+  .acc-hero { padding:16px; margin-bottom:14px; }
+  .acc-hero-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .acc-hero-k { font-size:12px; font-weight:800; color:var(--text-faint); text-transform:uppercase; letter-spacing:.4px; }
+  .acc-hero-badge { font-size:11.5px; font-weight:700; color:var(--text-faint); background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:2px 8px; white-space:nowrap; }
+  .acc-hero-badge.ok { color:var(--success); border-color:color-mix(in srgb,var(--success) 40%,var(--border)); }
+  .acc-hero-name { font-size:20px; font-weight:800; margin:6px 0 12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .acc-rir { font-size:11px; font-weight:800; color:var(--accent); background:color-mix(in srgb,var(--accent) 14%,transparent); border:1px solid color-mix(in srgb,var(--accent) 35%,var(--border)); border-radius:7px; padding:2px 7px; }
+  .acc-exos { list-style:none; margin:0 0 14px; padding:0; display:flex; flex-direction:column; gap:8px; }
+  .acc-exos li { display:flex; align-items:center; gap:9px; font-size:14px; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:9px 11px; }
+  .acc-exos li > span { flex:1; font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .acc-exos li b { font-size:12px; font-weight:700; color:var(--text-faint); white-space:nowrap; }
+  .acc-go { width:100%; justify-content:center; font-size:16px; padding:13px; }
+  .acc-rest-msg { font-size:19px; font-weight:800; margin:8px 0; }
+  .acc-next { font-size:13.5px; color:var(--text-faint); }
+  .acc-next b { color:var(--text); }
+  .acc-week { padding:14px; }
+  .acc-sec-t { font-size:12px; font-weight:800; color:var(--text-faint); text-transform:uppercase; letter-spacing:.3px; margin-bottom:10px; }
+  .acc-days { display:flex; flex-direction:column; gap:8px; }
+  .acc-day { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; text-align:left; font:inherit; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:11px 13px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .acc-day-n { font-weight:700; font-size:14px; color:var(--text); }
+  .acc-day-s { font-size:12.5px; font-weight:700; color:var(--text-faint); font-variant-numeric:tabular-nums; }
+  .acc-day.done { border-color:color-mix(in srgb,var(--success) 40%,var(--border)); }
+  .acc-day.done .acc-day-s { color:var(--success); }
+  .acc-day.today { border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent); }
+  .acc-day.past { opacity:.7; }
   .reorder-bar { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:12px; font-size:12.5px; color:var(--text-faint); line-height:1.4; }
   .reorder-board { display:flex; flex-direction:column; gap:12px; }
   .reo-day { border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--surface); }
@@ -522,7 +551,8 @@
       <span>Suivi Muscu</span>
     </div>
     <nav class="tabs">
-      <button data-act="view" data-view="programme" class="active"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>Programme</span></button>
+      <button data-act="view" data-view="accueil" class="active"><svg class="icon" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>Accueil</span></button>
+      <button data-act="view" data-view="programme"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>Programme</span></button>
       <button data-act="view" data-view="progression"><svg class="icon" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><polyline points="6 14 10 10 13 13 18 7"/></svg><span>Progression</span></button>
       <button data-act="view" data-view="mensurations"><svg class="icon" viewBox="0 0 24 24"><rect x="2" y="8" width="20" height="8" rx="1.5"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/></svg><span>Mesures</span></button>
       <button data-act="view" data-view="reglages"><svg class="icon" viewBox="0 0 24 24"><path d="M4 6h11M4 12h7M4 18h13"/><circle cx="18" cy="6" r="2.4"/><circle cx="13" cy="12" r="2.4"/><circle cx="19" cy="18" r="2.4"/></svg><span>Réglages</span></button>
@@ -534,7 +564,11 @@
 </header>
 
 <main class="wrap">
-  <section id="view-programme" class="view active">
+  <section id="view-accueil" class="view active">
+    <div id="accueil-body"></div>
+  </section>
+
+  <section id="view-programme" class="view">
     <div class="week-bar" id="week-bar"></div>
     <div id="week-view"></div>
   </section>
@@ -733,6 +767,7 @@
   function switchView(name){
     var v=document.querySelectorAll('.view'); for(var i=0;i<v.length;i++) v[i].classList.toggle('active', v[i].id==='view-'+name);
     var t=document.querySelectorAll('nav.tabs button'); for(var j=0;j<t.length;j++) t[j].classList.toggle('active', t[j].dataset.view===name);
+    if(name==='accueil') renderAccueil();
     if(name==='progression') renderProgression();
     if(name==='mensurations') renderMensurations();
     if(name==='reglages') renderReglages();
@@ -983,7 +1018,7 @@
     save(); renderProgramme();
   }
   function reoArrow(btn, dir){ var ex=btn.closest('.reo-ex'); if(ex) reoMove(ex.dataset.d, ex.dataset.e, dir); }
-  function renderAll(){ populateDatalist(); renderProgramme(); }
+  function renderAll(){ populateDatalist(); renderAccueil(); renderProgramme(); }
 
   /* ---------- confort UX : accueil "aujourd'hui", record, anti-doublon ---------- */
   function exBestBefore(name, beforeISO){ var best=0; state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||''; if(beforeISO && di && di>=beforeISO) return; d.exercises.forEach(function(x){ if((x.name||'').trim()!==name) return; x.sets.forEach(function(s){ if(s.done){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0; if(wt>best) best=wt; } }); }); }); }); return best; }
@@ -998,6 +1033,34 @@
     var badge = st.total===0 ? 'à planifier' : (st.done>=st.total ? '✓ terminée' : (st.done>0 ? 'en cours' : 'à faire'));
     var btn = st.total>0 ? '<button class="btn primary today-go" data-act="gymStartToday" data-d="'+day.id+'" data-w="'+ts.week.id+'">'+(st.done>=st.total?'Revoir la séance':(st.done>0?'▶ Reprendre la séance':'▶ Commencer la séance'))+'</button>' : '';
     return '<div class="today-card"><div class="today-head"><span class="today-label">Aujourd\'hui · '+esc(day.name||'Séance')+'</span><span class="today-badge">'+badge+'</span>'+sk+'</div><p class="today-prog">'+st.done+' / '+st.total+' séries · '+esc(ts.week.name||'')+(ts.week.rirTarget!=null?' · 🎯 '+ts.week.rirTarget+' RIR':'')+'</p>'+btn+'</div>';
+  }
+  function nextSession(){ var t=todayISO(), best=null; state.weeks.forEach(function(w){ w.days.forEach(function(d){ if(d.date && d.date>t && d.exercises.length && (!best || d.date<best.day.date)){ best={week:w, day:d}; } }); }); return best; }
+  function renderAccueil(){
+    var box=$('accueil-body'); if(!box) return;
+    if(!state.weeks.length){ box.innerHTML='<div class="empty"><p>Bienvenue 💪 Crée ta première semaine dans l\'onglet Programme.</p></div>'; return; }
+    var ts=todaySession(), streak=weekStreak(), t=todayISO();
+    var head='<div class="acc-head"><div><div class="acc-hi">Aujourd\'hui</div><div class="acc-date">'+esc(formatDateFR(t))+'</div></div>'+(streak>1?'<span class="acc-streak">🔥 '+streak+' sem.</span>':'')+'</div>';
+    var hero;
+    if(ts){
+      var day=ts.day, st=dayStats(day);
+      var exos=day.exercises.filter(function(x){return !isWarmup(x.name)&&(x.name||'').trim();}).map(function(x){ return '<li>'+exDot(x.name)+'<span>'+esc((x.name||'').trim())+'</span><b>'+x.sets.length+' séries</b></li>'; }).join('');
+      var lbl=st.total===0?'':(st.done>=st.total?'Revoir la séance':(st.done>0?'▶ Reprendre':'▶ Démarrer la séance'));
+      var btn=st.total>0?'<button class="btn primary acc-go" data-act="gymStartToday" data-d="'+day.id+'" data-w="'+ts.week.id+'">'+lbl+'</button>':'';
+      hero='<div class="card acc-hero"><div class="acc-hero-top"><span class="acc-hero-k">Séance du jour</span>'+(st.total>0?'<span class="acc-hero-badge'+(st.done>=st.total?' ok':'')+'">'+(st.done>=st.total?'✓ terminée':st.done+'/'+st.total+' séries')+'</span>':'')+'</div>'
+        +'<div class="acc-hero-name">'+esc(day.name||'Séance')+(ts.week.rirTarget!=null?' <span class="acc-rir">🎯 '+ts.week.rirTarget+' RIR</span>':'')+'</div>'
+        +(exos?'<ul class="acc-exos">'+exos+'</ul>':'<p class="hint">Aucun exercice — ajoute-en dans Programme.</p>')
+        +btn+'</div>';
+    } else {
+      var ns=nextSession();
+      hero='<div class="card acc-hero acc-rest"><div class="acc-hero-top"><span class="acc-hero-k">Aujourd\'hui</span></div><div class="acc-rest-msg">😴 Repos aujourd\'hui</div>'
+        +(ns?'<div class="acc-next">Prochaine séance : <b>'+esc(ns.day.name||'Séance')+'</b> · '+esc(formatDateFR(ns.day.date).slice(0,5))+'</div>':'<div class="acc-next">Aucune séance à venir — planifie ta semaine.</div>')+'</div>';
+    }
+    var w=curWeek(), weekH='';
+    if(w){
+      var days=w.days.map(function(d){ var s=dayStats(d); var status=(s.total>0&&s.done>=s.total)?'done':(d.date===t?'today':(d.date&&d.date<t?'past':'future')); return '<button class="acc-day '+status+'" data-act="accDay" data-d="'+d.id+'"><span class="acc-day-n">'+esc(d.name||'Jour')+'</span><span class="acc-day-s">'+(status==='done'?'✓ fait':(s.total>0?s.done+'/'+s.total:'—'))+'</span></button>'; }).join('');
+      weekH='<div class="card acc-week"><div class="acc-sec-t">'+esc(w.name||'Semaine')+'</div><div class="acc-days">'+(days||'<p class="hint">Aucun jour cette semaine.</p>')+'</div></div>';
+    }
+    box.innerHTML=head+hero+weekH;
   }
   function gymStartToday(btn){ var wid=btn.dataset.w, did=btn.dataset.d; if(wid && state.currentWeekId!==wid){ state.currentWeekId=wid; save(); renderProgramme(); } var w=curWeek(); var day=w&&w.days.filter(function(d){return d.id===did;})[0]; if(day && day.exercises.length){ gymMode={dayId:did, exIndex:gymFirstTodo(day)}; gymRestStart=0; renderGym(); } }
   function helpTopic(t){ var el=document.querySelector('.help-box[data-help="'+t+'"]'); if(el) el.hidden=!el.hidden; }
@@ -1904,6 +1967,7 @@
     var loc=locate(b);
     switch(act){
       case 'view': switchView(b.dataset.view); break;
+      case 'accDay': switchView('programme'); var _ad=document.querySelector('[data-d="'+b.dataset.d+'"]'); if(_ad) _ad.scrollIntoView({block:'start',behavior:'smooth'}); break;
       case 'theme': toggleTheme(); break;
       case 'palette': setPalette(b.dataset.pal); break;
       case 'metric': setMetric(b.dataset.metric); break;
