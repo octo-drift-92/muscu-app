@@ -35,7 +35,7 @@ self.addEventListener('fetch', function(e){
     // reseau d'abord : derniere version en ligne, mise en cache, secours cache si hors-ligne
     e.respondWith((async function(){
       try {
-        var net = await fetch(req);
+        var net = await fetch(req, { cache: 'reload' });   // contourne le cache HTTP (~10 min de GitHub Pages) -> toujours la derniere version
         try { var c = await caches.open(CACHE); await c.put(req, net.clone()); } catch (_) {}
         return net;
       } catch (err) {
