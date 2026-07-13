@@ -682,7 +682,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v45';
+  var APP_VERSION = 'v46';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2345,6 +2345,18 @@
   if(window.visualViewport && window.visualViewport.addEventListener){ window.visualViewport.addEventListener('resize', fixSafeArea); }
   window.addEventListener('orientationchange', function(){ setTimeout(fixSafeArea, 300); });
   ['pointerdown','touchstart'].forEach(function(ev){ window.addEventListener(ev, function(){ fixSafeArea(); setTimeout(fixSafeArea,60); }, {passive:true}); });
+  /* DIAG VISUEL TEMPORAIRE (a retirer) : barre en rouge + ligne verte = bas de l'ecran + infos */
+  setTimeout(function(){ try{
+    var nav=document.querySelector('nav.tabs');
+    if(nav){ nav.style.outline='3px solid #ff3b30'; nav.style.background='rgba(255,59,48,.28)'; }
+    var green=document.createElement('div'); green.style.cssText='position:fixed;left:0;right:0;bottom:0;height:5px;background:#00e000;z-index:2147483647;pointer-events:none'; document.body.appendChild(green);
+    var cyan=document.createElement('div'); cyan.style.cssText='position:fixed;left:0;right:0;top:0;height:5px;background:#00e5ff;z-index:2147483647;pointer-events:none'; document.body.appendChild(cyan);
+    var r=nav?nav.getBoundingClientRect():{top:0,bottom:0};
+    var info=document.createElement('div');
+    info.style.cssText='position:fixed;top:8px;left:8px;right:8px;z-index:2147483647;background:rgba(0,0,0,.82);color:#fff;font:11px/1.45 monospace;padding:5px 7px;border-radius:6px;pointer-events:none;word-break:break-all';
+    info.textContent='v46 · rouge=barre, vert=bas ecran · navPad='+getComputedStyle(nav).paddingBottom+' navBpb='+(getComputedStyle(document.documentElement).getPropertyValue('--nav-pb').trim()||'(vide)')+' navT='+Math.round(r.top)+' navB='+Math.round(r.bottom)+' vH='+window.innerHeight+' sa='+navigator.standalone;
+    document.body.appendChild(info);
+  }catch(e){} }, 350);
 })();
 </script>
 </body>
