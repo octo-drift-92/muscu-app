@@ -671,7 +671,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v42';
+  var APP_VERSION = 'v43';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1932,6 +1932,7 @@
         '<button class="btn danger" data-act="reset-all">'+ic(P.trash)+'Tout réinitialiser</button></div>'+
       '<div class="card"><div class="section-label">À propos</div>'+
         '<p class="hint" style="margin:0 0 11px">Increm · <b style="color:var(--text)">'+APP_VERSION+'</b></p>'+
+        '<p class="hint" style="margin:0 0 11px;font-family:ui-monospace,monospace;font-size:10.5px;word-break:break-all;color:var(--text-faint)">🔧 '+esc(_diag)+'</p>'+
         '<button class="btn" data-act="check-update" style="width:100%">'+ic('<path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/>')+'Rechercher une mise à jour</button>'+
         '<p class="hint" style="margin-top:10px">L\'app se met à jour automatiquement à l\'ouverture quand tu as du réseau, et fonctionne aussi <b>hors-ligne</b> (pratique en salle).</p></div>';
     applyTheme();
@@ -2334,6 +2335,9 @@
   if(window.visualViewport && window.visualViewport.addEventListener){ window.visualViewport.addEventListener('resize', fixSafeArea); }
   window.addEventListener('orientationchange', function(){ setTimeout(fixSafeArea, 300); });
   ['pointerdown','touchstart'].forEach(function(ev){ window.addEventListener(ev, function(){ fixSafeArea(); setTimeout(fixSafeArea,60); }, {passive:true}); });
+  /* DIAG TEMPORAIRE (a retirer) : gele l'etat de la barre a l'ouverture, affiche dans Reglages > A propos */
+  var _diag='(mesure en cours…)';
+  setTimeout(function(){ try{ var n=document.querySelector('nav.tabs'), r=n?n.getBoundingClientRect():{top:0,bottom:0}; _diag='standalone='+navigator.standalone+' store='+(localStorage.getItem(SA_KEY)||'null')+' navPad='+(n?getComputedStyle(n).paddingBottom:'?')+' nT='+Math.round(r.top)+' nB='+Math.round(r.bottom)+' envB='+readEnv('safe-area-inset-bottom')+' iH='+window.innerHeight; }catch(e){ _diag='err '+e.message; } }, 250);
 })();
 </script>
 </body>
