@@ -988,7 +988,7 @@
       '</div>' +
       '<div class="day-body">' +
         '<input class="day-note" data-field="dayNote" value="'+escA(day.note)+'" placeholder="Note de séance (ressenti, forme du jour…)">' +
-        (day.exercises.length?'<button class="btn primary gym-launch" data-act="gymStart">▶ Mode séance</button>':'') +
+        (day.exercises.length && day.date===todayISO()?'<button class="btn primary gym-launch" data-act="gymStart">▶ Mode séance</button>':'') +
         ex +
         '<button class="btn ghost" data-act="addEx">'+ic(P.plus)+'Ajouter un exercice</button>' +
       '</div>' +
