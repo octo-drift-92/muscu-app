@@ -275,7 +275,10 @@
     nav.tabs button .icon { width:23px; height:23px; }
     nav.tabs button:hover { background:none; color:var(--text-dim); }
     nav.tabs button.active { background:var(--accent-soft); color:var(--accent); box-shadow:none; }
-    main.wrap { padding-top:22px; }
+    /* app-shell mobile : seul le contenu defile -> barre du bas 100% stable.
+       body en position:fixed inset:0 = meme reference que la barre (fixed) -> alignes quoi qu'il arrive */
+    body { position:fixed; inset:0; display:flex; flex-direction:column; overflow:hidden; }
+    main.wrap { padding-top:22px; flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
     .set-head { display:none; }
     .setrow { display:flex; flex-wrap:wrap; align-items:center; gap:9px 10px; padding:12px; border:1px solid var(--border); margin-bottom:9px; }
     .glabel { display:inline; }
@@ -1012,7 +1015,7 @@
     var w = curWeek();
     if(!w){ box.innerHTML = '<div class="empty">'+ic('<path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/>')+'<p>Bienvenue 💪 Crée ta première semaine pour démarrer.</p></div>'; return; }
     if(!reorderMode && !arrangedWeeks[w.id] && w.days.length>1){ var fd=focusDayId(w); w.days.forEach(function(d){ d.collapsed=(d.id!==fd); }); arrangedWeeks[w.id]=true; }
-    var y = window.scrollY;
+    var _scEl = appScroller(); var y = _scEl ? _scEl.scrollTop : window.scrollY;
     box.innerHTML = reorderMode ? renderReorderBoard(w) : (
       todayCardHTML() +
       '<div class="week-head">' +
@@ -1032,8 +1035,9 @@
         '</div>' +
       '</div>'
     );
-    window.scrollTo(0,y);
+    if(_scEl) _scEl.scrollTop=y; else window.scrollTo(0,y);
   }
+  function appScroller(){ var m=document.querySelector('main.wrap'); if(m){ var o=getComputedStyle(m).overflowY; if(o==='auto'||o==='scroll') return m; } return null; }
   function exDone(x){ return !!(x.sets && x.sets.some(function(s){ return s.done; })); }
   function afterDoneIdx(arr){ var k=0; for(var i=0;i<arr.length;i++){ if(exDone(arr[i])) k=i+1; } return k; }
   function renderReorderBoard(w){
