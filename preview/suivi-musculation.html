@@ -944,7 +944,6 @@
     return '<div class="ex-block'+(complete?' done':'')+'" data-e="'+ex.id+'">' +
       '<div class="ex-card-top">' +
         '<span class="ex-num">'+num+'</span>' +
-        exDot(ex.name) +
         '<input class="name-input ex-name" data-field="exName" list="lib-list" value="'+escA(ex.name)+'" placeholder="Nom de l\'exercice">' +
         (complete?'<span class="ex-done-tag" title="Toutes les séries faites">✓</span>':'') +
         '<button class="mini-btn drag-handle" data-drag="ex" title="Glisser pour déplacer">'+ic(P.grip,'grip')+'</button>' +
@@ -1193,7 +1192,7 @@
     day.exercises.forEach(function(x){ var nm=(x.name||'').trim(); var ds=x.sets.filter(function(s){return s.done;}); if(!ds.length) return; exNames++; var top=0; ds.forEach(function(s){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0; setsDone++; tonnage+=wt*rp; if(wt>top) top=wt; }); if(!isWarmup(nm)) muscleContribs(nm).forEach(function(c){ grp[c.g]=(grp[c.g]||0)+ds.length*c.w; }); var rec=exBestBefore(nm, day.date); if(nm && top>0 && top>rec) prs.push({nm:nm, kg:top, prev:rec}); });
     var groups=Object.keys(grp).filter(function(g){return g!=='Autre';}).sort(function(a,b){return grp[b]-grp[a];});
     var chips=groups.slice(0,8).map(function(g){ return '<span class="recap-grp"><i style="background:'+groupColor(g)+'"></i>'+esc(g)+' <b>'+fmtSets(grp[g])+'</b></span>'; }).join('');
-    var prH = prs.length ? '<div class="recap-sec"><div class="recap-sec-t">🏆 Records du jour</div>'+prs.map(function(p){ return '<div class="recap-pr">'+exDot(p.nm)+'<span>'+esc(p.nm)+'</span><b>'+fmt(p.kg)+' kg</b><small>'+(p.prev>0?('+'+fmt(Math.round((p.kg-p.prev)*10)/10)+' kg'):'1er')+'</small></div>'; }).join('')+'</div>' : '';
+    var prH = prs.length ? '<div class="recap-sec"><div class="recap-sec-t">🏆 Records du jour</div>'+prs.map(function(p){ return '<div class="recap-pr"><span>'+esc(p.nm)+'</span><b>'+fmt(p.kg)+' kg</b><small>'+(p.prev>0?('+'+fmt(Math.round((p.kg-p.prev)*10)/10)+' kg'):'1er')+'</small></div>'; }).join('')+'</div>' : '';
     ov.innerHTML='<div class="recap-card"><div class="recap-emoji">💪</div><div class="recap-h">Séance terminée</div><div class="recap-sub">'+esc(day.name||'Séance')+(day.date?' · '+esc(formatDateFR(day.date).slice(0,5)):'')+'</div><div class="recap-stats"><div><b>'+setsDone+'</b><span>séries</span></div><div><b>'+exNames+'</b><span>exos</span></div><div><b>'+fmtKg(tonnage)+'</b><span>kg levés</span></div></div>'+(chips?'<div class="recap-sec"><div class="recap-sec-t">Groupes travaillés</div><div class="recap-grps">'+chips+'</div></div>':'')+prH+'<div class="recap-foot"><button class="btn ghost" data-act="recapClose">Revoir</button><button class="btn primary" data-act="recapFinish">Terminer ✓</button></div></div>';
     ov.hidden=false; document.documentElement.classList.add('gym-open'); animIn(ov.querySelector('.recap-card'), {opacity:0, transform:'translateY(16px) scale(.97)'}); if(navigator.vibrate){ try{ navigator.vibrate([90,50,90,50,170]); }catch(e){} }
   }
@@ -1229,7 +1228,7 @@
       +'</div>'
       +'<div class="gym-progress"><i style="width:'+(totalSets?Math.round(doneSets/totalSets*100):0)+'%"></i></div>'
       +'<div class="gym-body">'
-        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+'<h2 class="gym-ex-name">'+exDot(ex.name,'gym-dot')+(esc((ex.name||'').trim())||'Exercice')+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(ex.name, day)+'</div>'
+        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+'<h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(ex.name, day)+'</div>'
         +'<div class="gym-sets">'+setsH+'</div>'
       +'</div>'
       +'<div class="gym-nav">'
