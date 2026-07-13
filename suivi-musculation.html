@@ -2311,6 +2311,15 @@
   window.addEventListener('focus', maybePull);
   document.addEventListener('visibilitychange', function(){ if(!document.hidden) maybePull(); });
   window.addEventListener('online', function(){ if(syncConfigured()) schedulePush(); });
+  /* iOS PWA : au tout premier chargement, le viewport (safe-area / barre systeme) n'est pas encore
+     stabilise, ce qui peut decaler la barre de navigation fixe. N'importe quel changement de vue la
+     corrige (reflow) ; on declenche ce reflow automatiquement au demarrage et a chaque stabilisation
+     du viewport pour que l'alignement soit bon des le 1er ecran. */
+  function reflowNav(){ var n=document.querySelector('nav.tabs'); if(!n) return; n.style.transform='translateZ(0)'; void n.offsetWidth; n.style.transform=''; }
+  requestAnimationFrame(function(){ reflowNav(); requestAnimationFrame(reflowNav); });
+  setTimeout(reflowNav, 150); setTimeout(reflowNav, 500);
+  if(window.visualViewport && window.visualViewport.addEventListener){ window.visualViewport.addEventListener('resize', reflowNav); }
+  window.addEventListener('orientationchange', function(){ setTimeout(reflowNav, 250); });
 })();
 </script>
 </body>
