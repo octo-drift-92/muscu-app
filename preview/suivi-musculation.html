@@ -671,7 +671,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v41';
+  var APP_VERSION = 'v42';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2319,16 +2319,16 @@
   window.addEventListener('online', function(){ if(syncConfigured()) schedulePush(); });
   /* Service worker : mise a jour auto (reseau d'abord) + fonctionnement hors-ligne. */
   if('serviceWorker' in navigator){ window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }
-  /* iOS PWA : env(safe-area-inset-*) vaut 0 au tout premier paint puis se remplit un peu plus tard
-     (parfois seulement apres la 1re interaction). Resultat : la barre de nav (padding-bottom = 7px +
-     safe-area) est trop basse au demarrage, jusqu'a ce qu'un changement de vue force le recalcul du
-     padding. Fix : on lit la safe-area via une sonde et on l'applique DIRECTEMENT (valeur en px) au
-     padding de la barre (et du header) des qu'elle est disponible — au chargement (plusieurs essais),
-     au resize/rotation du viewport, et a la toute 1re interaction. */
+  /* iOS PWA : env(safe-area-inset-*) vaut 0 au 1er paint et ne se remplit (bottom≈34, top≈62) que
+     PLUS TARD — souvent seulement apres la 1re interaction — d'ou une barre de nav trop basse a
+     l'ouverture. On MEMORISE la safe-area (localStorage) pour l'appliquer IMMEDIATEMENT au demarrage
+     suivant (avant le 1er paint, sans attendre env), puis on la rafraichit des qu'env() est lisible
+     (timers, resize, rotation, 1re interaction). Ainsi la barre est bien placee des l'ouverture. */
+  var SA_KEY = 'increm-sa';
   function readEnv(prop){ var p=document.createElement('div'); p.style.cssText='position:fixed;left:-9999px;top:0;width:1px;height:env('+prop+',0px);pointer-events:none'; document.body.appendChild(p); var v=Math.round(p.getBoundingClientRect().height); p.remove(); return v; }
-  function fixSafeArea(){ var sab=readEnv('safe-area-inset-bottom'), sat=readEnv('safe-area-inset-top');
-    var n=document.querySelector('nav.tabs'); if(n) n.style.paddingBottom = sab>0 ? ('calc(7px + '+sab+'px)') : '';
-    var h=document.querySelector('header'); if(h) h.style.paddingTop = sat>0 ? (sat+'px') : ''; }
+  function applySA(sab, sat){ var n=document.querySelector('nav.tabs'); if(n) n.style.paddingBottom = sab>0 ? ('calc(7px + '+sab+'px)') : ''; var h=document.querySelector('header'); if(h) h.style.paddingTop = sat>0 ? (sat+'px') : ''; }
+  try{ var _sa=JSON.parse(localStorage.getItem(SA_KEY)||'null'); if(!_sa && navigator.standalone===true) _sa={b:34,t:50}; if(_sa) applySA(_sa.b||0, _sa.t||0); }catch(_){}   /* immediat, avant le 1er paint : valeur memorisee, ou defaut iOS standalone au 1er lancement */
+  function fixSafeArea(){ var sab=readEnv('safe-area-inset-bottom'), sat=readEnv('safe-area-inset-top'); if(sab>0 || sat>0){ applySA(sab, sat); try{ localStorage.setItem(SA_KEY, JSON.stringify({b:sab, t:sat})); }catch(_){} } }
   [0,50,120,250,500,900,1500,2500,4000].forEach(function(ms){ setTimeout(fixSafeArea, ms); });
   requestAnimationFrame(function(){ requestAnimationFrame(fixSafeArea); });
   if(window.visualViewport && window.visualViewport.addEventListener){ window.visualViewport.addEventListener('resize', fixSafeArea); }
