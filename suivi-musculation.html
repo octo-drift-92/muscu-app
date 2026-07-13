@@ -275,10 +275,7 @@
     nav.tabs button .icon { width:23px; height:23px; }
     nav.tabs button:hover { background:none; color:var(--text-dim); }
     nav.tabs button.active { background:var(--accent-soft); color:var(--accent); box-shadow:none; }
-    /* app-shell mobile : seul le contenu defile -> barre du bas 100% stable.
-       body en position:fixed inset:0 = meme reference que la barre (fixed) -> alignes quoi qu'il arrive */
-    body { position:fixed; inset:0; display:flex; flex-direction:column; overflow:hidden; }
-    main.wrap { padding-top:22px; flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+    main.wrap { padding-top:22px; }
     .set-head { display:none; }
     .setrow { display:flex; flex-wrap:wrap; align-items:center; gap:9px 10px; padding:12px; border:1px solid var(--border); margin-bottom:9px; }
     .glabel { display:inline; }
