@@ -1010,7 +1010,6 @@
     if(!reorderMode && !arrangedWeeks[w.id] && w.days.length>1){ var fd=focusDayId(w); w.days.forEach(function(d){ d.collapsed=(d.id!==fd); }); arrangedWeeks[w.id]=true; }
     var _scEl = appScroller(); var y = _scEl ? _scEl.scrollTop : window.scrollY;
     box.innerHTML = reorderMode ? renderReorderBoard(w) : (
-      todayCardHTML() +
       '<div class="week-head">' +
         '<input class="name-input" data-field="weekName" value="'+escA(w.name)+'" placeholder="Nom de la semaine">' +
         '<input class="date-input" type="date" data-field="weekDate" value="'+escA(w.startDate)+'" title="Premier jour de la semaine — définit le nom (Sem. du …)">' +
