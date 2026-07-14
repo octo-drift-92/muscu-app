@@ -154,14 +154,15 @@
   .ex-done-tag { flex:0 0 auto; color:var(--success); font-weight:800; font-size:15px; }
   .ex-kebab .icon { width:18px; height:18px; }
   .ex-chips { display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin-top:9px; }
-  .ex-chip { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700; color:var(--text-dim); background:var(--bg); border:1px solid var(--border); border-radius:999px; padding:5px 11px; white-space:nowrap; }
+  /* hauteur commune a TOUS les chips (le stepper contient des boutons ronds : sans min-height il serait plus haut) */
+  .ex-chip { display:inline-flex; align-items:center; gap:6px; min-height:32px; font-size:12.5px; font-weight:700; color:var(--text-dim); background:var(--bg); border:1px solid var(--border); border-radius:999px; padding:0 11px; white-space:nowrap; }
   .ex-chip b { color:var(--text); font-variant-numeric:tabular-nums; font-size:14px; }
   .ex-chip-mus { color:var(--text); }
   .ex-chip-rir { color:var(--accent); background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 30%,var(--border)); }
   .ex-chip-prog { color:var(--success); border-color:color-mix(in srgb,var(--success) 34%,var(--border)); }
-  .ex-chip-sets { padding:3px 6px; gap:8px; }
+  .ex-chip-sets { padding:0 5px; gap:8px; }
   .ex-chip-sets .chip-lbl { color:var(--text-faint); font-size:11.5px; text-transform:uppercase; letter-spacing:.3px; }
-  .chip-step { width:25px; height:25px; border-radius:50%; border:none; background:var(--surface-3); color:var(--text); font-size:17px; font-weight:700; line-height:1; cursor:pointer; display:grid; place-items:center; -webkit-tap-highlight-color:transparent; }
+  .chip-step { width:24px; height:24px; flex:0 0 auto; border-radius:50%; border:none; background:var(--surface-3); color:var(--text); font-size:17px; font-weight:700; line-height:1; cursor:pointer; display:grid; place-items:center; -webkit-tap-highlight-color:transparent; }
   .chip-step:hover { background:var(--accent); color:var(--on-accent); }
   .chip-step:disabled { opacity:.35; cursor:default; }
   .ex-note-show { font-size:12px; color:var(--text-faint); font-style:italic; margin-top:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -311,9 +312,9 @@
     .btn-grid { grid-template-columns:1fr; }
     .drag-handle { display:none; }
     .num, .set-comment, .ex-note, .day-note, .ex-name { font-size:16px; }
-    .ex-chip { font-size:13px; }
+    .ex-chip { font-size:13px; min-height:36px; }
     .ex-chip b { font-size:15px; }
-    .chip-step { width:30px; height:30px; font-size:19px; }
+    .chip-step { width:28px; height:28px; font-size:18px; }
     .mini-btn, .collapse-btn { width:40px; height:40px; }
     .mini-btn .icon, .collapse-btn .icon { width:18px; height:18px; }
     .set-done input { width:30px; height:30px; }
@@ -709,7 +710,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v56';
+  var APP_VERSION = 'v57';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
