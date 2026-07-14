@@ -685,7 +685,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v47';
+  var APP_VERSION = 'v48';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1594,7 +1594,8 @@
   function muscleContribs(name){
     var n=(name||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
     function P(g){ return [{g:g,w:1}]; }
-    if(/face pull|oiseau|reverse fly|l-?fly|rotation ext|coiffe|rotateur|lever lateral|rear delt|reverse pec/.test(n)) return P('Deltoïde post.');
+    if(/face.?pull/.test(n)) return [{g:'Deltoïde post.',w:1},{g:'Trapèzes',w:.5}];
+    if(/oiseau|reverse fly|l-?fly|rotation ext|coiffe|rotateur|lever lateral|rear delt|reverse pec/.test(n)) return P('Deltoïde post.');
     if(/elevations? laterales?|lateral raise/.test(n)) return P('Deltoïde lat.');
     if(/elevations? frontales?|front raise/.test(n)) return P('Deltoïde ant.');
     if(/elevation/.test(n) && !/jambe|cuisse|mollet|genou|bassin|hanche|hip|pelv|gainage|buste|tronc/.test(n)) return P('Deltoïde lat.');
@@ -1603,7 +1604,11 @@
     if(/souleve de terre|deadlift|\bsdt\b/.test(n)) return [{g:'Lombaires',w:1},{g:'Fessiers',w:.5},{g:'Ischios',w:.5},{g:'Trapèzes',w:.5}];
     if(/hip thrust|pont fessier|abduction|fessier|glute/.test(n)) return P('Fessiers');
     if(/shrug|haussement|trapeze/.test(n)) return P('Trapèzes');
-    if(/rowing|\brow\b/.test(n)) return [{g:'Milieu du dos',w:1},{g:'Grand dorsal',w:.5},{g:'Biceps',w:.5},{g:'Deltoïde post.',w:.5},{g:'Trapèzes',w:.5}];
+    if(/rowing|\brow\b/.test(n)){
+      if(/neutre|marteau/.test(n)) return [{g:'Grand dorsal',w:1},{g:'Milieu du dos',w:.5},{g:'Biceps',w:.5},{g:'Deltoïde post.',w:.5}];
+      if(/haute|large/.test(n)) return [{g:'Milieu du dos',w:1},{g:'Trapèzes',w:.5},{g:'Deltoïde post.',w:.5},{g:'Biceps',w:.5}];
+      return [{g:'Milieu du dos',w:1},{g:'Grand dorsal',w:.5},{g:'Biceps',w:.5},{g:'Deltoïde post.',w:.5},{g:'Trapèzes',w:.5}];
+    }
     if(/tirage|traction|pulldown|pull-?up|\blat\b/.test(n)) return [{g:'Grand dorsal',w:1},{g:'Biceps',w:.5}];
     if(/pull-?over/.test(n)) return [{g:'Grand dorsal',w:1},{g:'Pectoraux',w:.5}];
     if(/ecarte|pec deck|butterfly|\bfly\b/.test(n)) return P('Pectoraux');
