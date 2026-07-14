@@ -7,26 +7,25 @@
 /* Applique la safe-area memorisee AVANT le 1er paint (evite le flash de barre de nav mal placee sur PWA iOS) */
 (function(){ try{
   var st = document.documentElement.style;
-  var s = JSON.parse(localStorage.getItem('increm-sa') || 'null');
-  if (!s && window.navigator.standalone === true) s = { b:34, t:50 };
+  /* cle -sa2 : le passage au statut 'black' (v53) cadre l'app SOUS la barre d'etat -> l'ancien
+     padding haut memorise (t:62 de l'ere black-translucent) doit etre invalide */
+  var s = JSON.parse(localStorage.getItem('increm-sa2') || 'null');
+  if (!s && window.navigator.standalone === true) s = { b:34, t:0 };
   if (s) {
     if (s.b > 0) st.setProperty('--nav-pb', 'calc(7px + ' + s.b + 'px)');
     if (s.t > 0) st.setProperty('--header-pt', s.t + 'px');
   }
-  /* PWA : hauteur de l'app = hauteur PHYSIQUE de l'ecran (constante fiable), posee avant le 1er
-     paint — au lancement a froid iOS annonce parfois une hauteur de viewport trop courte (colonne
-     app-shell qui s'arrete au-dessus du bas, bande sombre sous la barre). */
-  if (window.navigator.standalone === true) {
-    var H = Math.max(window.innerHeight || 0, (window.screen && screen.height) || 0);
-    if (window.matchMedia && matchMedia('(orientation: landscape)').matches) H = window.innerHeight || H;
-    if (H) st.setProperty('--app-h', H + 'px');
+  /* PWA : hauteur epinglee avant le 1er paint (l'app est cadree sous la barre d'etat depuis v53 :
+     innerHeight = hauteur du cadre ; ne PAS utiliser screen.height qui depasserait du cadre). */
+  if (window.navigator.standalone === true && window.innerHeight) {
+    st.setProperty('--app-h', window.innerHeight + 'px');
   }
 } catch(e) {} })();
 </script>
 <meta name="theme-color" content="#0f1320">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Increm">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiPjxwYXRoIGQ9Ik01MTIuMCAxNDMuNCBMMjM0LjMgMzI3LjcgTDIzNC4zIDY5Ni4zIEw1MTIuMCA4ODAuNiBMNzg5LjcgNjk2LjMgTDc4OS43IDMyNy43IFoiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzNFN0JGQSIgc3Ryb2tlLXdpZHRoPSIyMC40OCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxyZWN0IHg9IjMwMi4xIiB5PSI0NjguNSIgd2lkdGg9IjQxOS44IiBoZWlnaHQ9Ijg3LjAiIHJ4PSI0My41IiBmaWxsPSIjRjJGM0Y1Ii8+PHJlY3QgeD0iMjUwLjkiIHk9IjM2My41IiB3aWR0aD0iMTAyLjQiIGhlaWdodD0iMjk3LjAiIHJ4PSIzMS43IiBmaWxsPSIjRjJGM0Y1Ii8+PHJlY3QgeD0iMTY5LjAiIHk9IjQzNS4yIiB3aWR0aD0iNjEuNCIgaGVpZ2h0PSIxNTMuNiIgcng9IjI0LjYiIGZpbGw9IiMzRTdCRkEiLz48cmVjdCB4PSI2NzAuNyIgeT0iMzYzLjUiIHdpZHRoPSIxMDIuNCIgaGVpZ2h0PSIyOTcuMCIgcng9IjMxLjciIGZpbGw9IiNGMkYzRjUiLz48cmVjdCB4PSI3OTMuNiIgeT0iNDM1LjIiIHdpZHRoPSI2MS40IiBoZWlnaHQ9IjE1My42IiByeD0iMjQuNiIgZmlsbD0iIzNFN0JGQSIvPjwvc3ZnPg==">
 <link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
@@ -710,7 +709,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v52';
+  var APP_VERSION = 'v53';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2368,7 +2367,7 @@
      l'ouverture. On MEMORISE la safe-area (localStorage) pour l'appliquer IMMEDIATEMENT au demarrage
      suivant (avant le 1er paint, sans attendre env), puis on la rafraichit des qu'env() est lisible
      (timers, resize, rotation, 1re interaction). Ainsi la barre est bien placee des l'ouverture. */
-  var SA_KEY = 'increm-sa';
+  var SA_KEY = 'increm-sa2';
   function readEnv(prop){ var p=document.createElement('div'); p.style.cssText='position:fixed;left:-9999px;top:0;width:1px;height:env('+prop+',0px);pointer-events:none'; document.body.appendChild(p); var v=Math.round(p.getBoundingClientRect().height); p.remove(); return v; }
   function applySA(sab, sat){ var st=document.documentElement.style; if(sab>0) st.setProperty('--nav-pb','calc(7px + '+sab+'px)'); if(sat>0) st.setProperty('--header-pt', sat+'px'); }
   try{ var _sa=JSON.parse(localStorage.getItem(SA_KEY)||'null'); if(!_sa && navigator.standalone===true) _sa={b:34,t:50}; if(_sa) applySA(_sa.b||0, _sa.t||0); }catch(_){}   /* immediat, avant le 1er paint : valeur memorisee, ou defaut iOS standalone au 1er lancement */
@@ -2421,9 +2420,7 @@
     if(!NAV_STANDALONE) return;
     if(!window.matchMedia || !matchMedia('(max-width:680px)').matches) return;
     try{
-      var H = Math.max(window.innerHeight || 0, (window.screen && screen.height) || 0);
-      if (matchMedia('(orientation: landscape)').matches) H = window.innerHeight || H;
-      if (H) document.documentElement.style.setProperty('--app-h', H + 'px');
+      if (window.innerHeight) document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px');
     }catch(_){}
     if(Date.now() < shellFixUntil){ replayView(); scrollNudge(); }
   }
