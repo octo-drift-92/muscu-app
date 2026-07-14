@@ -593,14 +593,20 @@
   /* En app installee (PWA plein ecran) : barre du bas plus compacte, icones plus proches du bord
      (le gros espace = zone reservee a la barre d'accueil iPhone ; on la reduit pour un look proche de Safari) */
   @media (max-width:680px) and (display-mode: standalone) {
+    /* App-shell en PWA : la barre est DANS LE FLUX (plus de position:fixed) -> immunisee contre le
+       bug de composition iOS des elements fixes au lancement a froid (que meme un re-rendu force ne
+       recale pas — seule une interaction native le faisait). Seul le contenu (main) defile.
+       navSettle() garantit que nav.tabs est le dernier enfant de <body> (fin de colonne flex). */
+    body { position:fixed; inset:0; display:flex; flex-direction:column; overflow:hidden; }
+    body::before { display:none; }  /* halo fixe : encore une couche fixe, inutile ici */
+    main.wrap { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding-bottom:26px; }
     nav.tabs {
+      position:static; left:auto; right:auto; bottom:auto;
       padding-bottom:16px !important;
-      /* bug WebKit connu en PWA : un element fixe en bas avec backdrop-filter peut etre COMPOSE au
-         mauvais endroit au lancement a froid (geometrie JS correcte, rendu decale) -> barre opaque,
-         sans flou, sur sa propre couche (translateZ) des la 1re frame */
       background:var(--surface) !important;
       -webkit-backdrop-filter:none !important; backdrop-filter:none !important;
-      transform:translateZ(0);
+      box-shadow:none;
+      transform:none;
     }
   }
 </style>
@@ -695,7 +701,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v49';
+  var APP_VERSION = 'v50';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
