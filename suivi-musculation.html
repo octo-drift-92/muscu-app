@@ -6,11 +6,20 @@
 <script>
 /* Applique la safe-area memorisee AVANT le 1er paint (evite le flash de barre de nav mal placee sur PWA iOS) */
 (function(){ try{
+  var st = document.documentElement.style;
   var s = JSON.parse(localStorage.getItem('increm-sa') || 'null');
   if (!s && window.navigator.standalone === true) s = { b:34, t:50 };
-  if (s) { var st = document.documentElement.style;
+  if (s) {
     if (s.b > 0) st.setProperty('--nav-pb', 'calc(7px + ' + s.b + 'px)');
     if (s.t > 0) st.setProperty('--header-pt', s.t + 'px');
+  }
+  /* PWA : hauteur de l'app = hauteur PHYSIQUE de l'ecran (constante fiable), posee avant le 1er
+     paint — au lancement a froid iOS annonce parfois une hauteur de viewport trop courte (colonne
+     app-shell qui s'arrete au-dessus du bas, bande sombre sous la barre). */
+  if (window.navigator.standalone === true) {
+    var H = Math.max(window.innerHeight || 0, (window.screen && screen.height) || 0);
+    if (window.matchMedia && matchMedia('(orientation: landscape)').matches) H = window.innerHeight || H;
+    if (H) st.setProperty('--app-h', H + 'px');
   }
 } catch(e) {} })();
 </script>
@@ -597,7 +606,7 @@
        bug de composition iOS des elements fixes au lancement a froid (que meme un re-rendu force ne
        recale pas — seule une interaction native le faisait). Seul le contenu (main) defile.
        navSettle() garantit que nav.tabs est le dernier enfant de <body> (fin de colonne flex). */
-    body { position:fixed; inset:0; display:flex; flex-direction:column; overflow:hidden; }
+    body { position:fixed; top:0; left:0; right:0; height:100vh; height:var(--app-h, 100dvh); min-height:0; display:flex; flex-direction:column; overflow:hidden; }
     body::before { display:none; }  /* halo fixe : encore une couche fixe, inutile ici */
     main.wrap { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding-bottom:26px; }
     nav.tabs {
@@ -701,7 +710,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v51';
+  var APP_VERSION = 'v52';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2397,11 +2406,26 @@
      est trop court au demarrage, la colonne app-shell suit sa correction et la barre descend). */
   var shellFixUntil = 0;
   function replayView(){ var v=document.querySelector('.view.active'); if(!v) return; v.classList.remove('active'); void document.body.offsetHeight; v.classList.add('active'); }
+  function scrollNudge(){
+    /* reproduit le geste qui recale tout ("remonter la page") : un VRAI scroll du document de 2px,
+       aller-retour — invisible (le body est fixe, seul le canvas bouge d'1px un instant) mais force
+       iOS a recomposer la racine comme un rubber-band natif */
+    try{
+      var de=document.documentElement, prev=de.style.height;
+      de.style.height='calc(100% + 2px)';
+      window.scrollTo(0,1); window.scrollTo(0,0);
+      de.style.height=prev;
+    }catch(_){}
+  }
   function shellFix(){
     if(!NAV_STANDALONE) return;
     if(!window.matchMedia || !matchMedia('(max-width:680px)').matches) return;
-    try{ document.body.style.height = window.innerHeight+'px'; }catch(_){}
-    if(Date.now() < shellFixUntil) replayView();
+    try{
+      var H = Math.max(window.innerHeight || 0, (window.screen && screen.height) || 0);
+      if (matchMedia('(orientation: landscape)').matches) H = window.innerHeight || H;
+      if (H) document.documentElement.style.setProperty('--app-h', H + 'px');
+    }catch(_){}
+    if(Date.now() < shellFixUntil){ replayView(); scrollNudge(); }
   }
   shellFixUntil = Date.now()+8000;
   [250, 900, 2000].forEach(function(ms){ setTimeout(shellFix, ms); });
