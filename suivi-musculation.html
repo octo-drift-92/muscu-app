@@ -701,7 +701,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v50';
+  var APP_VERSION = 'v51';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2390,6 +2390,24 @@
   [120, 400, 1000].forEach(function(ms){ setTimeout(navSettle, ms); });
   window.addEventListener('touchstart', navSettle, {passive:true});
   if(window.matchMedia){ var _mqm=matchMedia('(max-width:680px)'); var _mvBack=function(){ if(!_mqm.matches){ var tb=document.querySelector('.topbar'), n=document.querySelector('nav.tabs'); if(tb && n && n.parentNode===document.body) tb.insertBefore(n, tb.querySelector('.grow')); } }; if(_mqm.addEventListener) _mqm.addEventListener('change', _mvBack); else if(_mqm.addListener) _mqm.addListener(_mvBack); }
+  /* Constat utilisateur : seul un CHANGEMENT DE VUE recale la barre (pas un simple toucher). On
+     automatise donc exactement ce geste apres le lancement : re-jeu de la vue active (toggle
+     .active synchrone — l'etat cache n'est jamais peint, mais l'animation/composition repart comme
+     lors d'une navigation) + hauteur du body epinglee sur innerHeight (si le viewport initial d'iOS
+     est trop court au demarrage, la colonne app-shell suit sa correction et la barre descend). */
+  var shellFixUntil = 0;
+  function replayView(){ var v=document.querySelector('.view.active'); if(!v) return; v.classList.remove('active'); void document.body.offsetHeight; v.classList.add('active'); }
+  function shellFix(){
+    if(!NAV_STANDALONE) return;
+    if(!window.matchMedia || !matchMedia('(max-width:680px)').matches) return;
+    try{ document.body.style.height = window.innerHeight+'px'; }catch(_){}
+    if(Date.now() < shellFixUntil) replayView();
+  }
+  shellFixUntil = Date.now()+8000;
+  [250, 900, 2000].forEach(function(ms){ setTimeout(shellFix, ms); });
+  window.addEventListener('pageshow', function(){ shellFixUntil = Date.now()+8000; setTimeout(shellFix, 60); });
+  window.addEventListener('resize', shellFix);
+  if(window.visualViewport && window.visualViewport.addEventListener){ window.visualViewport.addEventListener('resize', shellFix); }
 })();
 </script>
 </body>
