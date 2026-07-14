@@ -709,7 +709,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v54';
+  var APP_VERSION = 'v55';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2219,9 +2219,23 @@
   function setSyncStatus(s, err){ sync.status=s; if(err!=null) sync.lastError=err; updateSyncBadge(); if(isReglagesActive()) refreshSyncCard(); }
 
   function schedulePush(){ if(!syncConfigured()) return; clearTimeout(sync.pushTimer); sync.pushTimer=setTimeout(function(){ doPush(); },1500); }
+  function doneSetsCount(st){ var n=0; ((st&&st.weeks)||[]).forEach(function(w){ (w.days||[]).forEach(function(d){ (d.exercises||[]).forEach(function(x){ (x.sets||[]).forEach(function(s){ if(s.done) n++; }); }); }); }); return n; }
   function doPush(retry){
     if(!syncConfigured() || sync.pushing) return;
     if(!retry && sync.cfg.lastPushedAt && sync.cfg.lastPushedAt===state.updatedAt){ return; }
+    if(!retry && sync.cfg.lastSha && doneSetsCount(state)===0){
+      /* GARDE anti-ecrasement (le 14/07/2026 une reinstallation PWA a ecrase 65 semaines avec l'etat
+         de demarrage) : ne JAMAIS pousser silencieusement un etat sans aucune serie faite par-dessus
+         un cloud qui en contient — on verifie d'abord, et si le cloud a de l'historique on le recupere. */
+      sync.pushing=true; setSyncStatus('syncing');
+      ghPull().then(function(res){
+        sync.pushing=false;
+        if(!res.empty && doneSetsCount(res.data)>0){ sync.cfg.lastSha=res.sha; saveSyncCfg(); applyRemoteState(res.data); setSyncStatus('ok'); return; }
+        if(!res.empty){ sync.cfg.lastSha=res.sha; saveSyncCfg(); }
+        doPush(true);
+      }).catch(function(){ sync.pushing=false; setSyncStatus('error','Vérification du cloud impossible — envoi annulé par sécurité.'); });
+      return;
+    }
     sync.pushing=true; setSyncStatus('syncing');
     var payload=JSON.stringify(state), at=state.updatedAt;
     ghPush(payload, sync.cfg.lastSha).then(function(newSha){
@@ -2246,7 +2260,7 @@
       sync.pulling=false;
       if(res.empty){ setSyncStatus('ok'); return; }
       sync.cfg.lastSha=res.sha; saveSyncCfg();
-      if((res.data.updatedAt||0) > (state.updatedAt||0) || opts.force){ applyRemoteState(res.data); }
+      if((res.data.updatedAt||0) > (state.updatedAt||0) || opts.force || (doneSetsCount(state)===0 && doneSetsCount(res.data)>0)){ applyRemoteState(res.data); }
       setSyncStatus('ok');
     }).catch(function(e){ sync.pulling=false; setSyncStatus('error', e.message); });
   }
@@ -2285,12 +2299,16 @@
         return;
       }
       sync.cfg.lastSha=res.sha; saveSyncCfg();
+      var localDone=doneSetsCount(state), remoteDone=doneSetsCount(res.data);
       var hasLocal = state.weeks && state.weeks.length;
-      if(!hasLocal){ applyRemoteState(res.data); return; }
+      /* appareil sans historique (réinstallation, semaine de démarrage) -> le cloud gagne, sans question */
+      if(!hasLocal || (localDone===0 && remoteDone>0)){ applyRemoteState(res.data); return; }
       var when=''; try{ if(res.data.updatedAt) when=' (maj '+formatDateFR(new Date(res.data.updatedAt).toISOString().slice(0,10))+')'; }catch(e){}
-      if(confirm('Connexion réussie ✓\n\nDes données existent déjà sur GitHub'+when+'.\n\n• OK = récupérer le cloud (remplace les données de CET appareil)\n• Annuler = garder les données de cet appareil (et les envoyer au cloud)')){
+      if(confirm('Connexion réussie ✓\n\nDes données existent déjà sur GitHub'+when+' — '+remoteDone+' séries d\'historique.\n\n• OK = récupérer le cloud (remplace les données de CET appareil)\n• Annuler = autres options')){
         applyRemoteState(res.data);
-      } else { doPush(); }
+      } else if(confirm('⚠️ ATTENTION — écrasement du cloud\n\nTu vas REMPLACER les données du cloud ('+remoteDone+' séries d\'historique) par celles de CET appareil ('+localDone+' séries).\n\nOK = écraser le cloud\nAnnuler = ne rien transférer')){
+        doPush();
+      } else { setSyncStatus('ok'); toast('Connecté — aucune donnée transférée'); }
     }).catch(function(e){ setSyncStatus('error', e.message); alert('Échec de connexion : '+e.message); });
   }
   function syncNow(){ if(!syncConfigured()) return; doPull({force:false}).then(function(){ doPush(); }); }
