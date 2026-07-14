@@ -709,7 +709,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v55';
+  var APP_VERSION = 'v56';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1002,12 +1002,12 @@
         '</div>' +
       '</div>' +
       '<div class="ex-chips">' +
-        ((g && g!=='Autre')?'<span class="ex-chip ex-chip-mus">🎯 '+esc(g)+'</span>':'') +
+        ((g && g!=='Autre')?'<span class="ex-chip ex-chip-mus">'+esc(g)+'</span>':'') +
         '<span class="ex-chip ex-chip-sets"><span class="chip-lbl">Séries</span><button class="chip-step" data-act="setsMinus"'+(nSets<=1?' disabled':'')+' title="Retirer une série">−</button><b>'+nSets+'</b><button class="chip-step" data-act="setsPlus" title="Ajouter une série">+</button></span>' +
         ((rir!=null)?'<span class="ex-chip ex-chip-rir" title="Répétitions en réserve visées cette semaine">RIR '+rir+'</span>':'') +
         ((done>0&&!complete)?'<span class="ex-chip ex-chip-prog">'+done+'/'+nSets+' faites</span>':'') +
       '</div>' +
-      (ex.note?'<div class="ex-note-show">📝 '+esc(ex.note)+'</div>':'') +
+      (ex.note?'<div class="ex-note-show">'+esc(ex.note)+'</div>':'') +
       lastSessionHTML(ex.name, day) +
     '</div>';
   }
@@ -1045,7 +1045,7 @@
     renderWeekBar();
     var box = $('week-view');
     var w = curWeek();
-    if(!w){ box.innerHTML = '<div class="empty">'+ic('<path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/>')+'<p>Bienvenue 💪 Crée ta première semaine pour démarrer.</p></div>'; return; }
+    if(!w){ box.innerHTML = '<div class="empty">'+ic('<path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/>')+'<p>Bienvenue — crée ta première semaine pour démarrer.</p></div>'; return; }
     if(!reorderMode && !arrangedWeeks[w.id] && w.days.length>1){ var fd=focusDayId(w); w.days.forEach(function(d){ d.collapsed=(d.id!==fd); }); arrangedWeeks[w.id]=true; }
     var _scEl = appScroller(); var y = _scEl ? _scEl.scrollTop : window.scrollY;
     box.innerHTML = reorderMode ? renderReorderBoard(w) : (
@@ -1122,12 +1122,12 @@
     var day=ts.day, st=dayStats(day);
     var badge = st.total===0 ? 'à planifier' : (st.done>=st.total ? '✓ terminée' : (st.done>0 ? 'en cours' : 'à faire'));
     var btn = st.total>0 ? '<button class="btn primary today-go" data-act="gymStartToday" data-d="'+day.id+'" data-w="'+ts.week.id+'">'+(st.done>=st.total?'Revoir la séance':(st.done>0?'▶ Reprendre la séance':'▶ Commencer la séance'))+'</button>' : '';
-    return '<div class="today-card"><div class="today-head"><span class="today-label">Aujourd\'hui · '+esc(day.name||'Séance')+'</span><span class="today-badge">'+badge+'</span>'+sk+'</div><p class="today-prog">'+st.done+' / '+st.total+' séries · '+esc(ts.week.name||'')+(ts.week.rirTarget!=null?' · 🎯 '+ts.week.rirTarget+' RIR':'')+'</p>'+btn+'</div>';
+    return '<div class="today-card"><div class="today-head"><span class="today-label">Aujourd\'hui · '+esc(day.name||'Séance')+'</span><span class="today-badge">'+badge+'</span>'+sk+'</div><p class="today-prog">'+st.done+' / '+st.total+' séries · '+esc(ts.week.name||'')+(ts.week.rirTarget!=null?' · '+ts.week.rirTarget+' RIR':'')+'</p>'+btn+'</div>';
   }
   function nextSession(){ var t=todayISO(), best=null; state.weeks.forEach(function(w){ w.days.forEach(function(d){ if(d.date && d.date>t && d.exercises.length && (!best || d.date<best.day.date)){ best={week:w, day:d}; } }); }); return best; }
   function renderAccueil(){
     var box=$('accueil-body'); if(!box) return;
-    if(!state.weeks.length){ box.innerHTML='<div class="empty"><p>Bienvenue 💪 Crée ta première semaine dans l\'onglet Programme.</p></div>'; return; }
+    if(!state.weeks.length){ box.innerHTML='<div class="empty"><p>Bienvenue — crée ta première semaine dans l\'onglet Programme.</p></div>'; return; }
     var ts=todaySession(), streak=weekStreak(), t=todayISO();
     var head='<div class="acc-head"><div><div class="acc-hi">Aujourd\'hui</div><div class="acc-date">'+esc(formatDateFR(t))+'</div></div>'+(streak>1?'<span class="acc-streak">🔥 '+streak+' sem.</span>':'')+'</div>';
     var hero;
@@ -1137,7 +1137,7 @@
       var lbl=st.total===0?'':(st.done>=st.total?'Revoir la séance':(st.done>0?'▶ Reprendre':'▶ Démarrer la séance'));
       var btn=st.total>0?'<button class="btn primary acc-go" data-act="gymStartToday" data-d="'+day.id+'" data-w="'+ts.week.id+'">'+lbl+'</button>':'';
       hero='<div class="card acc-hero"><div class="acc-hero-top"><span class="acc-hero-k">Séance du jour</span>'+(st.total>0?'<span class="acc-hero-badge'+(st.done>=st.total?' ok':'')+'">'+(st.done>=st.total?'✓ terminée':st.done+'/'+st.total+' séries')+'</span>':'')+'</div>'
-        +'<div class="acc-hero-name">'+esc(day.name||'Séance')+(ts.week.rirTarget!=null?' <span class="acc-rir">🎯 '+ts.week.rirTarget+' RIR</span>':'')+'</div>'
+        +'<div class="acc-hero-name">'+esc(day.name||'Séance')+(ts.week.rirTarget!=null?' <span class="acc-rir">'+ts.week.rirTarget+' RIR</span>':'')+'</div>'
         +(exos?'<ul class="acc-exos">'+exos+'</ul>':'<p class="hint">Aucun exercice — ajoute-en dans Programme.</p>')
         +btn+'</div>';
     } else {
@@ -1207,19 +1207,19 @@
     if(rem>0.5){ el.className='gym-rest run'; el.innerHTML='<span class="gr-ic">⏱</span><span class="gr-t">'+mmss(rem)+'</span>'; }
     else { el.className='gym-rest over'; el.innerHTML='<span class="gr-ic">✓</span><span class="gr-t">+'+mmss(-rem)+'</span>'; if(!gymRestDone){ gymRestDone=true; if(navigator.vibrate){ try{ navigator.vibrate([130,70,130]); }catch(e){} } } }
   }
-  function gymRirBadge(){ var w=curWeek(); return (w&&w.rirTarget!=null)?'<span class="gym-rir">🎯 vise '+w.rirTarget+' RIR</span>':''; }
+  function gymRirBadge(){ var w=curWeek(); return (w&&w.rirTarget!=null)?'<span class="gym-rir">vise '+w.rirTarget+' RIR</span>':''; }
   var GROUP_COLORS={'Pectoraux':'#ef6f6c','Grand dorsal':'#4f86c6','Milieu du dos':'#6f9fd8','Deltoïde ant.':'#e8973a','Deltoïde lat.':'#f0b54e','Deltoïde post.':'#cf7d2e','Biceps':'#9b6dd6','Triceps':'#19b8aa','Quadriceps':'#3fa869','Ischios':'#7cc24a','Fessiers':'#e070a8','Mollets':'#b08152','Abdos':'#e6c64a','Lombaires':'#8090a6','Trapèzes':'#3fb1ca','Avant-bras':'#9aa3ad','Autre':'#8090a6'};
   function exPrimaryGroup(name){ var c=muscleContribs(name); return (c&&c.length)?c[0].g:'Autre'; }
   function groupColor(g){ return GROUP_COLORS[g]||'#8090a6'; }
   function exDot(name, cls){ var g=exPrimaryGroup(name); return '<span class="'+(cls||'ex-dot')+'" style="background:'+groupColor(g)+'" title="'+escA(g)+'"></span>'; }
   function e1rm(w, reps){ w=+w||0; reps=+reps||0; if(w<=0||reps<=0) return 0; if(reps===1) return Math.round(w); return Math.round(w*(1+reps/30)); }
   function exBestE1RM(name, beforeISO){ name=(name||'').trim(); if(!name) return 0; var best=0; state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||''; if(beforeISO && di && di>=beforeISO) return; d.exercises.forEach(function(x){ if((x.name||'').trim()!==name) return; x.sets.forEach(function(s){ if(s.done){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0, e=e1rm(wt,rp); if(e>best) best=e; } }); }); }); }); return best; }
-  function gymHeadStats(ex){ var nm=(ex.name||'').trim(); if(!nm) return ''; var pr=exBestBefore(nm,''), e=exBestE1RM(nm,''), out=[]; if(pr>0) out.push('<span class="gym-stat">🏆 Record <b>'+fmt(pr)+' kg</b></span>'); if(e>0) out.push('<span class="gym-stat">💪 1RM est. <b>~'+fmt(e)+' kg</b></span>'); return out.length?('<div class="gym-stats">'+out.join('')+'</div>'):''; }
+  function gymHeadStats(ex){ var nm=(ex.name||'').trim(); if(!nm) return ''; var pr=exBestBefore(nm,''), e=exBestE1RM(nm,''), out=[]; if(pr>0) out.push('<span class="gym-stat">🏆 Record <b>'+fmt(pr)+' kg</b></span>'); if(e>0) out.push('<span class="gym-stat">1RM est. <b>~'+fmt(e)+' kg</b></span>'); return out.length?('<div class="gym-stats">'+out.join('')+'</div>'):''; }
   function gymTargetCue(ex, day){
     var nm=(ex.name||'').trim(); if(!nm) return '';
     var lw=lastWorkWeight(nm, day&&day.date), lr=lastWorkReps(nm, day&&day.date);
-    if(lw==null||lr==null) return '<div class="gym-target new">🎯 Première fois sur cet exo — pose ta charge de référence.</div>';
-    return '<div class="gym-target">🎯 <span>Objectif : <b>battre '+numStr(lw)+' kg × '+intStr(lr)+'</b></span><span class="gym-target-hint">+1 rep ou +2,5 kg</span></div>';
+    if(lw==null||lr==null) return '<div class="gym-target new">Première fois sur cet exo — pose ta charge de référence.</div>';
+    return '<div class="gym-target"><span>Objectif : <b>battre '+numStr(lw)+' kg × '+intStr(lr)+'</b></span><span class="gym-target-hint">+1 rep ou +2,5 kg</span></div>';
   }
   function showSessionSummary(day){
     var ov=$('recap'); if(!ov || !day) return;
@@ -1228,7 +1228,7 @@
     var groups=Object.keys(grp).filter(function(g){return g!=='Autre';}).sort(function(a,b){return grp[b]-grp[a];});
     var chips=groups.slice(0,8).map(function(g){ return '<span class="recap-grp"><i style="background:'+groupColor(g)+'"></i>'+esc(g)+' <b>'+fmtSets(grp[g])+'</b></span>'; }).join('');
     var prH = prs.length ? '<div class="recap-sec"><div class="recap-sec-t">🏆 Records du jour</div>'+prs.map(function(p){ return '<div class="recap-pr"><span>'+esc(p.nm)+'</span><b>'+fmt(p.kg)+' kg</b><small>'+(p.prev>0?('+'+fmt(Math.round((p.kg-p.prev)*10)/10)+' kg'):'1er')+'</small></div>'; }).join('')+'</div>' : '';
-    ov.innerHTML='<div class="recap-card"><div class="recap-emoji">💪</div><div class="recap-h">Séance terminée</div><div class="recap-sub">'+esc(day.name||'Séance')+(day.date?' · '+esc(formatDateFR(day.date).slice(0,5)):'')+'</div><div class="recap-stats"><div><b>'+setsDone+'</b><span>séries</span></div><div><b>'+exNames+'</b><span>exos</span></div><div><b>'+fmtKg(tonnage)+'</b><span>kg levés</span></div></div>'+(chips?'<div class="recap-sec"><div class="recap-sec-t">Groupes travaillés</div><div class="recap-grps">'+chips+'</div></div>':'')+prH+'<div class="recap-foot"><button class="btn ghost" data-act="recapClose">Revoir</button><button class="btn primary" data-act="recapFinish">Terminer ✓</button></div></div>';
+    ov.innerHTML='<div class="recap-card"><div class="recap-h">Séance terminée</div><div class="recap-sub">'+esc(day.name||'Séance')+(day.date?' · '+esc(formatDateFR(day.date).slice(0,5)):'')+'</div><div class="recap-stats"><div><b>'+setsDone+'</b><span>séries</span></div><div><b>'+exNames+'</b><span>exos</span></div><div><b>'+fmtKg(tonnage)+'</b><span>kg levés</span></div></div>'+(chips?'<div class="recap-sec"><div class="recap-sec-t">Groupes travaillés</div><div class="recap-grps">'+chips+'</div></div>':'')+prH+'<div class="recap-foot"><button class="btn ghost" data-act="recapClose">Revoir</button><button class="btn primary" data-act="recapFinish">Terminer ✓</button></div></div>';
     ov.hidden=false; document.documentElement.classList.add('gym-open'); animIn(ov.querySelector('.recap-card'), {opacity:0, transform:'translateY(16px) scale(.97)'}); if(navigator.vibrate){ try{ navigator.vibrate([90,50,90,50,170]); }catch(e){} }
   }
   function recapClose(){ var ov=$('recap'); if(ov){ ov.hidden=true; ov.innerHTML=''; } }
@@ -1247,7 +1247,7 @@
       var isPR=s.done && (rw||0)>0 && gymRec>0 && (rw||0)>gymRec;
       var isActive=(i===gymActiveIdx);
       return '<div class="gym-set'+(s.done?' done':'')+(isPR?' pr':'')+(isActive?' active':'')+'">'
-        +'<div class="gym-set-n">'+(isActive?'<span class="gym-set-go">👉</span> ':'')+'Série '+(i+1)+(isPR?' <span class="pr-badge">🏆 PR</span>':'')+(isActive?' <span class="gym-set-active-tag">à faire</span>':'')+'</div>'
+        +'<div class="gym-set-n">'+'Série '+(i+1)+(isPR?' <span class="pr-badge">🏆 PR</span>':'')+(isActive?' <span class="gym-set-active-tag">à faire</span>':'')+'</div>'
         +'<div class="gym-stepper"><div class="gym-pm" role="button" aria-label="moins" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="-1">−</div><span class="gym-val"><input class="gym-num" data-gf="reps" data-si="'+i+'" inputmode="numeric" value="'+escA(intStr(rr))+'" aria-label="reps série '+(i+1)+'"><small>reps</small></span><div class="gym-pm" role="button" aria-label="plus" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="1">+</div></div>'
         +'<div class="gym-stepper"><div class="gym-pm" role="button" aria-label="moins" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="-2.5">−</div><span class="gym-val"><input class="gym-num" data-gf="weight" data-si="'+i+'" inputmode="decimal" value="'+escA(numStr(rw))+'" aria-label="charge série '+(i+1)+'"><small>kg</small></span><div class="gym-pm" role="button" aria-label="plus" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="2.5">+</div></div>'
         +'<div class="gym-done'+(s.done?' on':'')+'" role="button" data-act="gymDone" data-si="'+i+'">'+(s.done?'✓ Fait':'Fait')+'</div>'
@@ -1419,7 +1419,7 @@
     if(composerCfg.deload){ var dl=blockWeek(prev, date, 'deload'); if(composerCfg.rir) dl.rirTarget=4; made.push(dl); }
     made.forEach(function(w){ state.weeks.push(w); });
     state.currentWeekId=made[0].id; save(); closeComposer(); renderProgramme();
-    toast(made.length+' semaines générées 💪');
+    toast(made.length+' semaines générées');
   }
   // change de mode/charge sur une semaine → recalcule ce même exercice dans les semaines suivantes (non commencées)
   function propagateProgression(fromWeek, ex, baseSet){
@@ -1902,7 +1902,7 @@
   function renderMensurations(){
     var box=$('mens-body'); if(!box) return;
     var sorted=sortedMens(), last=sorted[sorted.length-1]||null;
-    var guide='<div class="mens-guide-wrap"><button class="mens-guide-btn" data-act="mensGuide">📏 Comment prendre les mesures <span class="mens-chev">'+(mensGuideOpen?'▲':'▼')+'</span></button>'+
+    var guide='<div class="mens-guide-wrap"><button class="mens-guide-btn" data-act="mensGuide">Comment prendre les mesures <span class="mens-chev">'+(mensGuideOpen?'▲':'▼')+'</span></button>'+
       (mensGuideOpen?('<div class="mens-guide"><p class="mens-gen">À froid, de préférence le matin avant l\'entraînement. Ruban bien à plat et horizontal, serré mais sans comprimer la peau. Refais toujours dans les mêmes conditions (même moment, même côté) pour comparer ce qui est comparable. Tout en centimètres.</p>'+
         MENS_PARTS.map(function(p){ return '<div class="mens-gitem"><b>'+esc(p.label)+'</b> — '+esc(p.tip)+'</div>'; }).join('')+'</div>'):'')+'</div>';
     var form='<div class="card mens-form"><div class="section-label">Nouvelle mesure</div>'+
@@ -1919,7 +1919,7 @@
         return '<div class="mens-card"><div class="mens-card-k">'+esc(p.label)+'</div><div class="mens-card-v">'+numStr(latest)+' <small>cm</small></div>'+(series.length>1?'<div class="mens-card-d '+cls+'">'+sg+numStr(d)+' cm</div>':'<div class="mens-card-d faint">1ʳᵉ mesure</div>')+'</div>';
       }).join('');
       var hist='<div class="mens-hist-wrap"><table class="hist mens-hist"><thead><tr><th>Date</th>'+MENS_PARTS.map(function(p){return '<th title="'+escA(p.label)+'">'+esc(p.label.split(' ')[0].slice(0,5))+'</th>';}).join('')+'<th></th></tr></thead><tbody>'+
-        sorted.slice().reverse().map(function(m){ var vrow='<tr><td>'+esc(m.date?formatDateFR(m.date).slice(0,5):'?')+'</td>'+MENS_PARTS.map(function(p){ return '<td>'+((m.vals&&m.vals[p.k]!=null)?numStr(m.vals[p.k]):'·')+'</td>'; }).join('')+'<td><button class="mini-btn del" data-act="mensDel" data-id="'+m.id+'" title="Supprimer cette mesure">'+ic(P.trash)+'</button></td></tr>'; var nrow=(m.note&&m.note.trim())?'<tr class="mens-note-row"><td colspan="'+(MENS_PARTS.length+2)+'">📝 '+esc(m.note)+'</td></tr>':''; return vrow+nrow; }).join('')+'</tbody></table></div>';
+        sorted.slice().reverse().map(function(m){ var vrow='<tr><td>'+esc(m.date?formatDateFR(m.date).slice(0,5):'?')+'</td>'+MENS_PARTS.map(function(p){ return '<td>'+((m.vals&&m.vals[p.k]!=null)?numStr(m.vals[p.k]):'·')+'</td>'; }).join('')+'<td><button class="mini-btn del" data-act="mensDel" data-id="'+m.id+'" title="Supprimer cette mesure">'+ic(P.trash)+'</button></td></tr>'; var nrow=(m.note&&m.note.trim())?'<tr class="mens-note-row"><td colspan="'+(MENS_PARTS.length+2)+'">'+esc(m.note)+'</td></tr>':''; return vrow+nrow; }).join('')+'</tbody></table></div>';
       prog='<div class="card mens-prog"><div class="section-label">Progression <small style="font-weight:400;color:var(--text-faint)">('+sorted.length+' mesure'+(sorted.length>1?'s':'')+')</small></div><div class="mens-cards">'+cards+'</div>'+hist+'</div>';
     } else {
       prog='<div class="card"><p class="hint">Aucune mesure encore. Enregistre ta première pour lancer le suivi — et pense à noter tes conditions (même moment, même côté) pour bien comparer ensuite.</p></div>';
