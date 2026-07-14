@@ -592,7 +592,17 @@
   #toast { z-index:400; }
   /* En app installee (PWA plein ecran) : barre du bas plus compacte, icones plus proches du bord
      (le gros espace = zone reservee a la barre d'accueil iPhone ; on la reduit pour un look proche de Safari) */
-  @media (max-width:680px) and (display-mode: standalone) { nav.tabs { padding-bottom: 16px !important; } }
+  @media (max-width:680px) and (display-mode: standalone) {
+    nav.tabs {
+      padding-bottom:16px !important;
+      /* bug WebKit connu en PWA : un element fixe en bas avec backdrop-filter peut etre COMPOSE au
+         mauvais endroit au lancement a froid (geometrie JS correcte, rendu decale) -> barre opaque,
+         sans flou, sur sa propre couche (translateZ) des la 1re frame */
+      background:var(--surface) !important;
+      -webkit-backdrop-filter:none !important; backdrop-filter:none !important;
+      transform:translateZ(0);
+    }
+  }
 </style>
 </head>
 <body>
@@ -685,7 +695,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v48';
+  var APP_VERSION = 'v49';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2353,6 +2363,27 @@
   if(window.visualViewport && window.visualViewport.addEventListener){ window.visualViewport.addEventListener('resize', fixSafeArea); }
   window.addEventListener('orientationchange', function(){ setTimeout(fixSafeArea, 300); });
   ['pointerdown','touchstart'].forEach(function(ev){ window.addEventListener(ev, function(){ fixSafeArea(); setTimeout(fixSafeArea,60); }, {passive:true}); });
+  /* Recalage de la barre en PWA : iOS peut COMPOSER la barre fixe au mauvais endroit au lancement a
+     froid (bug WebKit standalone) meme quand la geometrie est correcte — un changement de vue la
+     recale. On automatise ce recalage : barre deplacee en enfant direct de <body> (plus aucune
+     interaction avec le header) + re-rendu force (toggle display synchrone, jamais peint) au
+     demarrage, au load/pageshow (retour au 1er plan), sur timers et au 1er toucher. */
+  var NAV_STANDALONE = (navigator.standalone===true) || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  var navSettleCount = 0;
+  function navSettle(){
+    if(!NAV_STANDALONE || navSettleCount>12) return;
+    if(!window.matchMedia || !matchMedia('(max-width:680px)').matches) return;
+    var n=document.querySelector('nav.tabs'); if(!n) return;
+    navSettleCount++;
+    if(n.parentNode!==document.body) document.body.appendChild(n);   /* enfant direct de body — events delegues au document, donc sans risque */
+    n.style.display='none'; void n.offsetHeight; n.style.display=''; /* re-rendu force, synchrone : l'etat cache n'est jamais peint */
+  }
+  navSettle();
+  window.addEventListener('load', navSettle);
+  window.addEventListener('pageshow', function(){ navSettleCount=0; navSettle(); });
+  [120, 400, 1000].forEach(function(ms){ setTimeout(navSettle, ms); });
+  window.addEventListener('touchstart', navSettle, {passive:true});
+  if(window.matchMedia){ var _mqm=matchMedia('(max-width:680px)'); var _mvBack=function(){ if(!_mqm.matches){ var tb=document.querySelector('.topbar'), n=document.querySelector('nav.tabs'); if(tb && n && n.parentNode===document.body) tb.insertBefore(n, tb.querySelector('.grow')); } }; if(_mqm.addEventListener) _mqm.addEventListener('change', _mvBack); else if(_mqm.addListener) _mqm.addListener(_mvBack); }
 })();
 </script>
 </body>
