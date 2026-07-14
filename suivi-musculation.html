@@ -709,7 +709,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v53';
+  var APP_VERSION = 'v54';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2403,31 +2403,18 @@
      .active synchrone — l'etat cache n'est jamais peint, mais l'animation/composition repart comme
      lors d'une navigation) + hauteur du body epinglee sur innerHeight (si le viewport initial d'iOS
      est trop court au demarrage, la colonne app-shell suit sa correction et la barre descend). */
-  var shellFixUntil = 0;
-  function replayView(){ var v=document.querySelector('.view.active'); if(!v) return; v.classList.remove('active'); void document.body.offsetHeight; v.classList.add('active'); }
-  function scrollNudge(){
-    /* reproduit le geste qui recale tout ("remonter la page") : un VRAI scroll du document de 2px,
-       aller-retour — invisible (le body est fixe, seul le canvas bouge d'1px un instant) mais force
-       iOS a recomposer la racine comme un rubber-band natif */
-    try{
-      var de=document.documentElement, prev=de.style.height;
-      de.style.height='calc(100% + 2px)';
-      window.scrollTo(0,1); window.scrollTo(0,0);
-      de.style.height=prev;
-    }catch(_){}
-  }
+  /* Le passage au statut 'black' (v53) a corrige le cadrage au lancement -> les bequilles de
+     recalage (rejeu de l'animation de vue, scroll nudge, timers 250/900/2000ms) sont RETIREES :
+     devenues inutiles, elles faisaient trembler l'ecran au demarrage. On garde juste --app-h
+     synchronisee sur les vrais evenements de viewport. */
   function shellFix(){
     if(!NAV_STANDALONE) return;
     if(!window.matchMedia || !matchMedia('(max-width:680px)').matches) return;
-    try{
-      if (window.innerHeight) document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px');
-    }catch(_){}
-    if(Date.now() < shellFixUntil){ replayView(); scrollNudge(); }
+    try{ if (window.innerHeight) document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px'); }catch(_){}
   }
-  shellFixUntil = Date.now()+8000;
-  [250, 900, 2000].forEach(function(ms){ setTimeout(shellFix, ms); });
-  window.addEventListener('pageshow', function(){ shellFixUntil = Date.now()+8000; setTimeout(shellFix, 60); });
+  window.addEventListener('pageshow', function(){ setTimeout(shellFix, 60); });
   window.addEventListener('resize', shellFix);
+  window.addEventListener('orientationchange', function(){ setTimeout(shellFix, 250); });
   if(window.visualViewport && window.visualViewport.addEventListener){ window.visualViewport.addEventListener('resize', shellFix); }
 })();
 </script>
