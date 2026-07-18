@@ -192,6 +192,13 @@
   .day-tabs { display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:2px 0; scrollbar-width:none; flex:0 1 auto; min-width:0; }
   .day-tabs::-webkit-scrollbar { display:none; }
   .day-add-wrap { flex:0 0 auto; }
+  /* nom de journee + chevron pour changer le jour de la semaine */
+  .day-name-wrap { display:flex; align-items:center; gap:2px; min-width:0; }
+  .day-head .day-name-wrap .name-input { flex:1 1 auto; min-width:0; }
+  .day-change { flex:0 0 auto; width:30px; height:30px; border-radius:8px; border:1px solid transparent; background:transparent; color:var(--text-faint); display:grid; place-items:center; cursor:pointer; }
+  .day-change:hover { background:var(--surface-3); color:var(--text); }
+  .day-change .icon { width:15px; height:15px; }
+  .day-change-menu button.active { color:var(--accent); font-weight:800; }
   .day-tab { flex:0 0 auto; display:inline-flex; align-items:center; gap:8px; padding:9px 15px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--text-dim); font:inherit; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
   .day-tab:hover { background:var(--surface-2); color:var(--text); }
   .day-tab.active { background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 42%,var(--border)); color:var(--text); }
@@ -333,7 +340,9 @@
        -> les 3 boutons restent alignes avec la date, et le compteur de series (qui s'elargit quand
           le jour est termine : "3/3 series 🎉") ne les pousse plus vers le bas. */
     .day-head { display:grid; grid-template-columns:1fr auto; grid-template-areas:"name sum" "date actions"; gap:9px 10px; align-items:center; }
-    .day-head .name-input { grid-area:name; min-width:0; }
+    .day-head .day-name-wrap { grid-area:name; min-width:0; }
+    .day-change { width:36px; height:36px; }
+    .day-change .icon { width:17px; height:17px; }
     .day-head .date-input { grid-area:date; justify-self:start; }
     .day-head .day-sum { grid-area:sum; justify-self:end; }
     .day-head .day-actions { grid-area:actions; margin-left:0; }
@@ -736,7 +745,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v63';
+  var APP_VERSION = 'v64';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1070,7 +1079,11 @@
     return '<div class="day-card'+(dayIsComplete(day)?' day-complete':'')+'" data-d="'+day.id+'">' +
       '<div class="day-head">' +
         '<button class="mini-btn drag-handle" data-drag="day" title="Glisser pour réordonner">'+ic(P.grip,'grip')+'</button>' +
-        '<input class="name-input" data-field="dayName" value="'+escA(day.name)+'" placeholder="Nom du jour">' +
+        '<div class="day-name-wrap menu-wrap">' +
+          '<input class="name-input" data-field="dayName" value="'+escA(day.name)+'" placeholder="Nom du jour">' +
+          '<button class="day-change" data-act="menu" data-menu="daychg-'+day.id+'" title="Changer le jour de la semaine" aria-label="Changer le jour de la semaine">'+ic(P.down)+'</button>' +
+          '<div class="menu day-change-menu" id="daychg-'+day.id+'" hidden>'+dayChangeMenuHTML(day)+'</div>' +
+        '</div>' +
         '<input class="date-input" type="date" data-field="dayDate" value="'+escA(day.date)+'" title="Date de la séance">' +
         '<span class="day-sum" id="daysum-'+day.id+'">'+daySumHTML(day)+'</span>' +
         '<div class="day-actions">' +
@@ -1560,6 +1573,27 @@
     return items+'<div class="menu-sep"></div><button data-act="reoAddDay" data-day="">Autre (jour libre)…</button>';
   }
   function reoAddDay(name){ var w=curWeek(); if(!w) return; var free=!(name&&String(name).trim()); var d=freshDay(name||('Jour '+(w.days.length+1))); w.days.push(d); if(w.startDate) autoDateWeek(w); sortWeekDays(w); selectDayInWeek(w,d.id); save(); closeMenus(); renderProgramme(); if(free) focusField('[data-d="'+d.id+'"] [data-field="dayName"]'); }
+  // Menu "changer ce jour en un autre jour de la semaine" : propose les jours libres + marque le jour actuel.
+  function dayChangeMenuHTML(day){
+    var w=curWeek();
+    var used={}; (w?w.days:[]).forEach(function(d){ if(d.id!==day.id){ var off=dayOffsetFromName(d.name); if(off!=null) used[off]=true; } });
+    var cur=dayOffsetFromName(day.name);
+    var items=WEEKDAY_LABELS.map(function(lbl,i){
+      if(used[i] && i!==cur) return '';                        // deja pris par un autre jour
+      return '<button data-act="dayChange" data-day="'+lbl+'"'+(i===cur?' class="active"':'')+'>'+lbl+(i===cur?' ✓':'')+'</button>';
+    }).join('');
+    return items || '<div class="menu-empty">Tous les autres jours sont déjà pris.</div>';
+  }
+  function dayChangeWeekday(day, label){
+    if(!day || !label) return;
+    if(day.name===label){ closeMenus(); return; }
+    day.name=label;
+    var w=curWeek();
+    if(w && w.startDate) autoDateWeek(w);                       // recale la date de ce jour sur le nouveau jour de la semaine
+    if(w) sortWeekDays(w);
+    save(); closeMenus(); renderProgramme();
+    toast('Jour changé en « '+label+' »');
+  }
   function duplicateDay(loc){ if(!loc.day) return; var w=curWeek(); var nd=cloneDay(loc.day, loc.day.name+' (copie)'); var i=w.days.findIndex(function(d){return d.id===loc.day.id;}); w.days.splice(i+1,0,nd); selectDayInWeek(w,nd.id); save(); renderProgramme(); toast('Jour dupliqué'); }
   function deleteDay(loc){ if(!loc.day) return; var w=curWeek(); var i=w.days.findIndex(function(d){return d.id===loc.day.id;}); var day=loc.day; w.days.splice(i,1); save(); renderProgramme(); toastUndo('Jour supprimé', function(){ w.days.splice(i,0,day); save(); renderProgramme(); }); }
   function toggleCollapse(loc,btn){ if(!loc.day) return; loc.day.collapsed=!loc.day.collapsed; save(); btn.closest('.day-card').classList.toggle('collapsed', loc.day.collapsed); }
@@ -2188,6 +2222,8 @@
       case 'addDay': addDay(); break;
       case 'selectDay': { var _w=curWeek(); if(_w && b.dataset.d){ selectedDayByWeek[_w.id]=b.dataset.d; renderProgramme(); } break; }
       case 'dayAddMenu': toggleMenu(b.dataset.menu || 'day-add-menu'); break;
+      case 'menu': toggleMenu(b.dataset.menu); break;
+      case 'dayChange': { var _lc=locate(b); if(_lc.day) dayChangeWeekday(_lc.day, b.dataset.day); break; }
       case 'reorderToggle': reorderMode=true; renderProgramme(); break;
       case 'reorderDone': reorderMode=false; renderProgramme(); break;
       case 'reoUp': reoArrow(b,-1); break;
