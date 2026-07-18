@@ -187,6 +187,20 @@
   .day-note { width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:9px; font:inherit; font-size:13px; color:var(--text); padding:8px 11px; margin:12px 0; }
   .day-note:focus { outline:none; border-color:var(--accent); }
   .day-note::placeholder { color:var(--text-faint); }
+  /* Onglets de jours : la vue Programme montre un seul jour a la fois, on choisit lequel ici. */
+  .day-tabs { display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:2px 2px 14px; scrollbar-width:none; }
+  .day-tabs::-webkit-scrollbar { display:none; }
+  .day-tab { flex:0 0 auto; display:inline-flex; align-items:center; gap:8px; padding:9px 15px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--text-dim); font:inherit; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+  .day-tab:hover { background:var(--surface-2); color:var(--text); }
+  .day-tab.active { background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 42%,var(--border)); color:var(--text); }
+  .day-tab-name { font-weight:700; }
+  .day-tab-sum { font-size:11.5px; font-weight:800; color:var(--text-faint); font-variant-numeric:tabular-nums; }
+  .day-tab.active .day-tab-sum { color:var(--accent); }
+  .day-tab-check { color:var(--success); font-weight:900; font-size:13px; line-height:1; }
+  .day-tab.done { border-color:color-mix(in srgb,var(--success) 30%,var(--border)); }
+  .day-tab-add { padding:9px 13px; color:var(--text-faint); }
+  .day-tab-add:hover { color:var(--accent); border-color:color-mix(in srgb,var(--accent) 40%,var(--border)); }
+  .day-tab-add .icon { width:16px; height:16px; }
 
   .ex-block { border:1px solid var(--border-soft); border-radius:14px; padding:15px 15px; margin-bottom:13px; background:var(--surface-2); }
   .ex-block.dragging { opacity:.45; }
@@ -720,7 +734,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v61';
+  var APP_VERSION = 'v62';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -924,7 +938,7 @@
     week.days.forEach(function(day){ var s=dayStats(day); t+=s.total; d+=s.done; });
     return week.days.length+' jours · <b>'+d+'/'+t+'</b> séries faites';
   }
-  function updateDaySummary(id){ var el=$('daysum-'+id); if(!el) return; var w=curWeek(); var day=w.days.filter(function(d){return d.id===id;})[0]; if(day) el.innerHTML=daySumHTML(day); }
+  function updateDaySummary(id){ var w=curWeek(); if(!w) return; var day=w.days.filter(function(d){return d.id===id;})[0]; if(!day) return; var el=$('daysum-'+id); if(el) el.innerHTML=daySumHTML(day); var tab=document.querySelector('.day-tab[data-d="'+id+'"]'); if(tab){ tab.innerHTML=dayTabInner(day); tab.classList.toggle('done', dayIsComplete(day)); } }
   function updateWeekSummary(){ var el=$('week-sum'); var w=curWeek(); if(el&&w) el.innerHTML=weekSumHTML(w); }
 
   /* ---------- icons ---------- */
@@ -1078,6 +1092,28 @@
   var reorderMode=false;
   var arrangedWeeks={};
   function focusDayId(w){ var t=todayISO(); for(var i=0;i<w.days.length;i++){ if(w.days[i].date===t) return w.days[i].id; } for(var j=0;j<w.days.length;j++){ if(!dayIsComplete(w.days[j])) return w.days[j].id; } return w.days[0]?w.days[0].id:null; }
+  // Vue "un jour a la fois" : le jour choisi est memorise par semaine (memoire de session), defaut = jour du focus (aujourd'hui / 1er non termine).
+  var selectedDayByWeek={};
+  function selectedDayFor(w){
+    if(!w || !w.days || !w.days.length) return null;
+    var id=selectedDayByWeek[w.id];
+    if(id && w.days.some(function(d){ return d.id===id; })) return id;
+    var fd=focusDayId(w); selectedDayByWeek[w.id]=fd; return fd;
+  }
+  function selectDayInWeek(w, dayId){ if(w) selectedDayByWeek[w.id]=dayId; }
+  function dayTabInner(d){
+    var st=dayStats(d), comp=dayIsComplete(d);
+    var prog = st.total ? (comp ? '<span class="day-tab-check" aria-label="terminé">✓</span>' : '<span class="day-tab-sum">'+st.done+'/'+st.total+'</span>') : '';
+    return '<span class="day-tab-name">'+esc(d.name||'Jour')+'</span>'+prog;
+  }
+  function dayTabsHTML(w, selId){
+    return '<div class="day-tabs" role="tablist">' +
+      w.days.map(function(d){
+        return '<button class="day-tab'+(d.id===selId?' active':'')+(dayIsComplete(d)?' done':'')+'" role="tab" aria-selected="'+(d.id===selId?'true':'false')+'" data-act="selectDay" data-d="'+d.id+'">'+dayTabInner(d)+'</button>';
+      }).join('') +
+      '<button class="day-tab day-tab-add" data-act="addDay" title="Ajouter un jour" aria-label="Ajouter un jour">'+ic(P.plus)+'</button>' +
+    '</div>';
+  }
   // ajuste la hauteur d'un textarea de nom a son contenu (noms longs sur plusieurs lignes)
   function autosizeName(el){ if(!el || el.tagName!=='TEXTAREA') return; el.style.height='auto'; el.style.height=el.scrollHeight+'px'; }
   function autosizeNames(root){ var list=(root||document).querySelectorAll('textarea.ex-name'); for(var i=0;i<list.length;i++) autosizeName(list[i]); }
@@ -1087,7 +1123,8 @@
     var box = $('week-view');
     var w = curWeek();
     if(!w){ box.innerHTML = '<div class="empty">'+ic('<path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/>')+'<p>Bienvenue — crée ta première semaine pour démarrer.</p></div>'; return; }
-    if(!reorderMode && !arrangedWeeks[w.id] && w.days.length>1){ var fd=focusDayId(w); w.days.forEach(function(d){ d.collapsed=(d.id!==fd); }); arrangedWeeks[w.id]=true; }
+    var selId = selectedDayFor(w);
+    var selDay = w.days.filter(function(d){ return d.id===selId; })[0] || w.days[0] || null;
     var _scEl = appScroller(); var y = _scEl ? _scEl.scrollTop : window.scrollY;
     box.innerHTML = reorderMode ? renderReorderBoard(w) : (
       '<div class="week-head">' +
@@ -1095,10 +1132,10 @@
         '<input class="date-input" type="date" data-field="weekDate" value="'+escA(w.startDate)+'" title="Premier jour de la semaine — définit le nom (Sem. du …)">' +
         '<span class="sum" id="week-sum">'+weekSumHTML(w)+'</span>' +
         (w.rirTarget!=null?'<span class="rir-badge" title="RIR cible de la semaine — à quel point pousser (reps en réserve)">RIR '+w.rirTarget+'</span>':'') +
-        '<button class="btn btn-sm ghost" data-act="reorderToggle" style="margin-left:auto" title="Réorganiser / déplacer les exercices">'+ic(P.move)+'Réorganiser</button>' +
-        '<button class="btn btn-sm" data-act="addDay">'+ic(P.plus)+'Ajouter un jour</button>' +
+        '<button class="btn btn-sm ghost" data-act="reorderToggle" style="margin-left:auto" title="Organiser la semaine : créer et déplacer les exercices entre les jours">'+ic(P.move)+'Organisateur</button>' +
       '</div>' +
-      w.days.map(dayCardHTML).join('') +
+      (w.days.length ? dayTabsHTML(w, selId) : '') +
+      (selDay ? dayCardHTML(selDay) : '<div class="empty" style="padding:24px 12px">Aucun jour dans cette semaine. Ajoute-en un ci-dessous.</div>') +
       '<div class="add-day-row">' +
         '<button class="btn" data-act="addDay">'+ic(P.plus)+'Ajouter un jour</button>' +
         '<div class="menu-wrap">' +
@@ -1109,6 +1146,8 @@
     );
     if(_scEl) _scEl.scrollTop=y; else window.scrollTo(0,y);
     autosizeNames(box);
+    var _tabs=box.querySelector('.day-tabs'), _act=box.querySelector('.day-tab.active');
+    if(_tabs && _act) _tabs.scrollLeft = Math.max(0, _act.offsetLeft - (_tabs.clientWidth - _act.offsetWidth)/2);
   }
   function appScroller(){ var m=document.querySelector('main.wrap'); if(m){ var o=getComputedStyle(m).overflowY; if(o==='auto'||o==='scroll') return m; } return null; }
   function exDone(x){ return !!(x.sets && x.sets.some(function(s){ return s.done; })); }
@@ -1135,7 +1174,7 @@
           +'<button class="mini-btn del" data-act="delDay" aria-label="Supprimer le jour" title="Supprimer le jour">'+ic(P.trash)+'</button>'
         +'</div><div class="reo-list" data-d="'+d.id+'">'+rows+'</div><div class="reo-foot"><button class="btn btn-sm ghost reo-add" data-act="addEx">'+ic(P.plus)+'Ajouter un exercice</button></div></div>';
     }).join('');
-    return '<div class="reorder-bar"><span>Glisse <b>⠿</b> ou ↑↓ pour déplacer · duplique, supprime, renomme · ajoute un exercice (par jour) ou un jour (en bas).</span><button class="btn btn-sm primary" data-act="reorderDone">Terminé</button></div><div class="reorder-board">'+days+'</div><div class="reo-add-day"><div class="menu-wrap"><button class="btn btn-sm" data-act="reoAddDayMenu">'+ic(P.plus)+'Ajouter un jour '+ic(P.down)+'</button><div class="menu menu-up" id="reo-addday-menu" hidden>'+reoAddDayMenuHTML(w)+'</div></div></div>';
+    return '<div class="reorder-bar"><span><b>Organisateur</b> — glisse <b>⠿</b> ou ↑↓ pour déplacer un exercice (y compris vers un autre jour) · ajoute (par jour), duplique, renomme, supprime · ajoute un jour en bas.</span><button class="btn btn-sm primary" data-act="reorderDone">Terminé</button></div><div class="reorder-board">'+days+'</div><div class="reo-add-day"><div class="menu-wrap"><button class="btn btn-sm" data-act="reoAddDayMenu">'+ic(P.plus)+'Ajouter un jour '+ic(P.down)+'</button><div class="menu menu-up" id="reo-addday-menu" hidden>'+reoAddDayMenuHTML(w)+'</div></div></div>';
   }
   function reoMove(dayId, exId, dir){
     var w=curWeek(); if(!w) return;
@@ -1502,15 +1541,15 @@
     return { id:uid(), name:name||d.name, date:'', note:d.note, collapsed:false, exercises:d.exercises.map(function(x){
       return { id:uid(), name:x.name, note:x.note, sets:x.sets.map(function(s){ return freshSet(s.planReps,s.planWeight); }) }; }) };
   }
-  function addDay(){ var w=curWeek(); if(!w) return; var d=freshDay('Jour '+(w.days.length+1)); w.days.push(d); save(); renderProgramme(); focusField('[data-d="'+d.id+'"] [data-field="dayName"]'); }
+  function addDay(){ var w=curWeek(); if(!w) return; var d=freshDay('Jour '+(w.days.length+1)); w.days.push(d); selectDayInWeek(w,d.id); save(); renderProgramme(); focusField('[data-d="'+d.id+'"] [data-field="dayName"]'); }
   var WEEKDAY_LABELS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
   function reoAddDayMenuHTML(w){
     var used={}; (w.days||[]).forEach(function(d){ var off=dayOffsetFromName(d.name); if(off!=null) used[off]=true; });
     var items=WEEKDAY_LABELS.map(function(lbl,i){ return used[i]?'':'<button data-act="reoAddDay" data-day="'+lbl+'">'+lbl+'</button>'; }).join('');
     return items||'<div class="menu-empty">Tous les jours de la semaine sont déjà créés.</div>';
   }
-  function reoAddDay(name){ var w=curWeek(); if(!w) return; var d=freshDay(name||('Jour '+(w.days.length+1))); w.days.push(d); if(w.startDate) autoDateWeek(w); save(); closeMenus(); renderProgramme(); focusField('[data-d="'+d.id+'"] [data-field="dayName"]'); }
-  function duplicateDay(loc){ if(!loc.day) return; var w=curWeek(); var nd=cloneDay(loc.day, loc.day.name+' (copie)'); var i=w.days.findIndex(function(d){return d.id===loc.day.id;}); w.days.splice(i+1,0,nd); save(); renderProgramme(); toast('Jour dupliqué'); }
+  function reoAddDay(name){ var w=curWeek(); if(!w) return; var d=freshDay(name||('Jour '+(w.days.length+1))); w.days.push(d); if(w.startDate) autoDateWeek(w); selectDayInWeek(w,d.id); save(); closeMenus(); renderProgramme(); focusField('[data-d="'+d.id+'"] [data-field="dayName"]'); }
+  function duplicateDay(loc){ if(!loc.day) return; var w=curWeek(); var nd=cloneDay(loc.day, loc.day.name+' (copie)'); var i=w.days.findIndex(function(d){return d.id===loc.day.id;}); w.days.splice(i+1,0,nd); selectDayInWeek(w,nd.id); save(); renderProgramme(); toast('Jour dupliqué'); }
   function deleteDay(loc){ if(!loc.day) return; var w=curWeek(); var i=w.days.findIndex(function(d){return d.id===loc.day.id;}); var day=loc.day; w.days.splice(i,1); save(); renderProgramme(); toastUndo('Jour supprimé', function(){ w.days.splice(i,0,day); save(); renderProgramme(); }); }
   function toggleCollapse(loc,btn){ if(!loc.day) return; loc.day.collapsed=!loc.day.collapsed; save(); btn.closest('.day-card').classList.toggle('collapsed', loc.day.collapsed); }
   function toggleExCollapse(loc,btn){ if(!loc.ex) return; loc.ex.collapsed=!loc.ex.collapsed; save(); var b=btn.closest('.ex-block'); if(b){ var sm=b.querySelector('.ex-summary'); if(sm) sm.innerHTML=exSummary(loc.ex); b.classList.toggle('collapsed', loc.ex.collapsed); } }
@@ -1537,7 +1576,7 @@
     var w=curWeek(); if(!w) return;
     var d={ id:uid(), name:t.name, date:'', note:'', collapsed:false, exercises:t.exercises.map(function(x){
       return { id:uid(), name:x.name, note:x.note||'', sets:(x.sets&&x.sets.length?x.sets:[{planReps:null,planWeight:null}]).map(function(s){ return freshSet(s.planReps,s.planWeight); }) }; }) };
-    w.days.push(d); sortWeekDays(w); save(); renderProgramme(); toast('Séance « '+t.name+' » ajoutée');
+    w.days.push(d); sortWeekDays(w); selectDayInWeek(w,d.id); save(); renderProgramme(); toast('Séance « '+t.name+' » ajoutée');
   }
   function deleteTemplate(id){ state.templates=state.templates.filter(function(t){return t.id!==id;}); save(); renderReglages(); }
 
@@ -2136,6 +2175,7 @@
       case 'composerGenerate': generateBlock(); break;
       case 'composerBlank': composerStartBlank(); break;
       case 'addDay': addDay(); break;
+      case 'selectDay': { var _w=curWeek(); if(_w && b.dataset.d){ selectedDayByWeek[_w.id]=b.dataset.d; renderProgramme(); } break; }
       case 'reorderToggle': reorderMode=true; renderProgramme(); break;
       case 'reorderDone': reorderMode=false; renderProgramme(); break;
       case 'reoUp': reoArrow(b,-1); break;
