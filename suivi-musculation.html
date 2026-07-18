@@ -151,6 +151,8 @@
   .ex-block.done { opacity:.78; }
   .ex-block.done .ex-num { background:color-mix(in srgb,var(--success) 22%,transparent); color:var(--success); }
   .ex-name { font-size:15px; font-weight:700; flex:1; min-width:60px; }
+  /* nom d'exercice = textarea auto-extensible : les noms longs reviennent a la ligne au lieu d'etre coupes */
+  textarea.ex-name { resize:none; overflow:hidden; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.3; display:block; }
   .ex-done-tag { flex:0 0 auto; color:var(--success); font-weight:800; font-size:15px; }
   .ex-kebab .icon { width:18px; height:18px; }
   .ex-chips { display:flex; flex-wrap:wrap; align-items:center; gap:11px; margin-top:14px; }
@@ -350,7 +352,7 @@
   @keyframes flashComplete { 0%{box-shadow:0 0 0 0 rgba(52,211,153,.5);} 100%{box-shadow:0 0 0 16px rgba(52,211,153,0);} }
   .day-card.celebrate { animation:flashComplete .75s ease-out; }
   #toast.party { background:var(--accent-grad); color:#fff; }
-  .last-session { font-size:12px; color:var(--text-faint); margin:-2px 2px 9px; line-height:1.4; }
+  .last-session { font-size:12px; color:var(--text-dim); margin:14px 2px 0; line-height:1.5; }
   .prog-section-title { font-size:15px; font-weight:800; margin:8px 2px 12px; padding-top:20px; border-top:1px solid var(--border); letter-spacing:.2px; }
   .prog-tabs { display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:0 0 12px; scrollbar-width:none; }
   .prog-tabs::-webkit-scrollbar { display:none; }
@@ -710,7 +712,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v59';
+  var APP_VERSION = 'v60';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -794,7 +796,33 @@
     ];
     days.forEach(function(d){ d.exercises.forEach(function(x){ if(state.library.indexOf(x.name)===-1) state.library.push(x.name); }); });
     var w = { id:uid(), name:'Semaine 1', startDate:'', collapsed:false, days:days };
-    state.weeks = [ w ];
+
+    // Semaine precedente datee avec series faites -> alimente le bloc "Derniere fois".
+    // Dates relatives a aujourd'hui : la demo n'est jamais perimee, et je peux voir
+    // le rendu en developpant. (seed() ne tourne que pour un nouvel appareil / la demo.)
+    function markDone(ex){ ex.sets.forEach(function(s){ s.done=true; s.realReps=s.planReps; s.realWeight=s.planWeight; }); return ex; }
+    var lastMon = addDaysISO(mondayISO(todayISO()), -7);
+    var prevW = { id:uid(), name:weekNameFromDate(lastMon), startDate:lastMon, collapsed:true, days:[
+      mkDay('Lundi', [ markDone(mkEx('Curl marteau',3,10,10)) ]),
+      mkDay('Mardi', [ markDone(mkEx('Goblet squat',3,8,16)) ]),
+      mkDay('Samedi', [
+        markDone(mkEx('Echauffements épaule',6,10,null)),
+        markDone(mkEx('Soulevé de terre',4,8,46)),
+        markDone(mkEx('Face pull haltères',3,12,5)),
+        markDone(mkEx('Rowing barre droite pronation',4,9,40)),
+        markDone(mkEx('Fentes avec haltères',4,10,14)),
+        markDone(mkEx('Développé incliné 40 degrés haltères',4,8,7))
+      ]),
+      mkDay('Dimanche', [
+        markDone(mkEx('Élévations latérales haltères',4,10,9)),
+        markDone(mkEx('Développé couché haltères',3,8,12)),
+        markDone(mkEx('Biceps curl barre Z assis',4,8,26)),
+        markDone(mkEx('Kickback haltères',4,12,7))
+      ])
+    ] };
+    autoDateWeek(prevW);
+
+    state.weeks = [ prevW, w ];
     state.currentWeekId = w.id;
     state.templates = days.map(function(d){ return tplFromDay(d, d.name); });
   }
@@ -846,6 +874,7 @@
   function switchView(name){
     var v=document.querySelectorAll('.view'); for(var i=0;i<v.length;i++) v[i].classList.toggle('active', v[i].id==='view-'+name);
     var t=document.querySelectorAll('nav.tabs button'); for(var j=0;j<t.length;j++) t[j].classList.toggle('active', t[j].dataset.view===name);
+    if(name==='programme') autosizeNames();
     if(name==='accueil') renderAccueil();
     if(name==='progression') renderProgression();
     if(name==='mensurations') renderMensurations();
@@ -982,7 +1011,7 @@
     return '<div class="ex-block'+(complete?' done':'')+'" data-e="'+ex.id+'">' +
       '<div class="ex-card-top">' +
         '<span class="ex-num">'+num+'</span>' +
-        '<input class="name-input ex-name" data-field="exName" list="lib-list" value="'+escA(ex.name)+'" placeholder="Nom de l\'exercice">' +
+        '<textarea class="name-input ex-name" data-field="exName" rows="1" spellcheck="false" placeholder="Nom de l\'exercice">'+esc(ex.name)+'</textarea>' +
         (complete?'<span class="ex-done-tag" title="Toutes les séries faites">✓</span>':'') +
         '<button class="mini-btn drag-handle" data-drag="ex" title="Glisser pour déplacer">'+ic(P.grip,'grip')+'</button>' +
         '<div class="menu-wrap">' +
@@ -1041,6 +1070,9 @@
   var reorderMode=false;
   var arrangedWeeks={};
   function focusDayId(w){ var t=todayISO(); for(var i=0;i<w.days.length;i++){ if(w.days[i].date===t) return w.days[i].id; } for(var j=0;j<w.days.length;j++){ if(!dayIsComplete(w.days[j])) return w.days[j].id; } return w.days[0]?w.days[0].id:null; }
+  // ajuste la hauteur d'un textarea de nom a son contenu (noms longs sur plusieurs lignes)
+  function autosizeName(el){ if(!el || el.tagName!=='TEXTAREA') return; el.style.height='auto'; el.style.height=el.scrollHeight+'px'; }
+  function autosizeNames(root){ var list=(root||document).querySelectorAll('textarea.ex-name'); for(var i=0;i<list.length;i++) autosizeName(list[i]); }
   function renderProgramme(){
     sortWeeks();
     renderWeekBar();
@@ -1068,6 +1100,7 @@
       '</div>'
     );
     if(_scEl) _scEl.scrollTop=y; else window.scrollTo(0,y);
+    autosizeNames(box);
   }
   function appScroller(){ var m=document.querySelector('main.wrap'); if(m){ var o=getComputedStyle(m).overflowY; if(o==='auto'||o==='scroll') return m; } return null; }
   function exDone(x){ return !!(x.sets && x.sets.some(function(s){ return s.done; })); }
@@ -2152,6 +2185,7 @@
     }
   });
   document.addEventListener('input', function(e){ if(e.target.dataset && e.target.dataset.field) applyField(e.target); });
+  document.addEventListener('input', function(e){ if(e.target.dataset && e.target.dataset.field==='exName') autosizeName(e.target); });
   document.addEventListener('input', function(e){ var f=e.target.dataset&&e.target.dataset.cfield; if(f) composerSet(f,e.target); });
   document.addEventListener('change', function(e){ var f=e.target.dataset&&e.target.dataset.cfield; if(f) composerSet(f,e.target); });
   document.addEventListener('change', function(e){
@@ -2169,12 +2203,14 @@
   });
   document.addEventListener('keydown', function(e){
     if(e.key==='Enter' && e.target.dataset && ['planReps','planWeight','realReps','realWeight'].indexOf(e.target.dataset.field)>-1){ e.preventDefault(); addSet(locate(e.target)); }
+    if(e.key==='Enter' && e.target.dataset && e.target.dataset.field==='exName'){ e.preventDefault(); e.target.blur(); }
     if(gymMode && (e.key==='ArrowLeft'||e.key==='ArrowRight') && !/^(input|textarea|select)$/i.test(e.target.tagName||'')){ e.preventDefault(); gymNav(e.key==='ArrowRight'?1:-1); }
     if(e.key==='Enter' && e.target.classList && e.target.classList.contains('gym-num')){ e.preventDefault(); e.target.blur(); }
     if(e.key==='Escape') closeMenus();
   });
   $('file-csv').addEventListener('change', function(){ readFile(this, importCSV); });
   $('file-json').addEventListener('change', function(){ readFile(this, importJSON); });
+  var _rsT=null; window.addEventListener('resize', function(){ clearTimeout(_rsT); _rsT=setTimeout(function(){ autosizeNames(); }, 120); });
 
   /* ---------- synchronisation (GitHub) ---------- */
   var SYNC_SUSPEND = false;
