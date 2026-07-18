@@ -313,6 +313,14 @@
     .stats-grid { grid-template-columns:repeat(2,1fr); }
     .btn-grid { grid-template-columns:1fr; }
     .drag-handle { display:none; }
+    /* En-tete de journee en grille sur mobile : nom+compteur en haut, date+actions alignes en bas.
+       -> les 3 boutons restent alignes avec la date, et le compteur de series (qui s'elargit quand
+          le jour est termine : "3/3 series 🎉") ne les pousse plus vers le bas. */
+    .day-head { display:grid; grid-template-columns:1fr auto; grid-template-areas:"name sum" "date actions"; gap:9px 10px; align-items:center; }
+    .day-head .name-input { grid-area:name; min-width:0; }
+    .day-head .date-input { grid-area:date; justify-self:start; }
+    .day-head .day-sum { grid-area:sum; justify-self:end; }
+    .day-head .day-actions { grid-area:actions; margin-left:0; }
     .num, .set-comment, .ex-note, .day-note, .ex-name { font-size:16px; }
     .ex-chip { font-size:13px; min-height:40px; }
     .ex-chip b { font-size:15px; }
@@ -712,7 +720,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v60';
+  var APP_VERSION = 'v61';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
