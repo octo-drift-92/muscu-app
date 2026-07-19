@@ -199,6 +199,24 @@
   .day-change:hover { background:var(--surface-3); color:var(--text); }
   .day-change .icon { width:15px; height:15px; }
   .day-change-menu button.active { color:var(--accent); font-weight:800; }
+  /* mode cardio : bloc de fin de seance (machine, duree, FC, recup FC) */
+  .cardio-section { margin-top:12px; padding-top:14px; border-top:1px dashed var(--border); }
+  .cardio-card { border:1px solid var(--border-soft); border-radius:12px; background:var(--surface-2); padding:12px 13px; margin-bottom:10px; }
+  .cardio-top { display:flex; align-items:center; gap:10px; margin-bottom:11px; }
+  .cardio-lbl { font-size:11px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:var(--text-faint); flex:0 0 auto; }
+  .cardio-type { flex:1; min-width:0; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); font:inherit; font-size:14px; font-weight:700; padding:7px 9px; }
+  .cardio-type:focus { outline:none; border-color:var(--accent); }
+  .cardio-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+  .cardio-field { display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .cf-lbl { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:var(--text-faint); }
+  .cf-in { display:flex; align-items:center; gap:5px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:0 9px; }
+  .cf-in:focus-within { border-color:var(--accent); }
+  .cf-in input { flex:1; min-width:0; background:transparent; border:none; color:var(--text); font:inherit; font-size:15px; font-weight:700; padding:8px 0; }
+  .cf-in input:focus { outline:none; }
+  .cf-unit { font-size:12px; color:var(--text-faint); flex:0 0 auto; }
+  .cardio-note { width:100%; box-sizing:border-box; background:transparent; border:1px dashed var(--border); border-radius:8px; font:inherit; font-size:13px; color:var(--text-dim); padding:7px 10px; margin-top:10px; }
+  .cardio-note:focus { outline:none; border-style:solid; border-color:var(--accent); color:var(--text); }
+  .cardio-add { width:100%; justify-content:center; border-style:dashed; color:var(--text-dim); font-weight:600; }
   .day-tab { flex:0 0 auto; display:inline-flex; align-items:center; gap:8px; padding:9px 15px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--text-dim); font:inherit; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
   .day-tab:hover { background:var(--surface-2); color:var(--text); }
   .day-tab.active { background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 42%,var(--border)); color:var(--text); }
@@ -347,6 +365,7 @@
     .day-head .day-sum { grid-area:sum; justify-self:end; }
     .day-head .day-actions { grid-area:actions; margin-left:0; }
     .num, .set-comment, .ex-note, .day-note, .ex-name { font-size:16px; }
+    .cf-in input, .cardio-type, .cardio-note { font-size:16px; }
     .ex-chip { font-size:13px; min-height:40px; }
     .ex-chip b { font-size:15px; }
     .chip-step { width:28px; height:28px; font-size:18px; }
@@ -745,7 +764,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v64';
+  var APP_VERSION = 'v65';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -803,7 +822,7 @@
   /* ---------- model builders ---------- */
   function freshSet(reps,weight){ return { id:uid(), planReps:(reps==null?null:reps), planWeight:(weight==null?null:weight), done:false, realReps:null, realWeight:null, comment:'' }; }
   function mkEx(name,n,reps,weight){ var s=[]; for(var i=0;i<n;i++) s.push(freshSet(reps,weight)); return { id:uid(), name:name, note:'', sets:s }; }
-  function mkDay(name,exs){ return { id:uid(), name:name, date:'', note:'', collapsed:false, exercises:exs }; }
+  function mkDay(name,exs){ return { id:uid(), name:name, date:'', note:'', collapsed:false, exercises:exs, cardio:[] }; }
   function freshDay(name){ return mkDay(name||'Jour 1', []); }
   function freshWeek(name){ return { id:uid(), name:name||'Semaine 1', startDate:'', collapsed:false, days:[ freshDay('Jour 1') ] }; }
 
@@ -928,6 +947,7 @@
     var dEl = el.closest('[data-d]'); if(dEl && r.week) r.day = r.week.days.filter(function(d){return d.id===dEl.dataset.d;})[0];
     var eEl = el.closest('[data-e]'); if(eEl && r.day) r.ex = r.day.exercises.filter(function(x){return x.id===eEl.dataset.e;})[0];
     var sEl = el.closest('[data-s]'); if(sEl && r.ex) r.set = r.ex.sets.filter(function(s){return s.id===sEl.dataset.s;})[0];
+    var cEl = el.closest('[data-c]'); if(cEl && r.day) r.cardio = (r.day.cardio||[]).filter(function(c){return c.id===cEl.dataset.c;})[0];
     return r;
   }
 
@@ -1097,8 +1117,24 @@
         (day.exercises.length && day.date===todayISO()?'<button class="btn primary gym-launch" data-act="gymStart">▶ Mode séance</button>':'') +
         ex +
         '<button class="btn ghost" data-act="addEx">'+ic(P.plus)+'Ajouter un exercice</button>' +
+        cardioSectionHTML(day) +
       '</div>' +
     '</div>';
+  }
+  function cardioSectionHTML(day){
+    var list=(day.cardio||[]).map(cardioCardHTML).join('');
+    return '<div class="cardio-section">'+list+'<button class="btn ghost cardio-add" data-act="addCardio">'+ic(P.plus)+'Ajouter du cardio</button></div>';
+  }
+  function cardioCardHTML(c){
+    function cf(lbl,fld,val,unit,num){ return '<label class="cardio-field"><span class="cf-lbl">'+lbl+'</span><span class="cf-in"><input data-field="'+fld+'"'+(num?' inputmode="numeric"':'')+' value="'+escA(val==null?'':String(val))+'">'+(unit?'<span class="cf-unit">'+unit+'</span>':'')+'</span></label>'; }
+    var types=['Vélo','Tapis course','Tapis marche','Elliptique','Rameur','Autre'];
+    var cur=c.type||'Vélo'; if(types.indexOf(cur)<0) types.unshift(cur);
+    var sel='<select class="cardio-type" data-field="cardioType">'+types.map(function(o){ return '<option'+(o===cur?' selected':'')+'>'+esc(o)+'</option>'; }).join('')+'</select>';
+    return '<div class="cardio-card" data-c="'+c.id+'">' +
+        '<div class="cardio-top"><span class="cardio-lbl">Cardio</span>'+sel+'<button class="mini-btn del" data-act="delCardio" title="Supprimer ce cardio" aria-label="Supprimer">'+ic(P.trash)+'</button></div>' +
+        '<div class="cardio-grid">' + cf('Durée','cardioMin',intStr(c.min),'min',true) + cf('Intensité','cardioIntensity',c.intensity||'','',false) + cf('FC moy','cardioBpm',intStr(c.bpm),'bpm',true) + cf('Récup 1 min','cardioRecov',intStr(c.recov),'bpm',true) + '</div>' +
+        '<input class="cardio-note" data-field="cardioNote" value="'+escA(c.note||'')+'" placeholder="Note (zone, ressenti, distance…)">' +
+      '</div>';
   }
   function templateMenuHTML(){
     if(!state.templates.length) return '<div class="menu-empty">Aucun modèle. Enregistre une séance avec l\'icône signet pour la réutiliser ici.</div>';
@@ -1404,6 +1440,12 @@
       case 'realReps': if(loc.set) loc.set.realReps=toInt(v); break;
       case 'realWeight': if(loc.set) loc.set.realWeight=toNumN(v); break;
       case 'comment': if(loc.set) loc.set.comment=v; break;
+      case 'cardioType': if(loc.cardio) loc.cardio.type=v; break;
+      case 'cardioMin': if(loc.cardio) loc.cardio.min=toInt(v); break;
+      case 'cardioIntensity': if(loc.cardio) loc.cardio.intensity=v; break;
+      case 'cardioBpm': if(loc.cardio) loc.cardio.bpm=toInt(v); break;
+      case 'cardioRecov': if(loc.cardio) loc.cardio.recov=toInt(v); break;
+      case 'cardioNote': if(loc.cardio) loc.cardio.note=v; break;
     }
     save();
     if(['planReps','planWeight','realReps','realWeight'].indexOf(f)>-1){ if(loc.day) updateDaySummary(loc.day.id); updateWeekSummary(); }
@@ -1600,6 +1642,8 @@
   function toggleExCollapse(loc,btn){ if(!loc.ex) return; loc.ex.collapsed=!loc.ex.collapsed; save(); var b=btn.closest('.ex-block'); if(b){ var sm=b.querySelector('.ex-summary'); if(sm) sm.innerHTML=exSummary(loc.ex); b.classList.toggle('collapsed', loc.ex.collapsed); } }
 
   function addExercise(loc){ if(!loc.day) return; var ex={ id:uid(), name:'', note:'', sets:[ freshSet(10,null) ] }; loc.day.exercises.push(ex); save(); renderProgramme(); focusField('[data-e="'+ex.id+'"] [data-field="exName"]'); }
+  function addCardio(loc){ if(!loc.day) return; if(!loc.day.cardio) loc.day.cardio=[]; var c={ id:uid(), type:'Vélo', min:20, intensity:'', bpm:null, recov:null, note:'' }; loc.day.cardio.push(c); save(); renderProgramme(); focusField('[data-c="'+c.id+'"] [data-field="cardioBpm"]'); }
+  function deleteCardio(loc){ if(!loc.day||!loc.cardio) return; var d=loc.day, i=(d.cardio||[]).findIndex(function(c){return c.id===loc.cardio.id;}); if(i<0) return; var c=d.cardio[i]; d.cardio.splice(i,1); save(); renderProgramme(); toastUndo('Cardio supprimé', function(){ d.cardio.splice(i,0,c); save(); renderProgramme(); }); }
   function duplicateExercise(loc){ if(!loc.ex||!loc.day) return; var x=loc.ex; var nx={ id:uid(), name:x.name, note:x.note, progression:(x.progression||'none'), sets:x.sets.map(function(s){ return freshSet(s.planReps,s.planWeight); }) }; var i=loc.day.exercises.findIndex(function(e){return e.id===x.id;}); loc.day.exercises.splice(i+1,0,nx); save(); renderProgramme(); toast('Exercice dupliqué'); }
   function deleteExercise(loc){ if(!loc.ex||!loc.day) return; var d=loc.day, i=d.exercises.findIndex(function(e){return e.id===loc.ex.id;}); var ex=loc.ex; d.exercises.splice(i,1); save(); renderProgramme(); toastUndo('Exercice supprimé', function(){ d.exercises.splice(i,0,ex); save(); renderProgramme(); }); }
 
@@ -2252,6 +2296,8 @@
       case 'addEx': addExercise(loc); break;
       case 'dupEx': duplicateExercise(loc); break;
       case 'delEx': deleteExercise(loc); break;
+      case 'addCardio': addCardio(loc); break;
+      case 'delCardio': deleteCardio(loc); break;
       case 'exMenu': if(loc.ex) toggleMenu('exmenu-'+loc.ex.id); break;
       case 'moveEx': openMoveMenu(loc); break;
       case 'moveExTo': if(loc.ex&&loc.day){ var _lbl=b.textContent; moveExerciseDnD(loc.day.id, loc.ex.id, b.dataset.day, null, false); closeMenus(); toast('Exercice déplacé vers '+_lbl); } break;
