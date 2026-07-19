@@ -764,7 +764,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v65';
+  var APP_VERSION = 'v66';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1302,7 +1302,7 @@
   function gymFirstTodo(day){ for(var i=0;i<day.exercises.length;i++){ if(day.exercises[i].sets.some(function(s){return !s.done;})) return i; } return 0; }
   function gymStart(loc){ if(!loc.day || !loc.day.exercises.length) return; gymMode={dayId:loc.day.id, exIndex:gymFirstTodo(loc.day)}; gymRestStart=0; renderGym(); }
   function gymExit(){ gymMode=null; gymStopTimer(); var ov=$('gym'); if(ov){ ov.hidden=true; ov.innerHTML=''; } document.documentElement.classList.remove('gym-open'); renderProgramme(); }
-  function gymNav(d){ var day=gymDay(); if(!day) return; var ni=Math.max(0, Math.min(day.exercises.length-1, gymMode.exIndex+d)); if(ni===gymMode.exIndex) return; gymNavDir=d>0?1:-1; gymMode.exIndex=ni; renderGym(); }
+  function gymNav(d){ var day=gymDay(); if(!day) return; var ni=Math.max(0, Math.min(day.exercises.length, gymMode.exIndex+d)); if(ni===gymMode.exIndex) return; if(ni===day.exercises.length) gymEnsureCardio(day); gymNavDir=d>0?1:-1; gymMode.exIndex=ni; renderGym(); }
   function lastWorkWeight(name, beforeISO){ var last=lastDoneBefore(name, beforeISO); if(!last||!last.sets) return null; var m=null; last.sets.forEach(function(s){ if(s.w!=null && s.w!=='' && (m==null||s.w>m)) m=s.w; }); return m; }
   function gymSetWeight(s, ex, day){
     if(s.realWeight!=null) return s.realWeight;
@@ -1368,16 +1368,45 @@
     var groups=Object.keys(grp).filter(function(g){return g!=='Autre';}).sort(function(a,b){return grp[b]-grp[a];});
     var chips=groups.slice(0,8).map(function(g){ return '<span class="recap-grp"><i style="background:'+groupColor(g)+'"></i>'+esc(g)+' <b>'+fmtSets(grp[g])+'</b></span>'; }).join('');
     var prH = prs.length ? '<div class="recap-sec"><div class="recap-sec-t">🏆 Records du jour</div>'+prs.map(function(p){ return '<div class="recap-pr"><span>'+esc(p.nm)+'</span><b>'+fmt(p.kg)+' kg</b><small>'+(p.prev>0?('+'+fmt(Math.round((p.kg-p.prev)*10)/10)+' kg'):'1er')+'</small></div>'; }).join('')+'</div>' : '';
-    ov.innerHTML='<div class="recap-card"><div class="recap-h">Séance terminée</div><div class="recap-sub">'+esc(day.name||'Séance')+(day.date?' · '+esc(formatDateFR(day.date).slice(0,5)):'')+'</div><div class="recap-stats"><div><b>'+setsDone+'</b><span>séries</span></div><div><b>'+exNames+'</b><span>exos</span></div><div><b>'+fmtKg(tonnage)+'</b><span>kg levés</span></div></div>'+(chips?'<div class="recap-sec"><div class="recap-sec-t">Groupes travaillés</div><div class="recap-grps">'+chips+'</div></div>':'')+prH+'<div class="recap-foot"><button class="btn ghost" data-act="recapClose">Revoir</button><button class="btn primary" data-act="recapFinish">Terminer ✓</button></div></div>';
+    ov.innerHTML='<div class="recap-card"><div class="recap-h">Séance terminée</div><div class="recap-sub">'+esc(day.name||'Séance')+(day.date?' · '+esc(formatDateFR(day.date).slice(0,5)):'')+'</div><div class="recap-stats"><div><b>'+setsDone+'</b><span>séries</span></div><div><b>'+exNames+'</b><span>exos</span></div><div><b>'+fmtKg(tonnage)+'</b><span>kg levés</span></div></div>'+(chips?'<div class="recap-sec"><div class="recap-sec-t">Groupes travaillés</div><div class="recap-grps">'+chips+'</div></div>':'')+prH+'<div class="recap-foot"><button class="btn ghost" data-act="recapClose">Revoir</button><button class="btn" data-act="gymCardio">Cardio ▶</button><button class="btn primary" data-act="recapFinish">Terminer ✓</button></div></div>';
     ov.hidden=false; document.documentElement.classList.add('gym-open'); animIn(ov.querySelector('.recap-card'), {opacity:0, transform:'translateY(16px) scale(.97)'}); if(navigator.vibrate){ try{ navigator.vibrate([90,50,90,50,170]); }catch(e){} }
   }
   function recapClose(){ var ov=$('recap'); if(ov){ ov.hidden=true; ov.innerHTML=''; } }
   function recapFinish(){ recapClose(); gymExit(); }
+  function gymEnsureCardio(day){ if(!day.cardio) day.cardio=[]; if(!day.cardio.length){ day.cardio.push({ id:uid(), type:'Vélo', min:20, intensity:'', bpm:null, recov:null, note:'' }); save(); } }
+  function gymGoCardio(){ recapClose(); if(!gymMode) return; var day=gymDay(); if(!day) return; gymEnsureCardio(day); gymNavDir=1; gymMode.exIndex=day.exercises.length; renderGym(); }
+  function gymFinishCardio(){ gymStopTimer(); gymExit(); }
+  function renderGymCardio(ov, day){
+    var _ob=ov.querySelector('.gym-body'), _keep=(_ob && ov.getAttribute('data-exidx')==='cardio')?_ob.scrollTop:0;
+    ov.innerHTML=
+      '<div class="gym-inner">'
+      +'<div class="gym-top">'
+        +'<button class="gym-x" data-act="gymExit" aria-label="Quitter">✕</button>'
+        +'<div class="gym-title">'+esc(day.name||'Séance')+(day.date?' · '+esc(formatDateFR(day.date).slice(0,5)):'')+'</div>'
+        +'<div class="gym-rest idle" id="gym-rest" data-act="restAdj" role="button" title="Touchez pour changer le repos cible"><span class="gr-ic">⏱</span><span class="gr-t">Repos</span></div>'
+      +'</div>'
+      +'<div class="gym-progress"><i style="width:100%"></i></div>'
+      +'<div class="gym-body" data-d="'+day.id+'">'
+        +'<div class="gym-ex-head"><span class="gym-pos">Fin de séance</span><h2 class="gym-ex-name">Cardio</h2><div class="gym-target new">Complète ta machine, ta durée, ta FC moyenne et ta récup FC.</div></div>'
+        +cardioSectionHTML(day)
+      +'</div>'
+      +'<div class="gym-nav">'
+        +'<button class="btn" data-act="gymPrev">◀</button>'
+        +'<span class="gym-count">Cardio</span>'
+        +'<button class="btn primary" data-act="gymFinishCardio">Terminer ✓</button>'
+      +'</div>'
+      +'</div>';
+    ov.hidden=false; document.documentElement.classList.add('gym-open');
+    ov.setAttribute('data-exidx','cardio'); var _nb=ov.querySelector('.gym-body'); if(_nb) _nb.scrollTop=_keep;
+    if(gymNavDir){ if(_nb) animIn(_nb, {opacity:0, transform:'translateX('+(gymNavDir>0?'28px':'-28px')+')'}); gymNavDir=0; }
+    gymTick();
+  }
   function renderGym(){
     var ov=$('gym'); if(!ov) return;
     var day=gymDay();
     if(!gymMode || !day || !day.exercises.length){ gymMode=null; gymStopTimer(); ov.hidden=true; ov.innerHTML=''; document.documentElement.classList.remove('gym-open'); return; }
-    gymMode.exIndex=Math.max(0, Math.min(day.exercises.length-1, gymMode.exIndex));
+    gymMode.exIndex=Math.max(0, Math.min(day.exercises.length, gymMode.exIndex));
+    if(gymMode.exIndex===day.exercises.length){ renderGymCardio(ov, day); return; }
     var ex=day.exercises[gymMode.exIndex];
     var totalSets=0, doneSets=0; day.exercises.forEach(function(x){ x.sets.forEach(function(s){ totalSets++; if(s.done) doneSets++; }); });
     var gymRec=exBestBefore((ex.name||'').trim(), day.date);
@@ -1409,7 +1438,7 @@
       +'<div class="gym-nav">'
         +'<button class="btn" data-act="gymPrev"'+(gymMode.exIndex<=0?' disabled':'')+'>◀</button>'
         +'<span class="gym-count">'+doneSets+' / '+totalSets+' séries</span>'
-        +'<button class="btn" data-act="gymNext"'+(gymMode.exIndex>=day.exercises.length-1?' disabled':'')+'>▶</button>'
+        +'<button class="btn" data-act="gymNext">'+(gymMode.exIndex>=day.exercises.length-1?'Cardio ▶':'▶')+'</button>'
       +'</div>'
       +'</div>';
     ov.hidden=false; document.documentElement.classList.add('gym-open');
@@ -1642,8 +1671,9 @@
   function toggleExCollapse(loc,btn){ if(!loc.ex) return; loc.ex.collapsed=!loc.ex.collapsed; save(); var b=btn.closest('.ex-block'); if(b){ var sm=b.querySelector('.ex-summary'); if(sm) sm.innerHTML=exSummary(loc.ex); b.classList.toggle('collapsed', loc.ex.collapsed); } }
 
   function addExercise(loc){ if(!loc.day) return; var ex={ id:uid(), name:'', note:'', sets:[ freshSet(10,null) ] }; loc.day.exercises.push(ex); save(); renderProgramme(); focusField('[data-e="'+ex.id+'"] [data-field="exName"]'); }
-  function addCardio(loc){ if(!loc.day) return; if(!loc.day.cardio) loc.day.cardio=[]; var c={ id:uid(), type:'Vélo', min:20, intensity:'', bpm:null, recov:null, note:'' }; loc.day.cardio.push(c); save(); renderProgramme(); focusField('[data-c="'+c.id+'"] [data-field="cardioBpm"]'); }
-  function deleteCardio(loc){ if(!loc.day||!loc.cardio) return; var d=loc.day, i=(d.cardio||[]).findIndex(function(c){return c.id===loc.cardio.id;}); if(i<0) return; var c=d.cardio[i]; d.cardio.splice(i,1); save(); renderProgramme(); toastUndo('Cardio supprimé', function(){ d.cardio.splice(i,0,c); save(); renderProgramme(); }); }
+  function reRenderAfterCardio(){ if(gymMode) renderGym(); else renderProgramme(); }
+  function addCardio(loc){ if(!loc.day) return; if(!loc.day.cardio) loc.day.cardio=[]; var c={ id:uid(), type:'Vélo', min:20, intensity:'', bpm:null, recov:null, note:'' }; loc.day.cardio.push(c); save(); reRenderAfterCardio(); focusField((gymMode?'#gym ':'')+'[data-c="'+c.id+'"] [data-field="cardioBpm"]'); }
+  function deleteCardio(loc){ if(!loc.day||!loc.cardio) return; var d=loc.day, i=(d.cardio||[]).findIndex(function(c){return c.id===loc.cardio.id;}); if(i<0) return; var c=d.cardio[i]; d.cardio.splice(i,1); save(); reRenderAfterCardio(); toastUndo('Cardio supprimé', function(){ d.cardio.splice(i,0,c); save(); reRenderAfterCardio(); }); }
   function duplicateExercise(loc){ if(!loc.ex||!loc.day) return; var x=loc.ex; var nx={ id:uid(), name:x.name, note:x.note, progression:(x.progression||'none'), sets:x.sets.map(function(s){ return freshSet(s.planReps,s.planWeight); }) }; var i=loc.day.exercises.findIndex(function(e){return e.id===x.id;}); loc.day.exercises.splice(i+1,0,nx); save(); renderProgramme(); toast('Exercice dupliqué'); }
   function deleteExercise(loc){ if(!loc.ex||!loc.day) return; var d=loc.day, i=d.exercises.findIndex(function(e){return e.id===loc.ex.id;}); var ex=loc.ex; d.exercises.splice(i,1); save(); renderProgramme(); toastUndo('Exercice supprimé', function(){ d.exercises.splice(i,0,ex); save(); renderProgramme(); }); }
 
@@ -2290,6 +2320,8 @@
       case 'restAdj': restAdj(); break;
       case 'recapClose': recapClose(); break;
       case 'recapFinish': recapFinish(); break;
+      case 'gymCardio': gymGoCardio(); break;
+      case 'gymFinishCardio': gymFinishCardio(); break;
       case 'gymStartToday': gymStartToday(b); break;
       case 'undo': doUndo(); break;
       case 'help': helpTopic(b.dataset.topic); break;
