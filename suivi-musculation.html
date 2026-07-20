@@ -772,7 +772,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v69';
+  var APP_VERSION = 'v70';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1035,11 +1035,10 @@
           '<button class="menu-danger" data-act="delWeek">'+ic(P.trash)+'Supprimer la semaine</button>' +
         '</div>' +
       '</div>';
-    if(!$('week-nav-row') || !$('week-scrub-wrap')){
-      bar.innerHTML = '<div class="week-nav-row" id="week-nav-row"></div><div class="week-scrub-wrap" id="week-scrub-wrap"></div>';
+    if(!$('week-nav-row')){
+      bar.innerHTML = '<div class="week-nav-row" id="week-nav-row"></div>';
     }
     $('week-nav-row').innerHTML = navInner;
-    renderWeekScrub();
   }
 
   function setRowHTML(set, idx){
