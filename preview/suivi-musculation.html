@@ -369,16 +369,9 @@
     .stats-grid { grid-template-columns:repeat(2,1fr); }
     .btn-grid { grid-template-columns:1fr; }
     .drag-handle { display:none; }
-    /* En-tete de journee en grille sur mobile : nom+compteur en haut, date+actions alignes en bas.
-       -> les 3 boutons restent alignes avec la date, et le compteur de series (qui s'elargit quand
-          le jour est termine : "3/3 series 🎉") ne les pousse plus vers le bas. */
-    .day-head { display:grid; grid-template-columns:1fr auto; grid-template-areas:"name sum" "date actions"; gap:9px 10px; align-items:center; }
-    .day-head .day-name-wrap { grid-area:name; min-width:0; }
-    .day-change { width:36px; height:36px; }
-    .day-change .icon { width:17px; height:17px; }
-    .day-head .date-input { grid-area:date; justify-self:start; }
-    .day-head .day-sum { grid-area:sum; justify-self:end; }
-    .day-head .day-actions { grid-area:actions; margin-left:0; }
+    /* En-tete de journee : le nom + la progression sont dans le selecteur du haut (dropdown mobile /
+       onglets desktop), donc l'en-tete ne garde que la date + les actions, sur une seule ligne. */
+    .day-head .date-input { flex:1 1 auto; min-width:0; }
     .num, .set-comment, .ex-note, .day-note, .ex-name { font-size:16px; }
     .cf-in input, .cardio-type, .cardio-note { font-size:16px; }
     .ex-chip { font-size:13px; min-height:40px; }
@@ -779,7 +772,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v68';
+  var APP_VERSION = 'v69';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1114,13 +1107,7 @@
     return '<div class="day-card'+(dayIsComplete(day)?' day-complete':'')+'" data-d="'+day.id+'">' +
       '<div class="day-head">' +
         '<button class="mini-btn drag-handle" data-drag="day" title="Glisser pour réordonner">'+ic(P.grip,'grip')+'</button>' +
-        '<div class="day-name-wrap menu-wrap">' +
-          '<input class="name-input" data-field="dayName" value="'+escA(day.name)+'" placeholder="Nom du jour">' +
-          '<button class="day-change" data-act="menu" data-menu="daychg-'+day.id+'" title="Changer le jour de la semaine" aria-label="Changer le jour de la semaine">'+ic(P.down)+'</button>' +
-          '<div class="menu day-change-menu" id="daychg-'+day.id+'" hidden>'+dayChangeMenuHTML(day)+'</div>' +
-        '</div>' +
         '<input class="date-input" type="date" data-field="dayDate" value="'+escA(day.date)+'" title="Date de la séance">' +
-        '<span class="day-sum" id="daysum-'+day.id+'">'+daySumHTML(day)+'</span>' +
         '<div class="day-actions">' +
           '<button class="mini-btn" data-act="dayTpl" title="Enregistrer comme modèle de séance">'+ic(P.bookmark)+'</button>' +
           '<button class="mini-btn" data-act="dupDay" title="Dupliquer le jour">'+ic(P.copy)+'</button>' +
