@@ -764,7 +764,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v66';
+  var APP_VERSION = 'v67';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1285,9 +1285,9 @@
       hero='<div class="card acc-hero acc-rest"><div class="acc-hero-top"><span class="acc-hero-k">Aujourd\'hui</span></div><div class="acc-rest-msg">😴 Repos aujourd\'hui</div>'
         +(ns?'<div class="acc-next">Prochaine séance : <b>'+esc(ns.day.name||'Séance')+'</b> · '+esc(formatDateFR(ns.day.date).slice(0,5))+'</div>':'<div class="acc-next">Aucune séance à venir — planifie ta semaine.</div>')+'</div>';
     }
-    var w=curWeek(), weekH='';
+    var _twid=todayWeekId(), w=(_twid && state.weeks.filter(function(x){return x.id===_twid;})[0]) || curWeek(), weekH='';
     if(w){
-      var days=w.days.map(function(d){ var s=dayStats(d); var status=(s.total>0&&s.done>=s.total)?'done':(d.date===t?'today':(d.date&&d.date<t?'past':'future')); return '<button class="acc-day '+status+'" data-act="accDay" data-d="'+d.id+'"><span class="acc-day-n">'+esc(d.name||'Jour')+'</span><span class="acc-day-s">'+(status==='done'?'✓ fait':(s.total>0?s.done+'/'+s.total:'—'))+'</span></button>'; }).join('');
+      var days=w.days.map(function(d){ var s=dayStats(d); var status=(s.total>0&&s.done>=s.total)?'done':(d.date===t?'today':(d.date&&d.date<t?'past':'future')); return '<button class="acc-day '+status+'" data-act="accDay" data-w="'+w.id+'" data-d="'+d.id+'"><span class="acc-day-n">'+esc(d.name||'Jour')+'</span><span class="acc-day-s">'+(status==='done'?'✓ fait':(s.total>0?s.done+'/'+s.total:'—'))+'</span></button>'; }).join('');
       weekH='<div class="card acc-week"><div class="acc-sec-t">'+esc(w.name||'Semaine')+'</div><div class="acc-days">'+(days||'<p class="hint">Aucun jour cette semaine.</p>')+'</div></div>';
     }
     box.innerHTML=head+hero+weekH;
@@ -2266,7 +2266,7 @@
     var loc=locate(b);
     switch(act){
       case 'view': switchView(b.dataset.view); break;
-      case 'accDay': switchView('programme'); var _ad=document.querySelector('[data-d="'+b.dataset.d+'"]'); if(_ad) _ad.scrollIntoView({block:'start',behavior:'smooth'}); break;
+      case 'accDay': { if(b.dataset.w){ selectedDayByWeek[b.dataset.w]=b.dataset.d; selectWeek(b.dataset.w); } switchView('programme'); break; }
       case 'theme': toggleTheme(); break;
       case 'palette': setPalette(b.dataset.pal); break;
       case 'metric': setMetric(b.dataset.metric); break;
