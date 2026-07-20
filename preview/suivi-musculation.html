@@ -192,6 +192,21 @@
   .day-tabs { display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:2px 0; scrollbar-width:none; flex:0 1 auto; min-width:0; }
   .day-tabs::-webkit-scrollbar { display:none; }
   .day-add-wrap { flex:0 0 auto; }
+  /* sur mobile : menu deroulant de selection du jour (les onglets defilants sont caches) */
+  .day-select { display:none; }
+  .day-select-wrap { flex:1 1 auto; min-width:0; }
+  .day-select-btn { width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 14px; border-radius:12px; border:1px solid var(--border); background:var(--surface); color:var(--text); font:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .day-select-btn:hover { background:var(--surface-2); }
+  .day-select-btn .icon { width:16px; height:16px; color:var(--text-faint); flex:0 0 auto; }
+  .day-select-cur { display:inline-flex; align-items:center; gap:9px; min-width:0; overflow:hidden; }
+  .ds-name { font-size:15px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ds-prog { font-size:12.5px; font-weight:800; color:var(--text-faint); font-variant-numeric:tabular-nums; flex:0 0 auto; }
+  .ds-ok { color:var(--success); }
+  .day-sel-menu { left:0; right:0; min-width:0; max-width:none; max-height:60vh; overflow:auto; }
+  .menu button.day-sel-opt { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .menu button.day-sel-opt span { display:inline; margin-top:0; }
+  .day-sel-opt.active .ds-name { color:var(--accent); }
+  @media (max-width:680px){ .day-select { display:flex; gap:8px; padding:2px 2px 14px; } .day-tabs-bar { display:none; } }
   /* nom de journee + chevron pour changer le jour de la semaine */
   .day-name-wrap { display:flex; align-items:center; gap:2px; min-width:0; }
   .day-head .day-name-wrap .name-input { flex:1 1 auto; min-width:0; }
@@ -764,7 +779,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v67';
+  var APP_VERSION = 'v68';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1157,8 +1172,22 @@
     var prog = st.total ? (comp ? '<span class="day-tab-check" aria-label="terminé">✓</span>' : '<span class="day-tab-sum">'+st.done+'/'+st.total+'</span>') : '';
     return '<span class="day-tab-name">'+esc(d.name||'Jour')+'</span>'+prog;
   }
+  function daySelOptInner(d){
+    var st=dayStats(d), comp=dayIsComplete(d);
+    var prog = st.total ? (comp ? '<span class="ds-prog ds-ok">✓</span>' : '<span class="ds-prog">'+st.done+'/'+st.total+'</span>') : '';
+    return '<span class="ds-name">'+esc(d.name||'Jour')+'</span>'+prog;
+  }
   function dayTabsHTML(w, selId){
-    return '<div class="day-tabs-bar">' +
+    var selDay=w.days.filter(function(d){return d.id===selId;})[0]||w.days[0];
+    return '<div class="day-select">' +
+      '<div class="menu-wrap day-select-wrap">' +
+        '<button class="day-select-btn" data-act="menu" data-menu="day-sel-menu" aria-haspopup="true"><span class="day-select-cur">'+(selDay?daySelOptInner(selDay):'<span class="ds-name">Jour</span>')+'</span>'+ic(P.down)+'</button>' +
+        '<div class="menu day-sel-menu" id="day-sel-menu" hidden>' +
+          w.days.map(function(d){ return '<button class="day-sel-opt'+(d.id===selId?' active':'')+(dayIsComplete(d)?' done':'')+'" data-act="selectDay" data-d="'+d.id+'">'+daySelOptInner(d)+'</button>'; }).join('') +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="day-tabs-bar">' +
       '<div class="day-tabs" role="tablist">' +
         w.days.map(function(d){
           return '<button class="day-tab'+(d.id===selId?' active':'')+(dayIsComplete(d)?' done':'')+'" role="tab" aria-selected="'+(d.id===selId?'true':'false')+'" data-act="selectDay" data-d="'+d.id+'">'+dayTabInner(d)+'</button>';
