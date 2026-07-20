@@ -772,7 +772,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v70';
+  var APP_VERSION = 'v71';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1025,6 +1025,7 @@
       '<button class="icon-btn" data-act="weekPrev" title="Semaine précédente">'+ic(P.left)+'</button>' +
       '<select id="week-select" data-act="weekSelect" aria-label="Choisir la semaine">'+opts+'</select>' +
       '<button class="icon-btn" data-act="weekNext" title="Semaine suivante">'+ic(P.right)+'</button>' +
+      '<button class="wk-today-btn" data-act="weekToday" title="Aller à la semaine en cours">Auj.</button>' +
       '<div class="menu-wrap" style="margin-left:auto">' +
         '<button class="btn btn-sm primary" data-act="weekMenu" title="Ajouter / gérer une semaine" aria-label="Ajouter ou gérer une semaine">'+ic(P.plus)+ic(P.down)+'</button>' +
         '<div class="menu menu-right" id="week-menu" hidden>' +
