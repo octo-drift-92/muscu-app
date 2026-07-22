@@ -772,7 +772,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v71';
+  var APP_VERSION = 'v72';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1318,7 +1318,7 @@
   function gymFirstTodo(day){ for(var i=0;i<day.exercises.length;i++){ if(day.exercises[i].sets.some(function(s){return !s.done;})) return i; } return 0; }
   function gymStart(loc){ if(!loc.day || !loc.day.exercises.length) return; gymMode={dayId:loc.day.id, exIndex:gymFirstTodo(loc.day)}; gymRestStart=0; renderGym(); }
   function gymExit(){ gymMode=null; gymStopTimer(); var ov=$('gym'); if(ov){ ov.hidden=true; ov.innerHTML=''; } document.documentElement.classList.remove('gym-open'); renderProgramme(); }
-  function gymNav(d){ var day=gymDay(); if(!day) return; var ni=Math.max(0, Math.min(day.exercises.length, gymMode.exIndex+d)); if(ni===gymMode.exIndex) return; if(ni===day.exercises.length) gymEnsureCardio(day); gymNavDir=d>0?1:-1; gymMode.exIndex=ni; renderGym(); }
+  function gymNav(d){ var day=gymDay(); if(!day) return; var ni=Math.max(0, Math.min(day.exercises.length, gymMode.exIndex+d)); if(ni===gymMode.exIndex) return; gymNavDir=d>0?1:-1; gymMode.exIndex=ni; renderGym(); }
   function lastWorkWeight(name, beforeISO){ var last=lastDoneBefore(name, beforeISO); if(!last||!last.sets) return null; var m=null; last.sets.forEach(function(s){ if(s.w!=null && s.w!=='' && (m==null||s.w>m)) m=s.w; }); return m; }
   function gymSetWeight(s, ex, day){
     if(s.realWeight!=null) return s.realWeight;
@@ -1390,7 +1390,7 @@
   function recapClose(){ var ov=$('recap'); if(ov){ ov.hidden=true; ov.innerHTML=''; } }
   function recapFinish(){ recapClose(); gymExit(); }
   function gymEnsureCardio(day){ if(!day.cardio) day.cardio=[]; if(!day.cardio.length){ day.cardio.push({ id:uid(), type:'Vélo', min:20, intensity:'', bpm:null, recov:null, note:'' }); save(); } }
-  function gymGoCardio(){ recapClose(); if(!gymMode) return; var day=gymDay(); if(!day) return; gymEnsureCardio(day); gymNavDir=1; gymMode.exIndex=day.exercises.length; renderGym(); }
+  function gymGoCardio(){ recapClose(); if(!gymMode) return; var day=gymDay(); if(!day) return; gymNavDir=1; gymMode.exIndex=day.exercises.length; renderGym(); }
   function gymFinishCardio(){ gymStopTimer(); gymExit(); }
   function renderGymCardio(ov, day){
     var _ob=ov.querySelector('.gym-body'), _keep=(_ob && ov.getAttribute('data-exidx')==='cardio')?_ob.scrollTop:0;
@@ -1403,7 +1403,7 @@
       +'</div>'
       +'<div class="gym-progress"><i style="width:100%"></i></div>'
       +'<div class="gym-body" data-d="'+day.id+'">'
-        +'<div class="gym-ex-head"><span class="gym-pos">Fin de séance</span><h2 class="gym-ex-name">Cardio</h2><div class="gym-target new">Complète ta machine, ta durée, ta FC moyenne et ta récup FC.</div></div>'
+        +'<div class="gym-ex-head"><span class="gym-pos">Fin de séance</span><h2 class="gym-ex-name">Cardio <span style="font-size:14px;font-weight:600;color:var(--text-faint)">(optionnel)</span></h2><div class="gym-target new">Ajoute ton cardio, ou termine directement si tu n\'en fais pas.</div></div>'
         +cardioSectionHTML(day)
       +'</div>'
       +'<div class="gym-nav">'
