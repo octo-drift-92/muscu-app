@@ -772,7 +772,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v72';
+  var APP_VERSION = 'v73';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1349,7 +1349,7 @@
     save(); updateDaySummary(day.id); updateWeekSummary();
     if(s.done && ex.sets.length && ex.sets.every(function(z){return z.done;}) && gymMode.exIndex<day.exercises.length-1){ gymMode.exIndex++; }
     renderGym();
-    if(justDone){ gymStopTimer(); showSessionSummary(day); } }
+    if(justDone){ gymStopTimer(); gymGoCardio(); } }
   var gymRestDone=false;
   function mmss(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
   function restTarget(){ return (state.settings && state.settings.restTarget!=null) ? state.settings.restTarget : 90; }
@@ -1391,7 +1391,7 @@
   function recapFinish(){ recapClose(); gymExit(); }
   function gymEnsureCardio(day){ if(!day.cardio) day.cardio=[]; if(!day.cardio.length){ day.cardio.push({ id:uid(), type:'Vélo', min:20, intensity:'', bpm:null, recov:null, note:'' }); save(); } }
   function gymGoCardio(){ recapClose(); if(!gymMode) return; var day=gymDay(); if(!day) return; gymNavDir=1; gymMode.exIndex=day.exercises.length; renderGym(); }
-  function gymFinishCardio(){ gymStopTimer(); gymExit(); }
+  function gymFinishCardio(){ gymStopTimer(); var day=gymDay(); if(day && dayIsComplete(day)){ showSessionSummary(day); return; } gymExit(); }
   function renderGymCardio(ov, day){
     var _ob=ov.querySelector('.gym-body'), _keep=(_ob && ov.getAttribute('data-exidx')==='cardio')?_ob.scrollTop:0;
     ov.innerHTML=
