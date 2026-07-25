@@ -737,6 +737,8 @@
       <button data-act="progTab" data-ptab="volume" class="active">Volume</button>
       <button data-act="progTab" data-ptab="equilibre">Équilibre</button>
       <button data-act="progTab" data-ptab="plateaux">Plateaux</button>
+      <button data-act="progTab" data-ptab="records">Records</button>
+      <button data-act="progTab" data-ptab="cardio">Cardio</button>
       <button data-act="progTab" data-ptab="parexo">Par exo</button>
     </div>
     <div id="prog-global"></div>
@@ -772,7 +774,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v73';
+  var APP_VERSION = 'v74';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1867,12 +1869,13 @@
     return P('Autre');
   }
   function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return false; if(from && iso<from) return false; if(to && iso>to) return false; return true; }
-  function volumeByGroupOverRange(from, to){
+  var volMode='plan'; // 'plan' = series planifiees, 'real' = series faites uniquement
+  function volumeByGroupOverRange(from, to, mode){
     var g={}, wk={};
     state.weeks.forEach(function(w){ w.days.forEach(function(d){
       if(!ptInRange(d.date||'', from, to)) return;
       var any=false;
-      d.exercises.forEach(function(x){ if(isWarmup(x.name)) return; var ns=x.sets.length; if(!ns) return; any=true; muscleContribs(x.name).forEach(function(c){ g[c.g]=(g[c.g]||0)+ns*c.w; }); });
+      d.exercises.forEach(function(x){ if(isWarmup(x.name)) return; var ns=(mode==='real')?x.sets.filter(function(s){return s.done;}).length:x.sets.length; if(!ns) return; any=true; muscleContribs(x.name).forEach(function(c){ g[c.g]=(g[c.g]||0)+ns*c.w; }); });
       if(any) wk[w.id]=1;
     });});
     var nw=Object.keys(wk).length||1, avg={};
@@ -1974,14 +1977,14 @@
     var html='', R=resolveRange();
     var B=monthlyBilan(bilanOffset);
     html+='<div class="card prog-sec" data-psec="bilan" style="padding:10px 12px"><div class="section-label" style="display:flex;align-items:center;gap:8px">Bilan — '+esc(B.label)+'<span style="margin-left:auto;display:flex;gap:6px"><button class="mini-btn" data-act="bilanPrev" aria-label="Mois précédent">◀</button><button class="mini-btn" data-act="bilanNext"'+(bilanOffset>=0?' disabled':'')+' aria-label="Mois suivant">▶</button></span></div><div class="bilan-stats"><div><b>'+B.seances+'</b><span>séances</span></div><div><b>'+B.sets+'</b><span>séries faites</span></div><div><b>'+fmtKg(B.tonnage)+'</b><span>kg soulevés</span></div></div>'+(B.records.length?('<div style="margin-top:10px;font-weight:700;font-size:11.5px;color:var(--text-faint);letter-spacing:.3px">RECORDS DE CHARGE DU MOIS ('+B.records.length+')</div><table class="hist"><tbody>'+B.records.slice(0,8).map(function(r){return '<tr><td>'+esc(r.nm)+'</td><td style="text-align:right;color:var(--success);font-weight:700">'+fmt(r.kg)+' kg</td><td style="text-align:right;color:var(--text-faint)">'+(r.prev?'+'+fmt(r.kg-r.prev):'1er')+'</td></tr>';}).join('')+'</tbody></table>'):'<p class="hint" style="margin-top:8px">Aucun nouveau record de charge ce mois.</p>')+'</div>';
-    var V=volumeByGroupOverRange(R.from, R.to), avg=V.avg;
-    var sub=(R.preset===null)?R.label:('moyenne/sem · '+R.label);
+    var V=volumeByGroupOverRange(R.from, R.to, volMode), avg=V.avg;
+    var sub=((R.preset===null)?R.label:('moyenne/sem · '+R.label))+(volMode==='real'?' · réalisé':' · prévu');
     var total=0; Object.keys(avg).forEach(function(k){ total+=avg[k]; });
     var keys=MUSCLE_GROUPS.slice(); Object.keys(avg).forEach(function(g){ if(keys.indexOf(g)===-1) keys.push(g); });
     keys.sort(function(a,b){return (avg[b]||0)-(avg[a]||0);});
     if(total>0){
       var rows=keys.map(function(g){ var n=avg[g]||0, s=volStatus(g,n); return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+fmtSets(n)+'</td><td class="vol-cell">'+volBar(g,n)+'<div class="vol-stat" style="color:'+s.col+'">'+s.lbl+'</div></td></tr>'; }).join('');
-      html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><div class="help-box" data-help="volume" hidden>Séries éq./sem = volume hebdo par muscle (direct = 1, indirect = 0,5 ; échauffements exclus). Tous les groupes sont affichés (0 = non travaillé). La barre situe ton volume entre les repères RP : <b>MEV</b> (minimum efficace) · <b>MAV</b> (zone optimale) · <b>MRV</b> (max récupérable). Sous MEV = léger, MEV–MAV = productif, MAV–MRV = optimal, au-delà = élevé. Gros muscles : MEV 6 / MRV 20 · petits : MEV 4 / MRV 16. Moyenne sur '+V.weeks+' semaines. La carte montre les groupes majeurs (deltoïde latéral, milieu du dos et avant-bras restent dans le tableau).</div><div class="segmented vol-switch"><button data-act="volView" data-vv="carte"'+(volView==='carte'?' class="active"':'')+'>Carte</button><button data-act="volView" data-vv="tableau"'+(volView==='tableau'?' class="active"':'')+'>Tableau</button></div>'+(volView==='carte'?muscleMapSVG(avg):'<table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:center">Cible MEV→MRV</th></tr></thead><tbody>'+rows+'</tbody></table>')+'</div>';
+      html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><div class="help-box" data-help="volume" hidden>Séries éq./sem = volume hebdo par muscle (direct = 1, indirect = 0,5 ; échauffements exclus). Tous les groupes sont affichés (0 = non travaillé). La barre situe ton volume entre les repères RP : <b>MEV</b> (minimum efficace) · <b>MAV</b> (zone optimale) · <b>MRV</b> (max récupérable). Sous MEV = léger, MEV–MAV = productif, MAV–MRV = optimal, au-delà = élevé. Gros muscles : MEV 6 / MRV 20 · petits : MEV 4 / MRV 16. Moyenne sur '+V.weeks+' semaines. La carte montre les groupes majeurs (deltoïde latéral, milieu du dos et avant-bras restent dans le tableau). <b>Prévu</b> compte les séries planifiées (analyse du programme, semaines futures incluses) · <b>Réalisé</b> ne compte que les séries réellement cochées.</div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="segmented vol-switch"><button data-act="volView" data-vv="carte"'+(volView==='carte'?' class="active"':'')+'>Carte</button><button data-act="volView" data-vv="tableau"'+(volView==='tableau'?' class="active"':'')+'>Tableau</button></div><div class="segmented vol-switch"><button data-act="volMode" data-vm="plan"'+(volMode==='plan'?' class="active"':'')+'>Prévu</button><button data-act="volMode" data-vm="real"'+(volMode==='real'?' class="active"':'')+'>Réalisé</button></div></div>'+(volView==='carte'?muscleMapSVG(avg):'<table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:center">Cible MEV→MRV</th></tr></thead><tbody>'+rows+'</tbody></table>')+'</div>';
     } else {
       html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><p class="hint">Aucune donnée sur cette période.</p></div>';
     }
@@ -2018,17 +2021,54 @@
     allExerciseNames().forEach(function(nm){ if(isWarmup(nm)) return; var pts=sessionsOf(nm).filter(function(p){ return ptInRange(p.iso, R.from, R.to); }); if(pts.length<4) return; var mx=0,idx=0; pts.forEach(function(p,i){ if(p.maxWeight>mx){mx=p.maxWeight;idx=i;} }); var since=pts.length-1-idx; if(since>=4 && mx>0) plats.push({nm:nm,kg:mx,since:since}); });
     plats.sort(function(a,b){return b.since-a.since;});
     html+='<div class="card prog-sec" data-psec="plateaux" style="padding:10px 12px"><div class="section-label">Plateaux (charge bloquée ≥ 4 séances)</div>'+(plats.length?('<table class="hist"><tbody>'+plats.map(function(p){return '<tr><td>'+esc(p.nm)+'</td><td style="text-align:right">'+fmt(p.kg)+' kg</td><td style="text-align:right;color:var(--warning)">'+p.since+' séances</td></tr>';}).join('')+'</tbody></table><p class="hint" style="margin-top:8px">→ tente d\'abord +1-2 reps, puis +1-2 kg.</p>'):'<p class="hint">Aucun plateau sur la période 👍</p>')+'</div>';
+    html+=recordsSecHTML();
+    html+=cardioSecHTML(R);
     return html;
   }
-  function buildChartSVG(points, metric){
+  function recordsSecHTML(){
+    var recs=[];
+    allExerciseNames().forEach(function(nm){
+      if(isWarmup(nm)) return;
+      var bw=null, be=null;
+      state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||w.startDate||''; d.exercises.forEach(function(x){ if((x.name||'').trim()!==nm) return; x.sets.forEach(function(s){ if(!s.done) return;
+        var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0;
+        if(wt>0 && (!bw || wt>bw.kg)) bw={kg:wt, iso:di};
+        var e=e1rm(wt,rp); if(e>0 && (!be || e>be.e)) be={e:e, iso:di};
+      }); }); }); });
+      if(bw) recs.push({nm:nm, kg:bw.kg, iso:bw.iso, e:(be?be.e:0)});
+    });
+    recs.sort(function(a,b){return b.kg-a.kg;});
+    var rows=recs.map(function(r){ return '<tr><td>'+esc(r.nm)+'</td><td style="text-align:right;color:var(--success);font-weight:700">'+fmt(r.kg)+' kg</td><td style="text-align:right;color:var(--text-faint)">'+(r.iso?esc(formatDateFR(r.iso).slice(0,5)):'—')+'</td><td style="text-align:right">'+(r.e>0?('~'+fmt(r.e)):'—')+'</td></tr>'; }).join('');
+    return '<div class="card prog-sec" data-psec="records" style="padding:10px 12px"><div class="section-label">🏆 Records de charge — tout l\'historique</div>'+
+      (recs.length?('<table class="hist"><thead><tr><th>Exercice</th><th style="text-align:right">Charge</th><th style="text-align:right">Date</th><th style="text-align:right">1RM est.</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint" style="margin-top:8px">Meilleure charge jamais soulevée par exercice (séries faites). Le 1RM est. (Epley) permet de comparer des séances à répétitions différentes.</p>'):'<p class="hint">Aucune série faite pour l\'instant.</p>')+'</div>';
+  }
+  var cardioMetric='bpm';
+  function cardioSecHTML(R){
+    var entries=[];
+    state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||''; if(!di || !ptInRange(di, R.from, R.to)) return;
+      (d.cardio||[]).forEach(function(c){ entries.push({iso:di, type:c.type||'Cardio', min:c.min, intensity:c.intensity, bpm:c.bpm, recov:c.recov}); }); }); });
+    entries.sort(function(a,b){ return a.iso<b.iso?-1:(a.iso>b.iso?1:0); });
+    var METS={bpm:{lbl:'FC moyenne',unit:' bpm'}, recov:{lbl:'Récup 1 min',unit:' bpm'}, min:{lbl:'Durée',unit:' min'}};
+    var pts=entries.filter(function(e){ return e[cardioMetric]!=null && e[cardioMetric]!==''; }).map(function(e){ return {label:formatDateFR(e.iso).slice(0,5), full:formatDateFR(e.iso)+' · '+e.type, v:+e[cardioMetric]}; });
+    var seg='<div class="segmented vol-switch" style="margin-bottom:8px">'+Object.keys(METS).map(function(k){ return '<button data-act="cardioMetric" data-cm="'+k+'"'+(cardioMetric===k?' class="active"':'')+'>'+METS[k].lbl+'</button>'; }).join('')+'</div>';
+    var chart=pts.length?('<div class="chart-card" style="margin-bottom:10px">'+buildChartSVG(pts,'v',METS[cardioMetric].unit)+'</div>'):'<p class="hint">Aucune donnée « '+METS[cardioMetric].lbl+' » sur la période. Enregistre ton cardio en fin de séance (Mode séance → étape Cardio).</p>';
+    var last=entries.slice(-8).reverse();
+    var tbl=last.length?('<table class="hist"><thead><tr><th>Date</th><th>Machine</th><th style="text-align:right">Durée</th><th style="text-align:right">FC</th><th style="text-align:right">Récup</th></tr></thead><tbody>'+last.map(function(e){ return '<tr><td>'+esc(formatDateFR(e.iso).slice(0,5))+'</td><td>'+esc(e.type)+'</td><td style="text-align:right">'+(e.min!=null?intStr(e.min)+' min':'—')+'</td><td style="text-align:right">'+(e.bpm!=null?intStr(e.bpm):'—')+'</td><td style="text-align:right;color:var(--success);font-weight:700">'+(e.recov!=null?('-'+intStr(e.recov)):'—')+'</td></tr>'; }).join('')+'</tbody></table>'):'';
+    return '<div class="card prog-sec" data-psec="cardio" style="padding:10px 12px"><div class="section-label">Cardio — '+esc(R.label)+' <button class="help-q" data-act="help" data-topic="cardioprog">?</button></div><div class="help-box" data-help="cardioprog" hidden>Suivi de ta santé cardio dans le temps. <b>FC moyenne</b> : à effort constant, une FC qui baisse = un cœur plus efficace. <b>Récup 1 min</b> : nombre de battements perdus 1 minute après l\'arrêt — <b>plus la chute est grande, mieux c\'est</b> (≥ 25-30 = très bon signe) ; c\'est le meilleur indicateur maison. Les données viennent de l\'étape Cardio du Mode séance.</div>'+seg+chart+tbl+'</div>';
+  }
+  function buildChartSVG(points, metric, unit, goals){
     if(!points.length) return '<div class="empty">'+ic('<path d="M4 19V5M4 19h16"/><polyline points="6 14 10 10 13 13 18 7"/>')+'<p>Aucune série « faite » pour cet exercice.<br>Coche tes séries dans l\'onglet Programme pour suivre ta progression.</p></div>';
     var W=680,H=290,padL=46,padR=18,padT=18,padB=40,iW=W-padL-padR,iH=H-padT-padB;
-    var vals=points.map(function(p){return metric==='volume'?p.volume:p.maxWeight;});
+    var vals=points.map(function(p){return metric==='volume'?p.volume:(metric==='v'?p.v:p.maxWeight);});
+    var u=(unit!==undefined)?unit:(metric==='volume'?'':' kg');
     var rmin=Math.min.apply(null,vals),rmax=Math.max.apply(null,vals),min=rmin,max=rmax;
     if(min===max){ var pad=Math.max(1,Math.abs(max)*0.1); min-=pad; max+=pad; } else { var r=max-min; min-=r*0.12; max+=r*0.12; }
     if(rmin>=0&&min<0) min=0;
+    if(goals&&goals.length){ goals.forEach(function(g){ if(g.v<min) min=g.v; if(g.v>max) max=g.v; }); var gr2=(max-min)||1; min-=gr2*0.06; max+=gr2*0.06; if(rmin>=0&&min<0) min=0; }
     function xF(i){ return padL+(points.length===1?iW/2:(i/(points.length-1))*iW); }
     function yF(v){ return padT+(1-(v-min)/(max-min))*iH; }
+    var goalH='';
+    if(goals&&goals.length){ goals.forEach(function(g){ var gy=yF(g.v); goalH+='<line x1="'+padL+'" y1="'+gy.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+gy.toFixed(1)+'" stroke="var(--success)" stroke-width="1.3" stroke-dasharray="6 5" opacity=".65"/><text x="'+(W-padR)+'" y="'+(gy-5).toFixed(1)+'" text-anchor="end" font-size="11" font-weight="700" fill="var(--success)" opacity=".9">'+esc(g.label)+'</text>'; }); }
     var grid='';
     for(var t=0;t<=4;t++){ var gv=min+(t/4)*(max-min),gy=yF(gv);
       grid+='<line class="grid" x1="'+padL+'" y1="'+gy.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+gy.toFixed(1)+'"/>';
@@ -2037,8 +2077,8 @@
     var area=padL+','+(padT+iH).toFixed(1)+' '+lp+' '+xF(points.length-1).toFixed(1)+','+(padT+iH).toFixed(1);
     var step=Math.ceil(points.length/7),xl='';
     points.forEach(function(p,i){ if(i%step===0||i===points.length-1){ var anc=i===0?'start':(i===points.length-1?'end':'middle'); xl+='<text class="axis-x" x="'+xF(i).toFixed(1)+'" y="'+(H-padB+18)+'" text-anchor="'+anc+'">'+esc(p.label)+'</text>'; } });
-    var circ=points.map(function(p,i){return '<circle class="pt" cx="'+xF(i).toFixed(1)+'" cy="'+yF(vals[i]).toFixed(1)+'" r="3.6"><title>'+esc(p.full+' : '+fmt(vals[i])+(metric==='volume'?'':' kg'))+'</title></circle>';}).join('');
-    return '<svg class="chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity="0.28"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>'+grid+'<polygon class="area" points="'+area+'"/><polyline class="line" points="'+lp+'"/>'+circ+xl+'</svg>';
+    var circ=points.map(function(p,i){return '<circle class="pt" cx="'+xF(i).toFixed(1)+'" cy="'+yF(vals[i]).toFixed(1)+'" r="3.6"><title>'+esc(p.full+' : '+fmt(vals[i])+u)+'</title></circle>';}).join('');
+    return '<svg class="chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity="0.28"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>'+grid+goalH+'<polygon class="area" points="'+area+'"/><polyline class="line" points="'+lp+'"/>'+circ+xl+'</svg>';
   }
   var progTab='volume';
   function setProgTab(t){ progTab=t; applyProgTab(); }
@@ -2113,8 +2153,27 @@
     {k:'mollet',label:'Mollet',tip:"Debout, poids réparti (ou assis, genou à 90°). Ruban au point le plus large du mollet. Même jambe."},
     {k:'cou',label:'Cou',tip:"Autour de la base du cou, ruban relâché, sans serrer."}
   ];
-  var mensGuideOpen=false;
+  var mensGuideOpen=false, mensChartPart='taille';
   function sortedMens(){ return (state.measurements||[]).slice().sort(function(a,b){ return (a.date||'')<(b.date||'')?-1:((a.date||'')>(b.date||'')?1:0); }); }
+  // % de gras estime (formule US Navy hommes, tout en cm) — estimation +/- 3-5 %
+  function mensBF(sorted){
+    var h=state.settings&&state.settings.heightCm;
+    if(!h||h<100) return null;
+    for(var i=sorted.length-1;i>=0;i--){ var v=sorted[i].vals||{};
+      if(v.taille!=null && v.cou!=null && v.taille>v.cou){
+        var bf=495/(1.0324-0.19077*Math.log10(v.taille-v.cou)+0.15456*Math.log10(h))-450;
+        return { bf:Math.round(bf*10)/10, iso:sorted[i].date };
+      } }
+    return null;
+  }
+  function mensChartHTML(sorted){
+    var opts=MENS_PARTS.map(function(p){ var n=sorted.filter(function(m){return m.vals&&m.vals[p.k]!=null;}).length; return '<option value="'+p.k+'"'+(p.k===mensChartPart?' selected':'')+'>'+esc(p.label)+' ('+n+')</option>'; }).join('');
+    var pts=sorted.filter(function(m){return m.vals&&m.vals[mensChartPart]!=null;}).map(function(m){ return {label:formatDateFR(m.date).slice(0,5), full:formatDateFR(m.date), v:m.vals[mensChartPart]}; });
+    var goals=(mensChartPart==='taille')?[{v:90,label:'santé 90'},{v:84,label:'objectif 84'}]:null;
+    var inner=(pts.length>=2)?('<div class="chart-card">'+buildChartSVG(pts,'v',' cm',goals)+'</div>'):'<p class="hint">Il faut au moins 2 mesures de cette zone pour tracer la courbe — reviens après ta prochaine prise de mesures.</p>';
+    return '<div class="card"><div class="section-label" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">Courbe <select id="mens-chart-part" style="flex:1;min-width:140px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font:inherit;font-size:13.5px;font-weight:700;padding:7px 9px">'+opts+'</select></div>'+inner+
+      (mensChartPart==='taille'?'<p class="hint" style="margin-top:8px">Repères : <b style="color:var(--success)">90 cm</b> = seuil santé (tour de taille &lt; moitié de ta taille) · <b style="color:var(--success)">84 cm</b> = zone « ventre plat, poignées parties ».</p>':'')+'</div>';
+  }
   function renderMensurations(){
     var box=$('mens-body'); if(!box) return;
     var sorted=sortedMens(), last=sorted[sorted.length-1]||null;
@@ -2136,11 +2195,14 @@
       }).join('');
       var hist='<div class="mens-hist-wrap"><table class="hist mens-hist"><thead><tr><th>Date</th>'+MENS_PARTS.map(function(p){return '<th title="'+escA(p.label)+'">'+esc(p.label.split(' ')[0].slice(0,5))+'</th>';}).join('')+'<th></th></tr></thead><tbody>'+
         sorted.slice().reverse().map(function(m){ var vrow='<tr><td>'+esc(m.date?formatDateFR(m.date).slice(0,5):'?')+'</td>'+MENS_PARTS.map(function(p){ return '<td>'+((m.vals&&m.vals[p.k]!=null)?numStr(m.vals[p.k]):'·')+'</td>'; }).join('')+'<td><button class="mini-btn del" data-act="mensDel" data-id="'+m.id+'" title="Supprimer cette mesure">'+ic(P.trash)+'</button></td></tr>'; var nrow=(m.note&&m.note.trim())?'<tr class="mens-note-row"><td colspan="'+(MENS_PARTS.length+2)+'">'+esc(m.note)+'</td></tr>':''; return vrow+nrow; }).join('')+'</tbody></table></div>';
-      prog='<div class="card mens-prog"><div class="section-label">Progression <small style="font-weight:400;color:var(--text-faint)">('+sorted.length+' mesure'+(sorted.length>1?'s':'')+')</small></div><div class="mens-cards">'+cards+'</div>'+hist+'</div>';
+      var bf=mensBF(sorted);
+      var bfCard=bf?('<div class="mens-card"><div class="mens-card-k">% gras estimé</div><div class="mens-card-v">'+numStr(bf.bf)+' <small>%</small></div><div class="mens-card-d faint">Navy · ±3-5 %</div></div>'):'';
+      var bfHint=(!bf && !(state.settings&&state.settings.heightCm))?'<p class="hint" style="margin-top:8px">💡 Renseigne ta taille (cm) dans Réglages → Profil pour estimer ton % de gras (formule Navy : tour de taille + cou).</p>':'';
+      prog='<div class="card mens-prog"><div class="section-label">Progression <small style="font-weight:400;color:var(--text-faint)">('+sorted.length+' mesure'+(sorted.length>1?'s':'')+')</small></div><div class="mens-cards">'+bfCard+cards+'</div>'+bfHint+hist+'</div>';
     } else {
       prog='<div class="card"><p class="hint">Aucune mesure encore. Enregistre ta première pour lancer le suivi — et pense à noter tes conditions (même moment, même côté) pour bien comparer ensuite.</p></div>';
     }
-    box.innerHTML=guide+form+prog;
+    box.innerHTML=guide+form+(sorted.length?mensChartHTML(sorted):'')+prog;
   }
   function mensSave(){
     var dateEl=$('mens-date'); var date=dateEl?dateEl.value:''; if(!date){ toast('Choisis une date'); return; }
@@ -2166,6 +2228,9 @@
           '<button data-act="palette" data-pal=""'+(!(state.settings.palette)?' class="active"':'')+'><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#4f8cff;margin-right:6px;vertical-align:middle"></span>Bleu</button>'+
           '<button data-act="palette" data-pal="emeraude"'+(state.settings.palette==='emeraude'?' class="active"':'')+'><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2dd4a7;margin-right:6px;vertical-align:middle"></span>Émeraude</button>'+
         '</div></div></div>'+
+      '<div class="card"><div class="section-label">Profil</div>'+
+        '<label style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="hint" style="margin:0">Taille :</span><span style="display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0 10px"><input id="set-height" inputmode="numeric" value="'+escA(state.settings.heightCm!=null?String(state.settings.heightCm):'')+'" placeholder="180" style="width:64px;background:transparent;border:none;color:var(--text);font:inherit;font-size:15px;font-weight:700;padding:9px 0;outline:none"><small style="color:var(--text-faint)">cm</small></span></label>'+
+        '<p class="hint" style="margin-top:8px">Sert à estimer ton % de gras (formule Navy) dans l\'onglet Mesures, à partir de ton tour de taille et de ton cou.</p></div>'+
       '<div class="card"><div class="section-label">Modèles de séance</div>'+
         '<div class="chips">'+tplChips+'</div>'+
         '<p class="hint">Insère un modèle dans n\'importe quelle semaine via « Depuis un modèle » sous le programme.</p></div>'+
@@ -2295,6 +2360,8 @@
       case 'mensGuide': mensGuideToggle(); break;
       case 'progTab': setProgTab(b.dataset.ptab); break;
       case 'volView': volView=b.dataset.vv; renderProgression(); break;
+      case 'volMode': volMode=b.dataset.vm; renderProgression(); break;
+      case 'cardioMetric': cardioMetric=b.dataset.cm; renderProgression(); break;
       case 'bilanPrev': bilanOffset--; renderProgression(); break;
       case 'bilanNext': if(bilanOffset<0) bilanOffset++; renderProgression(); break;
       case 'weekPrev': navWeek(-1); break;
@@ -2384,6 +2451,8 @@
     if(el.dataset.gf){ gymNumEdit(el); return; }
     if(el.dataset.act==='weekSelect'){ selectWeek(el.value); return; }
     if(el.id==='period-from'||el.id==='period-to'){ setPeriodCustom(); return; }
+    if(el.id==='mens-chart-part'){ mensChartPart=el.value; renderMensurations(); return; }
+    if(el.id==='set-height'){ state.settings.heightCm=toNumN(el.value); save(); return; }
     if(el.id==='period-week'){ if(el.value) setPeriodWeek(el.value); return; }
     if(el.id==='prog-exercise'){ progSelected=el.value; renderProgBody(); return; }
     if(el.dataset.field==='exName'){ addLibrary(el.value); return; }
