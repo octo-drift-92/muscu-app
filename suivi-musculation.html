@@ -720,6 +720,7 @@
       <select id="prog-exercise"></select>
       <div class="segmented" id="metric-seg">
         <button data-act="metric" data-metric="weight" class="active">Charge max</button>
+        <button data-act="metric" data-metric="e1rm">1RM est.</button>
         <button data-act="metric" data-metric="volume">Volume</button>
       </div>
     </div>
@@ -747,7 +748,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v76';
+  var APP_VERSION = 'v77';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1796,13 +1797,13 @@
     state.weeks.forEach(function(w,wi){ w.days.forEach(function(d,di){
       var done=[]; d.exercises.forEach(function(x){ if((x.name||'').trim()===name) x.sets.forEach(function(s){ if(s.done) done.push(s); }); });
       if(!done.length) return;
-      var maxW=0, vol=0;
-      done.forEach(function(s){ var wg=num(s.realWeight!=null?s.realWeight:s.planWeight), rp=num(s.realReps!=null?s.realReps:s.planReps); if(wg>maxW)maxW=wg; vol+=wg*rp; });
+      var maxW=0, vol=0, bestE=0;
+      done.forEach(function(s){ var wg=num(s.realWeight!=null?s.realWeight:s.planWeight), rp=num(s.realReps!=null?s.realReps:s.planReps); if(wg>maxW)maxW=wg; vol+=wg*rp; var e=e1rm(wg,rp); if(e>bestE)bestE=e; });
       var date=d.date||w.startDate||'';
       var lbl;
       if(date){ var dp=date.split('-'); lbl=dp[2]+'/'+dp[1]+'/'+dp[0].slice(2); }
       else lbl='S'+(wi+1)+'·J'+(di+1);
-      out.push({ iso:date, label:lbl, full:(date?formatDateFR(date):(w.name+' / '+d.name)), maxWeight:maxW, volume:vol });
+      out.push({ iso:date, label:lbl, full:(date?formatDateFR(date):(w.name+' / '+d.name)), maxWeight:maxW, volume:vol, e1rm:bestE });
     });});
     out.sort(function(a,b){ if(!a.iso&&!b.iso) return 0; if(!a.iso) return 1; if(!b.iso) return -1; return a.iso<b.iso?-1:(a.iso>b.iso?1:0); });
     return out;
@@ -2036,7 +2037,7 @@
   function buildChartSVG(points, metric, unit, goals){
     if(!points.length) return '<div class="empty">'+ic('<path d="M4 19V5M4 19h16"/><polyline points="6 14 10 10 13 13 18 7"/>')+'<p>Aucune série « faite » pour cet exercice.<br>Coche tes séries dans l\'onglet Programme pour suivre ta progression.</p></div>';
     var W=680,H=290,padL=46,padR=18,padT=18,padB=40,iW=W-padL-padR,iH=H-padT-padB;
-    var vals=points.map(function(p){return metric==='volume'?p.volume:(metric==='v'?p.v:p.maxWeight);});
+    var vals=points.map(function(p){return metric==='volume'?p.volume:(metric==='v'?p.v:(metric==='e1rm'?p.e1rm:p.maxWeight));});
     var u=(unit!==undefined)?unit:(metric==='volume'?'':' kg');
     var rmin=Math.min.apply(null,vals),rmax=Math.max.apply(null,vals),min=rmin,max=rmax;
     if(min===max){ var pad=Math.max(1,Math.abs(max)*0.1); min-=pad; max+=pad; } else { var r=max-min; min-=r*0.12; max+=r*0.12; }
@@ -2091,8 +2092,8 @@
       '<div class="stat"><div class="k">Charge max</div><div class="v">'+fmt(bw)+' <small>kg</small></div></div>'+
       '<div class="stat"><div class="k">Volume max</div><div class="v">'+fmt(bv)+'</div></div>'+
       '<div class="stat"><div class="k">Progression charge</div><div class="v">'+prog+'</div></div></div>';
-    var table=pts.length?('<div class="card" style="padding:6px 10px"><table class="hist"><thead><tr><th>Séance</th><th>Charge max</th><th>Volume</th></tr></thead><tbody>'+
-      pts.slice().reverse().map(function(p){return '<tr><td>'+esc(p.full)+'</td><td>'+fmt(p.maxWeight)+' kg</td><td>'+fmt(p.volume)+'</td></tr>';}).join('')+'</tbody></table></div>'):'';
+    var table=pts.length?('<div class="card" style="padding:6px 10px"><table class="hist"><thead><tr><th>Séance</th><th>Charge max</th><th>1RM est.</th><th>Volume</th></tr></thead><tbody>'+
+      pts.slice().reverse().map(function(p){return '<tr><td>'+esc(p.full)+'</td><td>'+fmt(p.maxWeight)+' kg</td><td>'+(p.e1rm>0?('~'+fmt(p.e1rm)):'—')+'</td><td>'+fmt(p.volume)+'</td></tr>';}).join('')+'</tbody></table></div>'):'';
     box.innerHTML='<div class="card chart-card">'+buildChartSVG(pts,metric)+'</div>'+stats+table;
   }
   function setMetric(m){ state.settings.metric=m; save(); var b=document.querySelectorAll('#metric-seg button'); for(var i=0;i<b.length;i++) b[i].classList.toggle('active', b[i].dataset.metric===m); renderProgBody(); }
@@ -2286,8 +2287,11 @@
     toast('Export Excel (.xlsx) généré');
   }
   function exportCSV(){
-    var H=['Semaine','Jour','Date','Exercice','Série','Reps prévues','Charge prévue','Fait','Reps réalisées','Charge réalisée','Commentaire'], rows=[];
-    state.weeks.forEach(function(w){ w.days.forEach(function(d){ var dd=d.date?formatDateFR(d.date):(w.startDate?formatDateFR(w.startDate):''); d.exercises.forEach(function(x){ x.sets.forEach(function(s,i){ rows.push([w.name,d.name,dd,x.name,i+1,intStr(s.planReps),numStr(s.planWeight),s.done?'Oui':'Non',intStr(s.realReps),numStr(s.realWeight),s.comment||'']); }); }); }); });
+    var H=['Semaine','Jour','Date','Exercice','Série','Reps prévues','Charge prévue','Fait','Reps réalisées','Charge réalisée','Commentaire','Cardio durée (min)','Cardio intensité','Cardio FC (bpm)','Cardio récup 1 min (bpm)'], rows=[];
+    state.weeks.forEach(function(w){ w.days.forEach(function(d){ var dd=d.date?formatDateFR(d.date):(w.startDate?formatDateFR(w.startDate):'');
+      d.exercises.forEach(function(x){ x.sets.forEach(function(s,i){ rows.push([w.name,d.name,dd,x.name,i+1,intStr(s.planReps),numStr(s.planWeight),s.done?'Oui':'Non',intStr(s.realReps),numStr(s.realWeight),s.comment||'','','','','']); }); });
+      (d.cardio||[]).forEach(function(c){ rows.push([w.name,d.name,dd,'[Cardio] '+(c.type||'Cardio'),'','','','','','',c.note||'',intStr(c.min),(c.intensity!=null?String(c.intensity):''),intStr(c.bpm),intStr(c.recov)]); });
+    }); });
     if(!rows.length){ toast('Rien à exporter'); return; }
     download('programme-muscu-'+todayISO()+'.csv','﻿'+[H].concat(rows).map(function(r){return r.map(csvCell).join(';');}).join('\r\n'),'text/csv;charset=utf-8'); toast('Export CSV généré');
   }
@@ -2297,7 +2301,7 @@
     if(!rows.length){ toast('Fichier vide'); return; }
     var Hd=rows[0].map(function(h){return h.toLowerCase().trim();});
     function col(){ var p=[].slice.call(arguments); for(var k=0;k<Hd.length;k++) for(var j=0;j<p.length;j++) if(Hd[k].indexOf(p[j])!==-1) return k; return -1; }
-    var ci={ week:col('semaine'), day:col('jour'), date:col('date'), exo:col('exerc'), pr:col('reps prév','reps prev'), pw:col('charge prév','charge prev'), fait:col('fait'), rr:col('reps réal','reps real'), rw:col('charge réal','charge real'), com:col('comment') };
+    var ci={ week:col('semaine'), day:col('jour'), date:col('date'), exo:col('exerc'), pr:col('reps prév','reps prev'), pw:col('charge prév','charge prev'), fait:col('fait'), rr:col('reps réal','reps real'), rw:col('charge réal','charge real'), com:col('comment'), cmin:col('cardio durée','cardio duree'), cint:col('cardio intens'), cbpm:col('cardio fc'), crec:col('cardio récup','cardio recup') };
     if(ci.exo===-1){ alert('CSV non reconnu : colonne « Exercice » introuvable.'); return; }
     if(!confirm('Importer ce CSV remplacera le programme actuel. Continuer ?')) return;
     var weeks=[], wmap={};
@@ -2306,8 +2310,12 @@
       var dn=((ci.day>=0&&r[ci.day])?r[ci.day]:'Jour 1').trim()||'Jour 1';
       var xn=((ci.exo>=0&&r[ci.exo])?r[ci.exo]:'').trim(); if(!xn) continue;
       var wk=wmap[wn]; if(!wk){ wk={id:uid(),name:wn,startDate:'',collapsed:false,days:[],_m:{}}; wmap[wn]=wk; weeks.push(wk); }
-      var day=wk._m[dn]; if(!day){ day={id:uid(),name:dn,date:'',note:'',collapsed:false,exercises:[],_m:{}}; wk._m[dn]=day; wk.days.push(day); }
+      var day=wk._m[dn]; if(!day){ day={id:uid(),name:dn,date:'',note:'',collapsed:false,exercises:[],cardio:[],_m:{}}; wk._m[dn]=day; wk.days.push(day); }
       if(ci.date>=0&&r[ci.date]&&!day.date) day.date=parseDateImport(r[ci.date]);
+      if(/^\[cardio\]/i.test(xn)){
+        day.cardio.push({ id:uid(), type:xn.replace(/^\[cardio\]\s*/i,'')||'Cardio', min:toInt(ci.cmin>=0?r[ci.cmin]:''), intensity:(ci.cint>=0?(r[ci.cint]||''):''), bpm:toInt(ci.cbpm>=0?r[ci.cbpm]:''), recov:toInt(ci.crec>=0?r[ci.crec]:''), note:(ci.com>=0?(r[ci.com]||''):'') });
+        continue;
+      }
       var ex=day._m[xn]; if(!ex){ ex={id:uid(),name:xn,note:'',sets:[]}; day._m[xn]=ex; day.exercises.push(ex); }
       var fait=(ci.fait>=0?String(r[ci.fait]):'').toLowerCase();
       var done=fait.indexOf('oui')>-1||fait.indexOf('term')>-1||fait==='1'||fait==='x'||fait.indexOf('true')>-1||fait.indexOf('vrai')>-1;
