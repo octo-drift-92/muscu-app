@@ -373,7 +373,7 @@
        onglets desktop), donc l'en-tete ne garde que la date + les actions, sur une seule ligne. */
     .day-head .date-input { flex:1 1 auto; min-width:0; }
     .num, .set-comment, .ex-note, .day-note, .ex-name { font-size:16px; }
-    .cf-in input, .cardio-type, .cardio-note { font-size:16px; }
+    .cf-in input, .cardio-type, .cardio-note, .gym-note { font-size:16px; }
     .ex-chip { font-size:13px; min-height:40px; }
     .ex-chip b { font-size:15px; }
     .chip-step { width:28px; height:28px; font-size:18px; }
@@ -602,6 +602,12 @@
   .gym-set.pr { border-color:var(--accent); }
   .pr-badge { font-size:10.5px; font-weight:800; color:var(--accent); margin-left:6px; }
   .gym-target { background:color-mix(in srgb,var(--accent) 14%,var(--surface)); border:1px solid color-mix(in srgb,var(--accent) 40%,var(--border)); border-radius:12px; padding:9px 12px; margin:8px 0 4px; font-size:13.5px; color:var(--text); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .gym-skip { float:right; font:inherit; font-size:12px; font-weight:700; color:var(--text-dim); background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:5px 10px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .gym-skip:active { transform:scale(.95); }
+  .gym-note { width:100%; box-sizing:border-box; background:transparent; border:1px dashed var(--border); border-radius:8px; font:inherit; font-size:13px; color:var(--text-dim); padding:7px 10px; margin-top:10px; }
+  .gym-note:focus { outline:none; border-style:solid; border-color:var(--accent); color:var(--text); }
+  .gym-add-row { display:flex; gap:8px; margin-top:12px; }
+  .gym-add-row .btn { flex:1; justify-content:center; border-style:dashed; color:var(--text-dim); font-weight:600; }
   .gym-target b { color:var(--accent); font-weight:800; }
   .gym-target-hint { margin-left:auto; font-size:11px; color:var(--text-faint); font-weight:700; background:var(--bg); border-radius:6px; padding:2px 8px; white-space:nowrap; }
   .gym-target.new { background:var(--surface); border-color:var(--border); }
@@ -774,7 +780,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v74';
+  var APP_VERSION = 'v75';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -883,6 +889,8 @@
       ])
     ] };
     autoDateWeek(prevW);
+    // cardio d'exemple (fin de seance) -> alimente l'onglet Cardio de Progression et le bloc cardio des jours
+    prevW.days.forEach(function(d,i){ d.cardio=[{ id:uid(), type:'Vélo', min:20, intensity:'10', bpm:154-i*2, recov:22+i*2, note:'' }]; });
 
     state.weeks = [ prevW, w ];
     state.currentWeekId = w.id;
@@ -1321,6 +1329,10 @@
   function gymStart(loc){ if(!loc.day || !loc.day.exercises.length) return; gymMode={dayId:loc.day.id, exIndex:gymFirstTodo(loc.day)}; gymRestStart=0; renderGym(); }
   function gymExit(){ gymMode=null; gymStopTimer(); var ov=$('gym'); if(ov){ ov.hidden=true; ov.innerHTML=''; } document.documentElement.classList.remove('gym-open'); renderProgramme(); }
   function gymNav(d){ var day=gymDay(); if(!day) return; var ni=Math.max(0, Math.min(day.exercises.length, gymMode.exIndex+d)); if(ni===gymMode.exIndex) return; gymNavDir=d>0?1:-1; gymMode.exIndex=ni; renderGym(); }
+  // machine occupee : decale l'exercice courant en fin de seance, sans le perdre
+  function gymSkip(){ var day=gymDay(); if(!day) return; var i=gymMode.exIndex; if(i>=day.exercises.length-1) return; var ex=day.exercises.splice(i,1)[0]; day.exercises.push(ex); save(); gymNavDir=1; renderGym(); toast('« '+((ex.name||'').trim()||'Exercice')+' » déplacé en fin de séance'); }
+  function gymAddSet(){ var day=gymDay(), ex=gymCurEx(); if(!ex) return; var last=ex.sets[ex.sets.length-1]; ex.sets.push(last?freshSet(last.planReps,last.planWeight):freshSet(10,null)); save(); if(day) updateDaySummary(day.id); updateWeekSummary(); renderGym(); }
+  function gymAddExercise(){ var day=gymDay(); if(!day) return; var name=prompt('Nom du nouvel exercice :',''); if(name===null) return; name=name.trim(); var ex={ id:uid(), name:name, note:'', sets:[freshSet(10,null),freshSet(10,null),freshSet(10,null)] }; day.exercises.push(ex); if(name) addLibrary(name); save(); updateDaySummary(day.id); updateWeekSummary(); gymNavDir=1; gymMode.exIndex=day.exercises.length-1; renderGym(); toast('Exercice ajouté (3 séries)'); }
   function lastWorkWeight(name, beforeISO){ var last=lastDoneBefore(name, beforeISO); if(!last||!last.sets) return null; var m=null; last.sets.forEach(function(s){ if(s.w!=null && s.w!=='' && (m==null||s.w>m)) m=s.w; }); return m; }
   function gymSetWeight(s, ex, day){
     if(s.realWeight!=null) return s.realWeight;
@@ -1386,7 +1398,8 @@
     var groups=Object.keys(grp).filter(function(g){return g!=='Autre';}).sort(function(a,b){return grp[b]-grp[a];});
     var chips=groups.slice(0,8).map(function(g){ return '<span class="recap-grp"><i style="background:'+groupColor(g)+'"></i>'+esc(g)+' <b>'+fmtSets(grp[g])+'</b></span>'; }).join('');
     var prH = prs.length ? '<div class="recap-sec"><div class="recap-sec-t">🏆 Records du jour</div>'+prs.map(function(p){ return '<div class="recap-pr"><span>'+esc(p.nm)+'</span><b>'+fmt(p.kg)+' kg</b><small>'+(p.prev>0?('+'+fmt(Math.round((p.kg-p.prev)*10)/10)+' kg'):'1er')+'</small></div>'; }).join('')+'</div>' : '';
-    ov.innerHTML='<div class="recap-card"><div class="recap-h">Séance terminée</div><div class="recap-sub">'+esc(day.name||'Séance')+(day.date?' · '+esc(formatDateFR(day.date).slice(0,5)):'')+'</div><div class="recap-stats"><div><b>'+setsDone+'</b><span>séries</span></div><div><b>'+exNames+'</b><span>exos</span></div><div><b>'+fmtKg(tonnage)+'</b><span>kg levés</span></div></div>'+(chips?'<div class="recap-sec"><div class="recap-sec-t">Groupes travaillés</div><div class="recap-grps">'+chips+'</div></div>':'')+prH+'<div class="recap-foot"><button class="btn ghost" data-act="recapClose">Revoir</button><button class="btn" data-act="gymCardio">Cardio ▶</button><button class="btn primary" data-act="recapFinish">Terminer ✓</button></div></div>';
+    var caH=(day.cardio||[]).length ? '<div class="recap-sec"><div class="recap-sec-t">Cardio</div>'+(day.cardio||[]).map(function(c){ var bits=[]; if(c.min!=null&&c.min!=='') bits.push(intStr(c.min)+' min'); if(c.intensity) bits.push('int. '+esc(String(c.intensity))); if(c.bpm!=null&&c.bpm!=='') bits.push(intStr(c.bpm)+' bpm'); if(c.recov!=null&&c.recov!=='') bits.push('récup −'+intStr(c.recov)); return '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;font-size:13.5px"><span style="font-weight:700">'+esc(c.type||'Cardio')+'</span><span style="color:var(--text-dim);text-align:right">'+(bits.join(' · ')||'—')+'</span></div>'; }).join('')+'</div>' : '';
+    ov.innerHTML='<div class="recap-card"><div class="recap-h">Séance terminée</div><div class="recap-sub">'+esc(day.name||'Séance')+(day.date?' · '+esc(formatDateFR(day.date).slice(0,5)):'')+'</div><div class="recap-stats"><div><b>'+setsDone+'</b><span>séries</span></div><div><b>'+exNames+'</b><span>exos</span></div><div><b>'+fmtKg(tonnage)+'</b><span>kg levés</span></div></div>'+(chips?'<div class="recap-sec"><div class="recap-sec-t">Groupes travaillés</div><div class="recap-grps">'+chips+'</div></div>':'')+prH+caH+'<div class="recap-foot"><button class="btn ghost" data-act="recapClose">Revoir</button><button class="btn" data-act="gymCardio">Cardio ▶</button><button class="btn primary" data-act="recapFinish">Terminer ✓</button></div></div>';
     ov.hidden=false; document.documentElement.classList.add('gym-open'); animIn(ov.querySelector('.recap-card'), {opacity:0, transform:'translateY(16px) scale(.97)'}); if(navigator.vibrate){ try{ navigator.vibrate([90,50,90,50,170]); }catch(e){} }
   }
   function recapClose(){ var ov=$('recap'); if(ov){ ov.hidden=true; ov.innerHTML=''; } }
@@ -1449,9 +1462,12 @@
         +'<div class="gym-rest idle" id="gym-rest" data-act="restAdj" role="button" title="Touchez pour changer le repos cible"><span class="gr-ic">⏱</span><span class="gr-t">Repos</span></div>'
       +'</div>'
       +'<div class="gym-progress"><i style="width:'+(totalSets?Math.round(doneSets/totalSets*100):0)+'%"></i></div>'
-      +'<div class="gym-body">'
-        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+'<h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(ex.name, day)+'</div>'
+      +'<div class="gym-body" data-d="'+day.id+'" data-e="'+ex.id+'">'
+        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+(gymMode.exIndex<day.exercises.length-1?'<button class="gym-skip" data-act="gymSkip" title="Machine occupée ? Déplace cet exercice en fin de séance">Plus tard ⤵</button>':'')+'<h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(ex.name, day)
+        +'<input class="gym-note" data-field="exNote" value="'+escA(ex.note||'')+'" placeholder="Note (réglage machine, tempo, siège…)">'
+        +'</div>'
         +'<div class="gym-sets">'+setsH+'</div>'
+        +'<div class="gym-add-row"><button class="btn ghost" data-act="gymAddSet">+ série</button><button class="btn ghost" data-act="gymAddEx">+ exercice</button></div>'
       +'</div>'
       +'<div class="gym-nav">'
         +'<button class="btn" data-act="gymPrev"'+(gymMode.exIndex<=0?' disabled':'')+'>◀</button>'
@@ -2400,6 +2416,9 @@
       case 'gymNext': gymNav(1); break;
       case 'gymStep': gymStep(b); break;
       case 'gymDone': gymDone(b); break;
+      case 'gymSkip': gymSkip(); break;
+      case 'gymAddSet': gymAddSet(); break;
+      case 'gymAddEx': gymAddExercise(); break;
       case 'restAdj': restAdj(); break;
       case 'recapClose': recapClose(); break;
       case 'recapFinish': recapFinish(); break;
