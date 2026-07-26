@@ -772,7 +772,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v81';
+  var APP_VERSION = 'v82';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1892,6 +1892,16 @@
     state.weeks.forEach(function(w){ w.days.forEach(function(d){ d.exercises.forEach(function(x){ var n=(x.name||'').trim(); if(n&&!set[n]){ set[n]=true; order.push(n); } }); }); });
     return order.sort(function(a,b){return a.localeCompare(b,'fr');});
   }
+  // exercices reellement traçables : au moins une serie faite (evite les courbes vides
+  // pour les exercices seulement PLANIFIES dans les semaines a venir)
+  function namesWithHistory(){
+    var set={};
+    state.weeks.forEach(function(w){ w.days.forEach(function(d){ d.exercises.forEach(function(x){
+      var n=(x.name||'').trim(); if(!n||set[n]) return;
+      if((x.sets||[]).some(function(s){return s.done;})) set[n]=true;
+    }); }); });
+    return Object.keys(set).sort(function(a,b){return a.localeCompare(b,'fr');});
+  }
   function sessionsOf(name){
     var out=[];
     state.weeks.forEach(function(w,wi){ w.days.forEach(function(d,di){
@@ -1964,6 +1974,9 @@
   function resolveRange(){
     var s=state.settings, pw=s.progWeeks;
     if(pw===undefined && !s.progFrom && !s.progTo){
+      // par defaut : la semaine en cours pour les analyses de volume, mais TOUT l'historique
+      // pour la courbe par exercice (une progression sur une seule semaine n'a aucun sens)
+      if(progTab==='parexo') return {from:'', to:'', label:'historique complet', preset:0};
       var _cwid=todayWeekId(), _cw=_cwid?state.weeks.filter(function(w){return w.id===_cwid;})[0]:null;
       if(_cw){ var _sp=weekSpan(_cw); if(_sp.from){ return {from:_sp.from, to:_sp.to, label:'semaine en cours', preset:null}; } }
       pw=8;
@@ -2160,7 +2173,7 @@
     return '<svg class="chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity="0.28"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>'+grid+goalH+'<polygon class="area" points="'+area+'"/><polyline class="line" points="'+lp+'"/>'+circ+xl+'</svg>';
   }
   var progTab='volume';
-  function setProgTab(t){ progTab=t; applyProgTab(); }
+  function setProgTab(t){ progTab=t; renderProgression(); }
   function applyProgTab(){
     var secs=document.querySelectorAll('#prog-global [data-psec]');
     for(var i=0;i<secs.length;i++){ secs[i].style.display=(progTab!=='parexo' && secs[i].getAttribute('data-psec')===progTab)?'':'none'; }
@@ -2171,10 +2184,10 @@
     animIn(detail ? $('prog-body') : document.querySelector('#prog-global [data-psec="'+progTab+'"]'));
   }
   function renderProgression(){
-    var names=allExerciseNames(), sel=$('prog-exercise'), dl=$('prog-detail-label');
+    var names=namesWithHistory(), sel=$('prog-exercise'), dl=$('prog-detail-label');
     syncPeriodUI();
     if(!names.length){ sel.innerHTML='<option>—</option>'; progSelected=null; $('prog-global').innerHTML=''; if(dl) dl.style.display='none'; $('prog-body').innerHTML='<div class="empty"><p>Ajoute des exercices dans ton programme pour voir ta progression.</p></div>'; return; }
-    if(dl) dl.style.display='';
+    if(dl){ dl.style.display=''; dl.innerHTML='Progression par exercice <small style="font-weight:400;color:var(--text-faint)">— '+esc(resolveRange().label)+'</small>'; }
     $('prog-global').innerHTML=globalProgCards();
     if(!progSelected||names.indexOf(progSelected)===-1) progSelected=names[0];
     sel.innerHTML=names.map(function(n){return '<option value="'+escA(n)+'"'+(n===progSelected?' selected':'')+'>'+esc(n)+'</option>';}).join('');
