@@ -573,6 +573,10 @@
   .gym-num::-webkit-outer-spin-button, .gym-num::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
   .gym-done { flex:0 0 100%; height:50px; border-radius:12px; border:1px solid var(--accent); background:var(--accent); color:var(--on-accent); font-size:16px; font-weight:800; cursor:pointer; display:grid; place-items:center; user-select:none; -webkit-user-select:none; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
   .gym-done.on { background:var(--success); border-color:var(--success); }
+  /* exercices unilateraux : un bouton par cote (la serie n'est validee que quand G ET D sont faits) */
+  .gym-sides { flex:0 0 100%; display:flex; gap:8px; }
+  .gym-sides .gym-done { flex:1 1 0; }
+  .gym-side-tag { font-size:11px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:var(--accent); background:var(--accent-soft); border-radius:6px; padding:2px 7px; margin-left:7px; }
   .gym-nav { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; padding-bottom:calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--border); background:var(--surface); }
   .gym-nav .btn { min-width:60px; font-size:18px; }
   .gym-nav .btn[disabled] { opacity:.35; pointer-events:none; }
@@ -631,6 +635,7 @@
     .gym-set-n { flex:0 0 auto; min-width:58px; }
     .gym-stepper { flex:1 1 0; }
     .gym-done { flex:0 0 132px; height:48px; }
+    .gym-sides { flex:0 0 132px; gap:6px; }
     .gym-pm { width:50px; height:50px; font-size:22px; }
     .gym-val { font-size:20px; }
     .gym-ex-name { font-size:25px; }
@@ -767,7 +772,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v79';
+  var APP_VERSION = 'v80';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1338,14 +1343,35 @@
     save();
     var inp=btn.parentNode.querySelector('.gym-num'); if(inp) inp.value=val; }
   function gymNumEdit(inp){ var ex=gymCurEx(); if(!ex) return; var si=+inp.dataset.si, f=inp.dataset.gf, s=ex.sets[si]; if(!s) return; if(f==='reps'){ s.realReps=toInt(inp.value); } else { s.realWeight=toNumN(inp.value); } save(); }
-  function gymDone(btn){ var day=gymDay(), ex=gymCurEx(); if(!ex) return; var si=+btn.dataset.si, s=ex.sets[si]; if(!s) return;
-    s.done=!s.done;
-    if(s.done){ if(s.realReps==null) s.realReps=gymSetReps(s,ex,day); if(s.realWeight==null) s.realWeight=gymSetWeight(s,ex,day); gymStartRest(); var _nm=(ex.name||'').trim(), _wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0; if(_nm && _wt>0){ var _pb=exBestBefore(_nm, day.date); if(_pb>0 && _wt>_pb) toastParty('Record '+_nm+' : '+fmt(_wt)+' kg !'); } }
+  // exercices unilateraux : suivi par cote. Une serie = G + D (le comptage du volume ne change pas)
+  function isUnilateral(name){ return /unilat|1 bras|un bras|une jambe|alterne/i.test(name||''); }
+  function sideDone(s, side){ if(s.doneL==null && s.doneR==null) return !!s.done; return side==='L' ? !!s.doneL : !!s.doneR; }
+  function gymSetFinish(s, ex, day){
+    if(s.realReps==null) s.realReps=gymSetReps(s,ex,day);
+    if(s.realWeight==null) s.realWeight=gymSetWeight(s,ex,day);
+    gymStartRest();
+    var nm=(ex.name||'').trim(), wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0;
+    if(nm && wt>0){ var pb=exBestBefore(nm, day.date); if(pb>0 && wt>pb) toastParty('Record '+nm+' : '+fmt(wt)+' kg !'); }
+  }
+  function gymAfterSet(s, ex, day){
     var justDone=s.done && dayIsComplete(day);
     save(); updateDaySummary(day.id); updateWeekSummary();
     if(s.done && ex.sets.length && ex.sets.every(function(z){return z.done;}) && gymMode.exIndex<day.exercises.length-1){ gymMode.exIndex++; }
     renderGym();
-    if(justDone){ gymStopTimer(); gymGoCardio(); } }
+    if(justDone){ gymStopTimer(); gymGoCardio(); }
+  }
+  function gymDone(btn){ var day=gymDay(), ex=gymCurEx(); if(!ex) return; var si=+btn.dataset.si, s=ex.sets[si]; if(!s) return;
+    s.done=!s.done;
+    if(s.done) gymSetFinish(s, ex, day);
+    gymAfterSet(s, ex, day); }
+  function gymDoneSide(btn){ var day=gymDay(), ex=gymCurEx(); if(!ex) return; var si=+btn.dataset.si, s=ex.sets[si]; if(!s) return;
+    if(s.doneL==null && s.doneR==null && s.done){ s.doneL=true; s.doneR=true; }   // serie deja validee (bilateral/historique)
+    var k=(btn.dataset.side==='L')?'doneL':'doneR';
+    s[k]=!s[k];
+    var both=(!!s.doneL && !!s.doneR), was=s.done;
+    s.done=both;
+    if(both && !was) gymSetFinish(s, ex, day);
+    gymAfterSet(s, ex, day); }
   var gymRestDone=false;
   function mmss(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
   function restTarget(){ return (state.settings && state.settings.restTarget!=null) ? state.settings.restTarget : 90; }
@@ -1430,6 +1456,7 @@
     var totalSets=0, doneSets=0; day.exercises.forEach(function(x){ x.sets.forEach(function(s){ totalSets++; if(s.done) doneSets++; }); });
     var gymRec=exBestBefore((ex.name||'').trim(), day.date);
     var gymActiveIdx=-1; for(var _gi=0;_gi<ex.sets.length;_gi++){ if(!ex.sets[_gi].done){ gymActiveIdx=_gi; break; } }
+    var gymUni=isUnilateral(ex.name);
     var setsH=ex.sets.map(function(s,i){
       var rr=gymSetReps(s, ex, day), rw=gymSetWeight(s, ex, day);
       var isPR=s.done && (rw||0)>0 && gymRec>0 && (rw||0)>gymRec;
@@ -1438,7 +1465,12 @@
         +'<div class="gym-set-n">'+'Série '+(i+1)+(isPR?' <span class="pr-badge">🏆 PR</span>':'')+(isActive?' <span class="gym-set-active-tag">à faire</span>':'')+'</div>'
         +'<div class="gym-stepper"><div class="gym-pm" role="button" aria-label="moins" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="-1">−</div><span class="gym-val"><input class="gym-num" data-gf="reps" data-si="'+i+'" inputmode="numeric" value="'+escA(intStr(rr))+'" aria-label="reps série '+(i+1)+'"><small>reps</small></span><div class="gym-pm" role="button" aria-label="plus" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="1">+</div></div>'
         +'<div class="gym-stepper"><div class="gym-pm" role="button" aria-label="moins" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="-2.5">−</div><span class="gym-val"><input class="gym-num" data-gf="weight" data-si="'+i+'" inputmode="decimal" value="'+escA(numStr(rw))+'" aria-label="charge série '+(i+1)+'"><small>kg</small></span><div class="gym-pm" role="button" aria-label="plus" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="2.5">+</div></div>'
-        +'<div class="gym-done'+(s.done?' on':'')+'" role="button" data-act="gymDone" data-si="'+i+'">'+(s.done?'✓ Fait':'Fait')+'</div>'
+        +(gymUni
+          ? ('<div class="gym-sides">'
+              +'<div class="gym-done'+(sideDone(s,'L')?' on':'')+'" role="button" data-act="gymDoneSide" data-si="'+i+'" data-side="L" aria-label="côté gauche série '+(i+1)+'">'+(sideDone(s,'L')?'✓ G':'G')+'</div>'
+              +'<div class="gym-done'+(sideDone(s,'R')?' on':'')+'" role="button" data-act="gymDoneSide" data-si="'+i+'" data-side="R" aria-label="côté droit série '+(i+1)+'">'+(sideDone(s,'R')?'✓ D':'D')+'</div>'
+            +'</div>')
+          : ('<div class="gym-done'+(s.done?' on':'')+'" role="button" data-act="gymDone" data-si="'+i+'">'+(s.done?'✓ Fait':'Fait')+'</div>'))
         +'</div>';
     }).join('');
     var _ob=ov.querySelector('.gym-body'), _keep=(_ob && ov.getAttribute('data-exidx')===String(gymMode.exIndex))?_ob.scrollTop:0;
@@ -1451,7 +1483,7 @@
       +'</div>'
       +'<div class="gym-progress"><i style="width:'+(totalSets?Math.round(doneSets/totalSets*100):0)+'%"></i></div>'
       +'<div class="gym-body" data-d="'+day.id+'" data-e="'+ex.id+'">'
-        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+(gymMode.exIndex<day.exercises.length-1?'<button class="gym-skip" data-act="gymSkip" title="Machine occupée ? Déplace cet exercice en fin de séance">Plus tard ⤵</button>':'')+'<h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(ex.name, day)
+        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+(gymMode.exIndex<day.exercises.length-1?'<button class="gym-skip" data-act="gymSkip" title="Machine occupée ? Déplace cet exercice en fin de séance">Plus tard ⤵</button>':'')+'<h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+(gymUni?'<span class="gym-side-tag">G + D</span>':'')+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(ex.name, day)
         +'<input class="gym-note" data-field="exNote" value="'+escA(ex.note||'')+'" placeholder="Note (réglage machine, tempo, siège…)">'
         +'</div>'
         +'<div class="gym-sets">'+setsH+'</div>'
@@ -2421,6 +2453,7 @@
       case 'gymNext': gymNav(1); break;
       case 'gymStep': gymStep(b); break;
       case 'gymDone': gymDone(b); break;
+      case 'gymDoneSide': gymDoneSide(b); break;
       case 'gymSkip': gymSkip(); break;
       case 'gymAddSet': gymAddSet(); break;
       case 'gymAddEx': gymAddExercise(); break;
