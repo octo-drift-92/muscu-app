@@ -183,8 +183,6 @@
   .chip-step:disabled { opacity:.35; cursor:default; }
   .ex-note-show { font-size:12px; color:var(--text-faint); font-style:italic; margin-top:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .ex-menu .exmenu-lbl { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:var(--text-faint); padding:7px 8px 4px; }
-  .ex-menu .prog-toggle { display:flex; gap:5px; padding:0 6px 8px; }
-  .ex-menu .prog-btn { display:block; width:auto; flex:1; text-align:center; }
   .ex-menu .ex-note { display:block; margin:2px 6px 8px; width:calc(100% - 12px); box-sizing:border-box; }
   .ex-menu button.del { color:#e5484d; }
   .day-head .name-input { font-size:16px; font-weight:700; min-width:110px; }
@@ -275,12 +273,6 @@
   .ex-note { width:100%; background:transparent; border:1px dashed var(--border); border-radius:8px; font:inherit; font-size:12.5px; color:var(--text-dim); padding:6px 10px; margin-bottom:9px; }
   .ex-note:focus { outline:none; border-style:solid; border-color:var(--accent); color:var(--text); }
   .ex-actions { display:flex; gap:4px; }
-  .prog-toggle { display:inline-flex; align-items:center; gap:3px; }
-  .prog-toggle .prog-ico { width:15px; height:15px; color:var(--text-faint); }
-  .prog-btn { font:inherit; font-size:12px; font-weight:600; padding:4px 9px; border:1px solid var(--border); background:var(--surface); color:var(--text-dim); border-radius:7px; cursor:pointer; white-space:nowrap; }
-  .prog-btn:hover { background:var(--surface-3); color:var(--text); }
-  .prog-btn.active { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
-  .prog-btn.active[data-mode="none"] { background:var(--surface-3); border-color:var(--border); color:var(--text); }
 
   .sets-lite { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:10px; }
   .sets-lite-lbl { font-size:12px; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:.3px; }
@@ -370,7 +362,6 @@
     .chip-step { width:28px; height:28px; font-size:18px; }
     .mini-btn { width:40px; height:40px; }
     .mini-btn .icon { width:18px; height:18px; }
-    .prog-btn { padding:8px 13px; font-size:13px; }
     .reo-acts .mini-btn { width:40px; height:40px; }
     .help-q { width:28px; height:28px; }
   }
@@ -384,11 +375,11 @@
   #sync-badge .sync-dot { display:block; }
 
   /* ----- UX joyeuse : transitions, validation, célébration ----- */
-  .btn, .icon-btn, .mini-btn, nav.tabs button, .prog-btn, .segmented button, .day-card, .ex-block { transition:background .18s ease, border-color .18s ease, color .18s ease, box-shadow .2s ease, transform .12s ease; }
+  .btn, .icon-btn, .mini-btn, nav.tabs button, .segmented button, .day-card, .ex-block { transition:background .18s ease, border-color .18s ease, color .18s ease, box-shadow .2s ease, transform .12s ease; }
   /* ---- passe feel : retour à l'appui + tap-highlight + entrée des modales ---- */
-  button, .btn, .mini-btn, .icon-btn, .prog-btn, .fb-btn, .gym-pm, [role="button"], select, summary { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+  button, .btn, .mini-btn, .icon-btn, .fb-btn, .gym-pm, [role="button"], select, summary { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
   .fb-btn, .gym-x, .help-q, .toast-undo, .reo-add, .composer-link, .gym-pm, .composer-input { transition:transform .09s ease, background-color .14s ease, border-color .14s ease, color .14s ease, filter .12s ease; }
-  .btn:active, .icon-btn:active, .mini-btn:active, nav.tabs button:active, .prog-btn:active, .segmented button:active, .fb-btn:active, .reo-add:active, .composer-link:active, .gym-x:active, .help-q:active, .toast-undo:active, .week-bar select:active { transform:scale(.95); filter:brightness(.92); }
+  .btn:active, .icon-btn:active, .mini-btn:active, nav.tabs button:active:active, .segmented button:active, .fb-btn:active, .reo-add:active, .composer-link:active, .gym-x:active, .help-q:active, .toast-undo:active, .week-bar select:active { transform:scale(.95); filter:brightness(.92); }
   .gym-pm:active { transform:scale(.96); }
   @keyframes sheetUp { from { transform:translateY(30px); opacity:0; } to { transform:translateY(0); opacity:1; } }
   @keyframes backdropIn { from { opacity:0; } to { opacity:1; } }
@@ -666,7 +657,6 @@
   .help-q { display:inline-grid; place-items:center; width:18px; height:18px; border-radius:50%; border:1px solid var(--border); background:var(--surface); color:var(--text-faint); font-size:11px; font-weight:700; cursor:pointer; vertical-align:middle; }
   .help-box { background:var(--bg); border:1px solid var(--border); border-radius:9px; padding:9px 11px; margin:8px 0 4px; font-size:12px; line-height:1.5; color:var(--text-faint); }
   .help-box[hidden] { display:none; }
-  .ex-body .prog-toggle { margin-bottom:9px; }
   .prog-lbl { font-size:12px; color:var(--text-faint); font-weight:600; margin-right:2px; }
   #toast { z-index:400; }
   /* En app installee (PWA plein ecran) : barre du bas plus compacte, icones plus proches du bord
@@ -783,7 +773,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v84';
+  var APP_VERSION = 'v85';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1054,7 +1044,6 @@
   }
 
   function exerciseHTML(ex, day, num){
-    var prog = ex.progression || 'none';
     var g = exPrimaryGroup(ex.name);
     var w = curWeek();
     var rir = (w && w.rirTarget!=null) ? w.rirTarget : null;
@@ -1073,12 +1062,6 @@
         '<div class="menu-wrap">' +
           '<button class="mini-btn ex-kebab" data-act="exMenu" title="Options de l\'exercice" aria-label="Options">'+kebab+'</button>' +
           '<div class="menu menu-right ex-menu" id="exmenu-'+ex.id+'" hidden>' +
-            '<div class="exmenu-lbl">Progression du bloc</div>' +
-            '<div class="prog-toggle">' +
-              '<button class="prog-btn'+(prog==='none'?' active':'')+'" data-act="prog" data-mode="none" title="Rester pareil sur les semaines suivantes">Pareil</button>' +
-              '<button class="prog-btn'+(prog==='volume'?' active':'')+'" data-act="prog" data-mode="volume" title="+1 répétition par semaine">Vol</button>' +
-              '<button class="prog-btn'+(prog==='weight'?' active':'')+'" data-act="prog" data-mode="weight" title="+1 kg, répétitions remises à 8">Poids</button>' +
-            '</div>' +
             '<input class="ex-note" data-field="exNote" value="'+escA(ex.note)+'" placeholder="Note (technique, tempo, réglage machine…)">' +
             '<div class="menu-sep"></div>' +
             '<div class="exmenu-lbl">Matériel / marque</div>' +
@@ -1617,19 +1600,12 @@
   function addWeek(){ var iso=uniqueWeekDate(defaultNextMonday()); var w=freshWeek(weekNameFromDate(iso)); w.startDate=iso; state.weeks.push(w); state.currentWeekId=w.id; save(); renderProgramme(); toast('Semaine ajoutée'); focusField('[data-field="weekName"]'); }
 
   function setCopy(s){ return { id:uid(), planReps:s.planReps, planWeight:s.planWeight, done:false, realReps:null, realWeight:null, comment:'' }; }
-  function setProgress(s, exMode){
-    var reps=s.planReps, weight=s.planWeight;
-    if(exMode==='volume'){ if(reps!=null) reps=reps+1; }
-    else if(exMode==='weight'){ if(weight!=null) weight=weight+1; reps=8; }
-    return { id:uid(), planReps:reps, planWeight:weight, done:false, realReps:null, realWeight:null, comment:'' };
-  }
   function duplicateWeek(){
     var w = curWeek(); if(!w) return;
     var newDate = uniqueWeekDate(w.startDate ? addDaysISO(mondayISO(w.startDate),7) : defaultNextMonday());
     var nw = { id:uid(), name:weekNameFromDate(newDate), startDate:newDate, collapsed:false, days:w.days.map(function(d){
       return { id:uid(), name:d.name, date:'', note:d.note, collapsed:false, exercises:d.exercises.map(function(x){
-        var exMode = x.progression||'none';
-        return { id:uid(), name:x.name, note:x.note, equip:x.equip||'', progression:exMode, sets:x.sets.map(function(s){ return exMode==='none'?setCopy(s):setProgress(s,exMode); }) };
+        return { id:uid(), name:x.name, note:x.note, equip:x.equip||'', sets:x.sets.map(setCopy) };
       }) };
     }) };
     autoDateWeek(nw);
@@ -1647,11 +1623,11 @@
       days: src.days.map(function(d){
         return { id:uid(), name:d.name, date:'', note:d.note, collapsed:false,
           exercises: d.exercises.map(function(x){
-            var exMode=x.progression||'none', sets;
-            if(mode==='progress'){ sets=x.sets.map(function(s){ return exMode==='none'?setCopy(s):setProgress(s,exMode); }); }
+            var sets;
+            if(mode==='progress'){ sets=x.sets.map(setCopy); }
             else if(mode==='deload'){ if(isWarmup(x.name)){ sets=x.sets.map(setCopy); } else { var keep=Math.max(1,Math.round(x.sets.length/2)); sets=x.sets.slice(0,keep).map(setCopy); } }
             else { sets=x.sets.map(setCopy); }
-            return { id:uid(), name:x.name, note:x.note, equip:x.equip||'', progression:exMode, sets:sets };
+            return { id:uid(), name:x.name, note:x.note, equip:x.equip||'', sets:sets };
           }) };
       }) };
     autoDateWeek(wk); return wk;
@@ -1674,7 +1650,7 @@
         +'<label class="composer-row composer-check"><input type="checkbox" data-cfield="rir"'+(composerCfg.rir?' checked':'')+'> <span><b>RIR dégressif</b> (3→0 sur le build, deload facile)</span></label>'
         +'<label class="composer-row composer-check"><input type="checkbox" data-cfield="volramp"'+(composerCfg.volRamp?' checked':'')+'> <span><b>Progression du volume</b> (+1 série/semaine, modèle MEV→MRV)</span></label>'
         +'<label class="composer-row"><span>Démarrage (lundi)</span><input class="composer-input" type="date" data-cfield="start" value="'+escA(composerCfg.startDate)+'"></label>'
-        +'<p class="composer-hint">Chaque semaine de build applique le mode de progression de chaque exercice (Pareil / Volume +1 rep / Poids +1 kg).</p>'
+        +'<p class="composer-hint">Les semaines de build reprennent la même séance ; tu ajustes tes charges toi-même en séance selon tes sensations.</p>'
         +'<div class="composer-preview">'+composerPreviewHTML()+'</div>'
       +'</div>'
       +'<div class="composer-foot"><button class="btn" data-act="composerClose">Annuler</button><button class="btn primary" data-act="composerGenerate">Générer le bloc</button></div>'
@@ -1705,31 +1681,6 @@
     toast(made.length+' semaines générées');
   }
   // change de mode/charge sur une semaine → recalcule ce même exercice dans les semaines suivantes (non commencées)
-  function propagateProgression(fromWeek, ex, baseSet){
-    if(!fromWeek || !ex || !fromWeek.startDate || !ex.sets || !ex.sets.length) return;
-    var mode=ex.progression||'none', name=(ex.name||'').trim(); if(!name) return;
-    var base=baseSet||ex.sets[0], curR=(base.planReps!=null?base.planReps:null), curW=(base.planWeight!=null?base.planWeight:null);
-    var later=state.weeks.filter(function(w){ return w.startDate && w.startDate>fromWeek.startDate; }).sort(function(a,b){ return a.startDate<b.startDate?-1:1; });
-    var snaps=[], changed=0, broken=false;
-    for(var i=0;i<later.length;i++){
-      var w=later[i], target=null;
-      for(var di=0; di<w.days.length && !target; di++){ var exs=w.days[di].exercises; for(var xi=0; xi<exs.length; xi++){ if((exs[xi].name||'').trim()===name){ target=exs[xi]; break; } } }
-      if(!target){ broken=true; continue; }
-      if(target.sets.some(function(s){ return s.done; })){ broken=true; continue; }
-      snaps.push({ ex:target, oldProg:target.progression, oldSets:target.sets });
-      target.progression=mode;
-      if(!broken){
-        if(!/deload/i.test(w.name||'')){
-          if(mode==='volume'){ if(curR!=null) curR=curR+1; }
-          else if(mode==='weight'){ if(curW!=null) curW=curW+1; curR=8; }
-        }
-        var nR=curR, nW=curW;
-        target.sets=target.sets.map(function(){ return { id:uid(), planReps:nR, planWeight:nW, done:false, realReps:null, realWeight:null, comment:'' }; });
-      }
-      changed++;
-    }
-    if(changed){ save(); toastUndo(changed+' semaine'+(changed>1?'s':'')+' suivante'+(changed>1?'s':'')+' adaptée'+(changed>1?'s':''), function(){ snaps.forEach(function(s){ s.ex.progression=s.oldProg; s.ex.sets=s.oldSets; }); save(); renderProgramme(); }); }
-  }
   function deleteWeek(){
     var w=curWeek(); if(!w) return;
     var i=state.weeks.findIndex(function(x){return x.id===w.id;});
@@ -1797,7 +1748,7 @@
   function reRenderAfterCardio(){ if(gymMode) renderGym(); else renderProgramme(); }
   function addCardio(loc){ if(!loc.day) return; if(!loc.day.cardio) loc.day.cardio=[]; var c={ id:uid(), type:'Vélo', min:20, intensity:'', bpm:null, recov:null, note:'' }; loc.day.cardio.push(c); save(); reRenderAfterCardio(); focusField((gymMode?'#gym ':'')+'[data-c="'+c.id+'"] [data-field="cardioBpm"]'); }
   function deleteCardio(loc){ if(!loc.day||!loc.cardio) return; var d=loc.day, i=(d.cardio||[]).findIndex(function(c){return c.id===loc.cardio.id;}); if(i<0) return; var c=d.cardio[i]; d.cardio.splice(i,1); save(); reRenderAfterCardio(); toastUndo('Cardio supprimé', function(){ d.cardio.splice(i,0,c); save(); reRenderAfterCardio(); }); }
-  function duplicateExercise(loc){ if(!loc.ex||!loc.day) return; var x=loc.ex; var nx={ id:uid(), name:x.name, note:x.note, equip:x.equip||'', progression:(x.progression||'none'), sets:x.sets.map(function(s){ return freshSet(s.planReps,s.planWeight); }) }; var i=loc.day.exercises.findIndex(function(e){return e.id===x.id;}); loc.day.exercises.splice(i+1,0,nx); save(); renderProgramme(); toast('Exercice dupliqué'); }
+  function duplicateExercise(loc){ if(!loc.ex||!loc.day) return; var x=loc.ex; var nx={ id:uid(), name:x.name, note:x.note, equip:x.equip||'', sets:x.sets.map(function(s){ return freshSet(s.planReps,s.planWeight); }) }; var i=loc.day.exercises.findIndex(function(e){return e.id===x.id;}); loc.day.exercises.splice(i+1,0,nx); save(); renderProgramme(); toast('Exercice dupliqué'); }
   function deleteExercise(loc){ if(!loc.ex||!loc.day) return; var d=loc.day, i=d.exercises.findIndex(function(e){return e.id===loc.ex.id;}); var ex=loc.ex; d.exercises.splice(i,1); save(); renderProgramme(); toastUndo('Exercice supprimé', function(){ d.exercises.splice(i,0,ex); save(); renderProgramme(); }); }
 
   function addSet(loc){ if(!loc.ex) return; var last=loc.ex.sets[loc.ex.sets.length-1]; var ns=last?freshSet(last.planReps,last.planWeight):freshSet(10,null); loc.ex.sets.push(ns); save(); renderProgramme(); if(loc.day) updateDaySummary(loc.day.id); focusField('[data-s="'+ns.id+'"] [data-field="planWeight"]'); }
@@ -2600,12 +2551,6 @@
       case 'exMenu': if(loc.ex) toggleMenu('exmenu-'+loc.ex.id); break;
       case 'moveEx': openMoveMenu(loc); break;
       case 'moveExTo': if(loc.ex&&loc.day){ var _lbl=b.textContent; moveExerciseDnD(loc.day.id, loc.ex.id, b.dataset.day, null, false); closeMenus(); toast('Exercice déplacé vers '+_lbl); } break;
-      case 'prog':
-        if(loc.ex){ loc.ex.progression=b.dataset.mode; save();
-          var blk=b.closest('.ex-block'); var pbs=blk.querySelectorAll('.prog-btn');
-          for(var pi=0;pi<pbs.length;pi++) pbs[pi].classList.toggle('active', pbs[pi].dataset.mode===loc.ex.progression);
-          propagateProgression(loc.week, loc.ex); }
-        break;
       case 'addSet': addSet(loc); break;
       case 'setsPlus': setsAdd(loc); break;
       case 'setsMinus': setsRemove(loc); break;
@@ -2645,7 +2590,6 @@
     if(el.id==='prog-exercise'){ progSelected=el.value; renderProgBody(); return; }
     if(el.dataset.field==='exName'){ addLibrary(el.value); return; }
     if(el.dataset.field) applyField(el);
-    if(el.dataset.field==='planReps'||el.dataset.field==='planWeight'){ var _pl=locate(el); if(_pl.week&&_pl.ex&&_pl.set) propagateProgression(_pl.week,_pl.ex,_pl.set); }
     if(el.dataset.field==='dayName'){ var _w=curWeek(); if(_w && sortWeekDays(_w)){ save(); renderProgramme(); } }
   });
   document.addEventListener('keydown', function(e){
