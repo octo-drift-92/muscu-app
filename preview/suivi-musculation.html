@@ -168,6 +168,13 @@
   .ex-chip b { color:var(--text); font-variant-numeric:tabular-nums; font-size:14px; }
   .ex-chip-mus { color:var(--text); }
   .ex-chip-rir { color:var(--accent); background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 30%,var(--border)); }
+  /* materiel / marque : historique et records suivis separement */
+  .ex-chip-equip { color:var(--text-dim); background:var(--surface-3); border-color:var(--border); font-weight:600; }
+  .equip-pick { display:flex; flex-wrap:wrap; gap:5px; padding:0 6px 8px; }
+  .equip-btn { flex:0 0 auto; font:inherit; font-size:12px; font-weight:700; color:var(--text-dim); background:var(--bg); border:1px solid var(--border); border-radius:999px; padding:6px 11px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .equip-btn:hover { background:var(--surface-2); color:var(--text); }
+  .equip-btn.active { background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 42%,var(--border)); color:var(--accent); }
+  .gym-equip-tag { font-size:11px; font-weight:800; letter-spacing:.3px; color:var(--text-dim); background:var(--surface-3); border-radius:6px; padding:2px 8px; margin-left:8px; vertical-align:middle; }
   .ex-chip-prog { color:var(--success); border-color:color-mix(in srgb,var(--success) 34%,var(--border)); }
   .ex-chip-sets { padding:0 8px 0 14px; gap:12px; }
   .ex-chip-sets .chip-lbl { color:var(--text-faint); font-size:11.5px; text-transform:uppercase; letter-spacing:.3px; }
@@ -772,7 +779,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v82';
+  var APP_VERSION = 'v83';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -889,7 +896,7 @@
     state.templates = days.map(function(d){ return tplFromDay(d, d.name); });
   }
   function tplFromDay(day, name){
-    return { id:uid(), name:name||day.name, exercises: day.exercises.map(function(x){ return { name:x.name, note:x.note, sets:x.sets.map(function(s){ return { planReps:s.planReps, planWeight:s.planWeight }; }) }; }) };
+    return { id:uid(), name:name||day.name, exercises: day.exercises.map(function(x){ return { name:x.name, note:x.note, equip:x.equip||'', sets:x.sets.map(function(s){ return { planReps:s.planReps, planWeight:s.planWeight }; }) }; }) };
   }
 
   /* ---------- persistence ---------- */
@@ -1070,6 +1077,13 @@
             '</div>' +
             '<input class="ex-note" data-field="exNote" value="'+escA(ex.note)+'" placeholder="Note (technique, tempo, réglage machine…)">' +
             '<div class="menu-sep"></div>' +
+            '<div class="exmenu-lbl">Matériel / marque</div>' +
+            '<div class="equip-pick">' +
+              EQUIP_PRESETS.map(function(p){ return '<button class="equip-btn'+(((ex.equip||'').trim()===p)?' active':'')+'" data-act="setEquip" data-eq="'+escA(p)+'">'+esc(p)+'</button>'; }).join('') +
+              '<button class="equip-btn'+(!(ex.equip||'').trim()?' active':'')+'" data-act="setEquip" data-eq="">Aucun</button>' +
+            '</div>' +
+            '<input class="ex-note ex-equip" data-field="exEquip" value="'+escA(ex.equip||'')+'" placeholder="Autre marque (Technogym, Matrix, Hammer…)">' +
+            '<div class="menu-sep"></div>' +
             moveH +
             '<button data-act="dupEx">Dupliquer l\'exercice</button>' +
             '<button class="del" data-act="delEx">Supprimer</button>' +
@@ -1078,12 +1092,13 @@
       '</div>' +
       '<div class="ex-chips">' +
         ((g && g!=='Autre')?'<span class="ex-chip ex-chip-mus">'+esc(g)+'</span>':'') +
+        ((ex.equip||'').trim()?'<span class="ex-chip ex-chip-equip" title="Matériel / marque — l\'historique et les records sont suivis séparément">'+esc(ex.equip.trim())+'</span>':'') +
         '<span class="ex-chip ex-chip-sets"><span class="chip-lbl">Séries</span><button class="chip-step" data-act="setsMinus"'+(nSets<=1?' disabled':'')+' title="Retirer une série">−</button><b>'+nSets+'</b><button class="chip-step" data-act="setsPlus" title="Ajouter une série">+</button></span>' +
         ((rir!=null)?'<span class="ex-chip ex-chip-rir" title="Répétitions en réserve visées cette semaine">RIR '+rir+'</span>':'') +
         ((done>0&&!complete)?'<span class="ex-chip ex-chip-prog">'+done+'/'+nSets+' faites</span>':'') +
       '</div>' +
       (ex.note?'<div class="ex-note-show">'+esc(ex.note)+'</div>':'') +
-      lastSessionHTML(ex.name, day) +
+      lastSessionHTML(exKey(ex), day) +
     '</div>';
   }
   function dayCardHTML(day){
@@ -1277,7 +1292,15 @@
   function renderAll(){ populateDatalist(); renderAccueil(); renderProgramme(); }
 
   /* ---------- confort UX : accueil "aujourd'hui", record, anti-doublon ---------- */
-  function exBestBefore(name, beforeISO){ var best=0; state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||''; if(beforeISO && di && di>=beforeISO) return; d.exercises.forEach(function(x){ if((x.name||'').trim()!==name) return; x.sets.forEach(function(s){ if(s.done){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0; if(wt>best) best=wt; } }); }); }); }); return best; }
+  // Identite d'un exercice pour l'HISTORIQUE : nom + materiel/marque.
+  // Deux machines differentes ne se comparent pas -> courbes, records et
+  // "Derniere fois" sont separes automatiquement quand le materiel differe.
+  var EQUIP_PRESETS=['Basic Fit','Fitness Park',"Gold's Gym"];
+  function exKey(x){ if(!x) return ''; var n=(x.name||'').trim(), e=(x.equip||'').trim(); return e?(n+' ['+e+']'):n; }
+  function keyOf(name, equip){ return exKey({name:name, equip:equip}); }
+  function keyName(k){ return String(k||'').replace(/\s*\[[^\]]*\]\s*$/,''); }   // nom seul (taxonomie, affichage)
+  function keyEquip(k){ var m=String(k||'').match(/\[([^\]]*)\]\s*$/); return m?m[1]:''; }
+  function exBestBefore(name, beforeISO){ var best=0; state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||''; if(beforeISO && di && di>=beforeISO) return; d.exercises.forEach(function(x){ if(exKey(x)!==name) return; x.sets.forEach(function(s){ if(s.done){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0; if(wt>best) best=wt; } }); }); }); }); return best; }
   function uniqueWeekDate(iso){ var used={}; state.weeks.forEach(function(w){ if(w.startDate) used[w.startDate]=1; }); var d=iso, g=0; while(used[d] && g<260){ d=addDaysISO(d,7); g++; } return d; }
   function todaySession(){ var t=todayISO(); for(var i=0;i<state.weeks.length;i++){ var w=state.weeks[i]; for(var j=0;j<w.days.length;j++){ if(w.days[j].date===t) return {week:w, day:w.days[j]}; } } return null; }
   function weekStreak(){ var wk={}; state.weeks.forEach(function(w){ w.days.forEach(function(d){ if(d.date && d.exercises.some(function(x){return x.sets.some(function(s){return s.done;});})) wk[mondayISO(d.date)]=1; }); }); var keys=Object.keys(wk).sort(); if(!keys.length) return 0; var last=keys[keys.length-1], curM=mondayISO(todayISO()); if(last<addDaysISO(curM,-7)) return 0; var n=0, cur=last, g=0; while(wk[cur] && g<520){ n++; cur=addDaysISO(cur,-7); g++; } return n; }
@@ -1338,7 +1361,7 @@
     if(s.realWeight!=null) return s.realWeight;
     var w=curWeek(), dl=w&&(/deload/i.test(w.name||'')||(w.rirTarget!=null&&w.rirTarget>=4));
     if(dl && s.planWeight!=null) return s.planWeight; // deload : on respecte la charge allégée prévue
-    var lw=lastWorkWeight((ex.name||'').trim(), day&&day.date); // sinon : report de la charge de la dernière séance
+    var lw=lastWorkWeight(exKey(ex), day&&day.date); // sinon : report de la charge de la dernière séance
     return (lw!=null)?lw:(s.planWeight!=null?s.planWeight:null);
   }
   function lastWorkReps(name, beforeISO){ var last=lastDoneBefore(name, beforeISO); if(!last||!last.sets||!last.sets.length) return null; var best=null; last.sets.forEach(function(s){ if(best==null || (s.w||0)>(best.w||0)) best=s; }); return best?best.r:null; }
@@ -1346,7 +1369,7 @@
     if(s.realReps!=null) return s.realReps;
     var w=curWeek(), dl=w&&(/deload/i.test(w.name||'')||(w.rirTarget!=null&&w.rirTarget>=4));
     if(dl && s.planReps!=null) return s.planReps;
-    var lr=lastWorkReps((ex.name||'').trim(), day&&day.date);
+    var lr=lastWorkReps(exKey(ex), day&&day.date);
     return (lr!=null)?lr:(s.planReps!=null?s.planReps:null);
   }
   function gymStep(btn){ var ex=gymCurEx(); if(!ex) return; var si=+btn.dataset.si, f=btn.dataset.f, d=+btn.dataset.d, s=ex.sets[si]; if(!s) return;
@@ -1363,8 +1386,8 @@
     if(s.realReps==null) s.realReps=gymSetReps(s,ex,day);
     if(s.realWeight==null) s.realWeight=gymSetWeight(s,ex,day);
     gymStartRest();
-    var nm=(ex.name||'').trim(), wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0;
-    if(nm && wt>0){ var pb=exBestBefore(nm, day.date); if(pb>0 && wt>pb) toastParty('Record '+nm+' : '+fmt(wt)+' kg !'); }
+    var nm=(ex.name||'').trim(), key=exKey(ex), wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0;
+    if(nm && wt>0){ var pb=exBestBefore(key, day.date); if(pb>0 && wt>pb) toastParty('Record '+nm+' : '+fmt(wt)+' kg !'); }
   }
   function gymAfterSet(s, ex, day){
     var justDone=s.done && dayIsComplete(day);
@@ -1411,11 +1434,11 @@
   function groupColor(g){ return GROUP_COLORS[g]||'#8090a6'; }
   function exDot(name, cls){ var g=exPrimaryGroup(name); return '<span class="'+(cls||'ex-dot')+'" style="background:'+groupColor(g)+'" title="'+escA(g)+'"></span>'; }
   function e1rm(w, reps){ w=+w||0; reps=+reps||0; if(w<=0||reps<=0) return 0; if(reps===1) return Math.round(w); return Math.round(w*(1+reps/30)); }
-  function exBestE1RM(name, beforeISO){ name=(name||'').trim(); if(!name) return 0; var best=0; state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||''; if(beforeISO && di && di>=beforeISO) return; d.exercises.forEach(function(x){ if((x.name||'').trim()!==name) return; x.sets.forEach(function(s){ if(s.done){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0, e=e1rm(wt,rp); if(e>best) best=e; } }); }); }); }); return best; }
+  function exBestE1RM(name, beforeISO){ name=(name||'').trim(); if(!name) return 0; var best=0; state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||''; if(beforeISO && di && di>=beforeISO) return; d.exercises.forEach(function(x){ if(exKey(x)!==name) return; x.sets.forEach(function(s){ if(s.done){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0, e=e1rm(wt,rp); if(e>best) best=e; } }); }); }); }); return best; }
   function gymHeadStats(ex){ var nm=(ex.name||'').trim(); if(!nm) return ''; var pr=exBestBefore(nm,''), e=exBestE1RM(nm,''), out=[]; if(pr>0) out.push('<span class="gym-stat">🏆 Record <b>'+fmt(pr)+' kg</b></span>'); if(e>0) out.push('<span class="gym-stat">1RM est. <b>~'+fmt(e)+' kg</b></span>'); return out.length?('<div class="gym-stats">'+out.join('')+'</div>'):''; }
   function gymTargetCue(ex, day){
     var nm=(ex.name||'').trim(); if(!nm) return '';
-    var lw=lastWorkWeight(nm, day&&day.date), lr=lastWorkReps(nm, day&&day.date);
+    var lw=lastWorkWeight(exKey(ex), day&&day.date), lr=lastWorkReps(exKey(ex), day&&day.date);
     if(lw==null||lr==null) return '<div class="gym-target new">Première fois sur cet exo — pose ta charge de référence.</div>';
     return '<div class="gym-target"><span>Objectif : <b>battre '+numStr(lw)+' kg × '+intStr(lr)+'</b></span><span class="gym-target-hint">+1 rep ou +2,5 kg</span></div>';
   }
@@ -1441,7 +1464,7 @@
   function showSessionSummary(day){
     var ov=$('recap'); if(!ov || !day) return;
     var setsDone=0, tonnage=0, exNames=0, prs=[], grp={};
-    day.exercises.forEach(function(x){ var nm=(x.name||'').trim(); var ds=x.sets.filter(function(s){return s.done;}); if(!ds.length) return; exNames++; var top=0; ds.forEach(function(s){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0; setsDone++; tonnage+=wt*rp; if(wt>top) top=wt; }); if(!isWarmup(nm)) muscleContribs(nm).forEach(function(c){ grp[c.g]=(grp[c.g]||0)+ds.length*c.w; }); var rec=exBestBefore(nm, day.date); if(nm && top>0 && top>rec) prs.push({nm:nm, kg:top, prev:rec}); });
+    day.exercises.forEach(function(x){ var nm=(x.name||'').trim(); var ds=x.sets.filter(function(s){return s.done;}); if(!ds.length) return; exNames++; var top=0; ds.forEach(function(s){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0; setsDone++; tonnage+=wt*rp; if(wt>top) top=wt; }); if(!isWarmup(nm)) muscleContribs(nm).forEach(function(c){ grp[c.g]=(grp[c.g]||0)+ds.length*c.w; }); var rec=exBestBefore(exKey(x), day.date); if(nm && top>0 && top>rec) prs.push({nm:exKey(x), kg:top, prev:rec}); });
     // duree de seance (depuis l'ouverture du mode seance) + estimation calorique
     var mins=(gymMode&&gymMode.t0)?Math.round((Date.now()-gymMode.t0)/60000):0;
     if(mins<0||mins>300) mins=0;
@@ -1495,7 +1518,7 @@
     if(gymMode.exIndex===day.exercises.length){ renderGymCardio(ov, day); return; }
     var ex=day.exercises[gymMode.exIndex];
     var totalSets=0, doneSets=0; day.exercises.forEach(function(x){ x.sets.forEach(function(s){ totalSets++; if(s.done) doneSets++; }); });
-    var gymRec=exBestBefore((ex.name||'').trim(), day.date);
+    var gymRec=exBestBefore(exKey(ex), day.date);
     var gymActiveIdx=-1; for(var _gi=0;_gi<ex.sets.length;_gi++){ if(!ex.sets[_gi].done){ gymActiveIdx=_gi; break; } }
     var gymUni=isUnilateral(ex.name);
     var setsH=ex.sets.map(function(s,i){
@@ -1524,7 +1547,7 @@
       +'</div>'
       +'<div class="gym-progress"><i style="width:'+(totalSets?Math.round(doneSets/totalSets*100):0)+'%"></i></div>'
       +'<div class="gym-body" data-d="'+day.id+'" data-e="'+ex.id+'">'
-        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+(gymMode.exIndex<day.exercises.length-1?'<button class="gym-skip" data-act="gymSkip" title="Machine occupée ? Déplace cet exercice en fin de séance">Plus tard ⤵</button>':'')+'<h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+(gymUni?'<span class="gym-side-tag">G + D</span>':'')+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(ex.name, day)
+        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+(gymMode.exIndex<day.exercises.length-1?'<button class="gym-skip" data-act="gymSkip" title="Machine occupée ? Déplace cet exercice en fin de séance">Plus tard ⤵</button>':'')+'<h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+(gymUni?'<span class="gym-side-tag">G + D</span>':'')+((ex.equip||'').trim()?'<span class="gym-equip-tag">'+esc(ex.equip.trim())+'</span>':'')+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(ex.name, day)
         +'<input class="gym-note" data-field="exNote" value="'+escA(ex.note||'')+'" placeholder="Note (réglage machine, tempo, siège…)">'
         +'</div>'
         +'<div class="gym-sets">'+setsH+'</div>'
@@ -1559,6 +1582,7 @@
       case 'dayNote': if(loc.day) loc.day.note=v; break;
       case 'exName': if(loc.ex) loc.ex.name=v; break;
       case 'exNote': if(loc.ex) loc.ex.note=v; break;
+      case 'exEquip': if(loc.ex) loc.ex.equip=v; break;
       case 'planReps': if(loc.set) loc.set.planReps=toInt(v); break;
       case 'planWeight': if(loc.set) loc.set.planWeight=toNumN(v); break;
       case 'realReps': if(loc.set) loc.set.realReps=toInt(v); break;
@@ -1597,7 +1621,7 @@
     var nw = { id:uid(), name:weekNameFromDate(newDate), startDate:newDate, collapsed:false, days:w.days.map(function(d){
       return { id:uid(), name:d.name, date:'', note:d.note, collapsed:false, exercises:d.exercises.map(function(x){
         var exMode = x.progression||'none';
-        return { id:uid(), name:x.name, note:x.note, progression:exMode, sets:x.sets.map(function(s){ return exMode==='none'?setCopy(s):setProgress(s,exMode); }) };
+        return { id:uid(), name:x.name, note:x.note, equip:x.equip||'', progression:exMode, sets:x.sets.map(function(s){ return exMode==='none'?setCopy(s):setProgress(s,exMode); }) };
       }) };
     }) };
     autoDateWeek(nw);
@@ -1619,7 +1643,7 @@
             if(mode==='progress'){ sets=x.sets.map(function(s){ return exMode==='none'?setCopy(s):setProgress(s,exMode); }); }
             else if(mode==='deload'){ if(isWarmup(x.name)){ sets=x.sets.map(setCopy); } else { var keep=Math.max(1,Math.round(x.sets.length/2)); sets=x.sets.slice(0,keep).map(setCopy); } }
             else { sets=x.sets.map(setCopy); }
-            return { id:uid(), name:x.name, note:x.note, progression:exMode, sets:sets };
+            return { id:uid(), name:x.name, note:x.note, equip:x.equip||'', progression:exMode, sets:sets };
           }) };
       }) };
     autoDateWeek(wk); return wk;
@@ -1709,7 +1733,7 @@
 
   function cloneDay(d, name){
     return { id:uid(), name:name||d.name, date:'', note:d.note, collapsed:false, exercises:d.exercises.map(function(x){
-      return { id:uid(), name:x.name, note:x.note, sets:x.sets.map(function(s){ return freshSet(s.planReps,s.planWeight); }) }; }) };
+      return { id:uid(), name:x.name, note:x.note, equip:x.equip||'', sets:x.sets.map(function(s){ return freshSet(s.planReps,s.planWeight); }) }; }) };
   }
   function addDay(){ var w=curWeek(); if(!w) return; var d=freshDay('Jour '+(w.days.length+1)); w.days.push(d); selectDayInWeek(w,d.id); save(); renderProgramme(); focusField('[data-d="'+d.id+'"] [data-field="dayName"]'); }
   var WEEKDAY_LABELS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
@@ -1758,7 +1782,7 @@
   function reRenderAfterCardio(){ if(gymMode) renderGym(); else renderProgramme(); }
   function addCardio(loc){ if(!loc.day) return; if(!loc.day.cardio) loc.day.cardio=[]; var c={ id:uid(), type:'Vélo', min:20, intensity:'', bpm:null, recov:null, note:'' }; loc.day.cardio.push(c); save(); reRenderAfterCardio(); focusField((gymMode?'#gym ':'')+'[data-c="'+c.id+'"] [data-field="cardioBpm"]'); }
   function deleteCardio(loc){ if(!loc.day||!loc.cardio) return; var d=loc.day, i=(d.cardio||[]).findIndex(function(c){return c.id===loc.cardio.id;}); if(i<0) return; var c=d.cardio[i]; d.cardio.splice(i,1); save(); reRenderAfterCardio(); toastUndo('Cardio supprimé', function(){ d.cardio.splice(i,0,c); save(); reRenderAfterCardio(); }); }
-  function duplicateExercise(loc){ if(!loc.ex||!loc.day) return; var x=loc.ex; var nx={ id:uid(), name:x.name, note:x.note, progression:(x.progression||'none'), sets:x.sets.map(function(s){ return freshSet(s.planReps,s.planWeight); }) }; var i=loc.day.exercises.findIndex(function(e){return e.id===x.id;}); loc.day.exercises.splice(i+1,0,nx); save(); renderProgramme(); toast('Exercice dupliqué'); }
+  function duplicateExercise(loc){ if(!loc.ex||!loc.day) return; var x=loc.ex; var nx={ id:uid(), name:x.name, note:x.note, equip:x.equip||'', progression:(x.progression||'none'), sets:x.sets.map(function(s){ return freshSet(s.planReps,s.planWeight); }) }; var i=loc.day.exercises.findIndex(function(e){return e.id===x.id;}); loc.day.exercises.splice(i+1,0,nx); save(); renderProgramme(); toast('Exercice dupliqué'); }
   function deleteExercise(loc){ if(!loc.ex||!loc.day) return; var d=loc.day, i=d.exercises.findIndex(function(e){return e.id===loc.ex.id;}); var ex=loc.ex; d.exercises.splice(i,1); save(); renderProgramme(); toastUndo('Exercice supprimé', function(){ d.exercises.splice(i,0,ex); save(); renderProgramme(); }); }
 
   function addSet(loc){ if(!loc.ex) return; var last=loc.ex.sets[loc.ex.sets.length-1]; var ns=last?freshSet(last.planReps,last.planWeight):freshSet(10,null); loc.ex.sets.push(ns); save(); renderProgramme(); if(loc.day) updateDaySummary(loc.day.id); focusField('[data-s="'+ns.id+'"] [data-field="planWeight"]'); }
@@ -1778,7 +1802,7 @@
     var t=state.templates.filter(function(x){return x.id===id;})[0]; if(!t) return;
     var w=curWeek(); if(!w) return;
     var d={ id:uid(), name:t.name, date:'', note:'', collapsed:false, exercises:t.exercises.map(function(x){
-      return { id:uid(), name:x.name, note:x.note||'', sets:(x.sets&&x.sets.length?x.sets:[{planReps:null,planWeight:null}]).map(function(s){ return freshSet(s.planReps,s.planWeight); }) }; }) };
+      return { id:uid(), name:x.name, note:x.note||'', equip:x.equip||'', sets:(x.sets&&x.sets.length?x.sets:[{planReps:null,planWeight:null}]).map(function(s){ return freshSet(s.planReps,s.planWeight); }) }; }) };
     w.days.push(d); sortWeekDays(w); selectDayInWeek(w,d.id); save(); renderProgramme(); toast('Séance « '+t.name+' » ajoutée');
   }
   function deleteTemplate(id){ state.templates=state.templates.filter(function(t){return t.id!==id;}); save(); renderReglages(); }
@@ -1889,7 +1913,7 @@
   /* ---------- progression ---------- */
   function allExerciseNames(){
     var set={}, order=[];
-    state.weeks.forEach(function(w){ w.days.forEach(function(d){ d.exercises.forEach(function(x){ var n=(x.name||'').trim(); if(n&&!set[n]){ set[n]=true; order.push(n); } }); }); });
+    state.weeks.forEach(function(w){ w.days.forEach(function(d){ d.exercises.forEach(function(x){ var n=exKey(x); if(n&&!set[n]){ set[n]=true; order.push(n); } }); }); });
     return order.sort(function(a,b){return a.localeCompare(b,'fr');});
   }
   // exercices reellement traçables : au moins une serie faite (evite les courbes vides
@@ -1897,7 +1921,7 @@
   function namesWithHistory(){
     var set={};
     state.weeks.forEach(function(w){ w.days.forEach(function(d){ d.exercises.forEach(function(x){
-      var n=(x.name||'').trim(); if(!n||set[n]) return;
+      var n=exKey(x); if(!n||set[n]) return;
       if((x.sets||[]).some(function(s){return s.done;})) set[n]=true;
     }); }); });
     return Object.keys(set).sort(function(a,b){return a.localeCompare(b,'fr');});
@@ -1905,7 +1929,7 @@
   function sessionsOf(name){
     var out=[];
     state.weeks.forEach(function(w,wi){ w.days.forEach(function(d,di){
-      var done=[]; d.exercises.forEach(function(x){ if((x.name||'').trim()===name) x.sets.forEach(function(s){ if(s.done) done.push(s); }); });
+      var done=[]; d.exercises.forEach(function(x){ if(exKey(x)===name) x.sets.forEach(function(s){ if(s.done) done.push(s); }); });
       if(!done.length) return;
       var maxW=0, vol=0, bestE=0;
       done.forEach(function(s){ var wg=num(s.realWeight!=null?s.realWeight:s.planWeight), rp=num(s.realReps!=null?s.realReps:s.planReps); if(wg>maxW)maxW=wg; vol+=wg*rp; var e=e1rm(wg,rp); if(e>bestE)bestE=e; });
@@ -1994,7 +2018,7 @@
     var best=null;
     state.weeks.forEach(function(w){ w.days.forEach(function(d){
       var di=d.date||w.startDate||''; if(!di) return; if(beforeISO && di>=beforeISO) return;
-      var sets=[]; d.exercises.forEach(function(x){ if((x.name||'').trim()===name) x.sets.forEach(function(s){ if(s.done) sets.push({r:(s.realReps!=null?s.realReps:s.planReps), w:(s.realWeight!=null?s.realWeight:s.planWeight)}); }); });
+      var sets=[]; d.exercises.forEach(function(x){ if(exKey(x)===name) x.sets.forEach(function(s){ if(s.done) sets.push({r:(s.realReps!=null?s.realReps:s.planReps), w:(s.realWeight!=null?s.realWeight:s.planWeight)}); }); });
       if(sets.length && (!best || di>best.iso)){ best={iso:di, sets:sets}; }
     });});
     return best;
@@ -2031,7 +2055,7 @@
     var tm=bilanMonth(off), key=tm.key, floor=key+'-01';
     var days={}, sets=0, tonnage=0, maxIn={}, maxBefore={};
     state.weeks.forEach(function(w){ w.days.forEach(function(d){ var iso=d.date||''; if(!iso) return; var inM=iso.slice(0,7)===key, bef=iso<floor;
-      d.exercises.forEach(function(x){ var nm=(x.name||'').trim(); if(isWarmup(nm)) return; x.sets.forEach(function(s){ if(!s.done) return; var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0;
+      d.exercises.forEach(function(x){ var nm=exKey(x); if(isWarmup(nm)) return; x.sets.forEach(function(s){ if(!s.done) return; var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0;
         if(inM){ days[d.id]=1; sets++; tonnage+=wt*rp; if(nm&&(!maxIn[nm]||wt>maxIn[nm])) maxIn[nm]=wt; }
         else if(bef){ if(nm&&(!maxBefore[nm]||wt>maxBefore[nm])) maxBefore[nm]=wt; }
       }); });
@@ -2121,7 +2145,7 @@
     allExerciseNames().forEach(function(nm){
       if(isWarmup(nm)) return;
       var bw=null, be=null;
-      state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||w.startDate||''; d.exercises.forEach(function(x){ if((x.name||'').trim()!==nm) return; x.sets.forEach(function(s){ if(!s.done) return;
+      state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||w.startDate||''; d.exercises.forEach(function(x){ if(exKey(x)!==nm) return; x.sets.forEach(function(s){ if(!s.done) return;
         var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0;
         if(wt>0 && (!bw || wt>bw.kg)) bw={kg:wt, iso:di};
         var e=e1rm(wt,rp); if(e>0 && (!be || e>be.e)) be={e:e, iso:di};
@@ -2521,6 +2545,7 @@
       case 'undo': doUndo(); break;
       case 'help': helpTopic(b.dataset.topic); break;
       case 'addEx': addExercise(loc); break;
+      case 'setEquip': if(loc.ex){ loc.ex.equip=b.dataset.eq||''; save(); closeMenus(); renderProgramme(); toast(loc.ex.equip?('Matériel : '+loc.ex.equip):'Matériel retiré'); } break;
       case 'dupEx': duplicateExercise(loc); break;
       case 'delEx': deleteExercise(loc); break;
       case 'addCardio': addCardio(loc); break;
