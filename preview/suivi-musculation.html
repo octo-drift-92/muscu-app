@@ -497,6 +497,10 @@
   .reo-add-day .menu-wrap { width:100%; }
   .reo-add-day .btn { width:100%; justify-content:center; }
   .menu.menu-up { top:auto; bottom:calc(100% + 6px); max-height:60vh; overflow:auto; }
+  /* bascule automatique vers le haut quand le menu deborderait sous l'ecran */
+  .menu.menu-flip { top:auto; bottom:calc(100% + 6px); max-height:60vh; overflow:auto; }
+  /* la carte du jour est en overflow:hidden (coins arrondis) : on la laisse deborder tant qu'un menu est ouvert */
+  .day-card.menu-open { overflow:visible; }
   .reo-date { opacity:.55; font-weight:400; }
   .reo-list { padding:7px; display:flex; flex-direction:column; gap:6px; min-height:40px; }
   .reo-ex { display:flex; align-items:center; gap:8px; background:var(--bg); border:1px solid var(--border); border-radius:9px; padding:6px 8px; }
@@ -779,7 +783,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v83';
+  var APP_VERSION = 'v84';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1109,7 +1113,11 @@
         '<input class="date-input'+(day.date?'':' undated')+'" type="date" data-field="dayDate" value="'+escA(day.date)+'" title="Date de la séance">' +
         '<div class="day-actions">' +
           '<div class="menu-wrap"><button class="mini-btn" data-act="menu" data-menu="dayedit-'+day.id+'" title="Renommer ou changer le jour de la semaine">'+ic(P.pen)+'</button>' +
-            '<div class="menu menu-right" id="dayedit-'+day.id+'" hidden><div class="exmenu-lbl">Jour de la semaine</div>'+dayChangeMenuHTML(day)+'<div class="menu-sep"></div><button data-act="dayRename">✎ Renommer…</button></div></div>' +
+            '<div class="menu menu-right" id="dayedit-'+day.id+'" hidden><div class="exmenu-lbl">Jour de la semaine</div>'+dayChangeMenuHTML(day)+'<div class="menu-sep"></div><button data-act="dayRename">✎ Renommer…</button>'+
+            '<div class="menu-sep"></div><div class="exmenu-lbl">Matériel de toute la séance</div><div class="equip-pick">'+
+              EQUIP_PRESETS.map(function(p){ return '<button class="equip-btn'+((dayEquip(day)===p)?' active':'')+'" data-act="setDayEquip" data-eq="'+escA(p)+'">'+esc(p)+'</button>'; }).join('')+
+              '<button class="equip-btn'+((dayEquip(day)==='')?' active':'')+'" data-act="setDayEquip" data-eq="">Aucun</button>'+
+            '</div></div></div>' +
           '<button class="mini-btn" data-act="dayTpl" title="Enregistrer comme modèle de séance">'+ic(P.bookmark)+'</button>' +
           '<button class="mini-btn" data-act="dupDay" title="Dupliquer le jour">'+ic(P.copy)+'</button>' +
           '<button class="mini-btn del" data-act="delDay" title="Supprimer le jour">'+ic(P.trash)+'</button>' +
@@ -1745,6 +1753,13 @@
   }
   function reoAddDay(name){ var w=curWeek(); if(!w) return; var free=!(name&&String(name).trim()); var d=freshDay(name||('Jour '+(w.days.length+1))); w.days.push(d); if(w.startDate) autoDateWeek(w); sortWeekDays(w); selectDayInWeek(w,d.id); save(); closeMenus(); renderProgramme(); if(free) focusField('[data-d="'+d.id+'"] [data-field="dayName"]'); }
   // Menu "changer ce jour en un autre jour de la semaine" : propose les jours libres + marque le jour actuel.
+  // materiel commun a TOUS les exercices du jour (sinon '')
+  function dayEquip(day){
+    var exs=(day&&day.exercises)||[]; if(!exs.length) return '';
+    var first=(exs[0].equip||'').trim();
+    for(var i=1;i<exs.length;i++){ if((exs[i].equip||'').trim()!==first) return ''; }
+    return first;
+  }
   function dayChangeMenuHTML(day){
     var w=curWeek();
     var used={}; (w?w.days:[]).forEach(function(d){ if(d.id!==day.id){ var off=dayOffsetFromName(d.name); if(off!=null) used[off]=true; } });
@@ -1898,8 +1913,38 @@
   }
 
   /* ---------- menus ---------- */
-  function closeMenus(){ var m=document.querySelectorAll('.menu'); for(var i=0;i<m.length;i++) m[i].hidden=true; }
-  function toggleMenu(id){ var el=$(id); if(!el) return; var open=el.hidden; closeMenus(); el.hidden=!open; }
+  function closeMenus(){
+    var m=document.querySelectorAll('.menu');
+    for(var i=0;i<m.length;i++){ m[i].hidden=true; m[i].classList.remove('menu-flip'); m[i].style.maxHeight=''; m[i].style.overflowY=''; }
+    var c=document.querySelectorAll('.day-card.menu-open');
+    for(var j=0;j<c.length;j++) c[j].classList.remove('menu-open');
+  }
+  // bas utile de l'ecran : au-dessus de la barre de navigation fixe (mobile)
+  function menuViewportBottom(){
+    var nav=document.querySelector('nav.tabs');
+    if(nav){ var nr=nav.getBoundingClientRect(); if(nr.height && nr.top>window.innerHeight*0.5) return nr.top; }
+    return window.innerHeight;
+  }
+  // ouvre le menu vers le HAUT s'il deborderait sous l'ecran (dernier exercice d'une seance)
+  // et laisse la carte du jour deborder (elle est en overflow:hidden pour ses coins arrondis)
+  function placeMenu(el){
+    el.classList.remove('menu-flip'); el.style.maxHeight=''; el.style.overflowY='';
+    var card=el.closest?el.closest('.day-card'):null;
+    if(card) card.classList.add('menu-open');
+    var wrap=el.parentNode; if(!wrap||!wrap.getBoundingClientRect) return;
+    var wr=wrap.getBoundingClientRect();
+    var bottomLimit=menuViewportBottom()-8, topLimit=8;
+    var h=el.getBoundingClientRect().height;
+    var below=bottomLimit-wr.bottom-6, above=wr.top-topLimit-6;
+    if(h<=below) return;                                   // tient sous le bouton : rien a faire
+    if(above>below){                                       // plus de place au-dessus -> on bascule
+      el.classList.add('menu-flip');
+      if(h>above){ el.style.maxHeight=Math.max(160,above)+'px'; el.style.overflowY='auto'; }
+    } else {                                               // on reste dessous mais on borne la hauteur
+      el.style.maxHeight=Math.max(160,below)+'px'; el.style.overflowY='auto';
+    }
+  }
+  function toggleMenu(id){ var el=$(id); if(!el) return; var open=el.hidden; closeMenus(); el.hidden=!open; if(!el.hidden) placeMenu(el); }
   function openMoveMenu(loc){
     if(!loc.ex || !loc.day) return;
     var w=curWeek(); if(!w) return;
@@ -2545,6 +2590,7 @@
       case 'undo': doUndo(); break;
       case 'help': helpTopic(b.dataset.topic); break;
       case 'addEx': addExercise(loc); break;
+      case 'setDayEquip': if(loc.day){ var _eq=b.dataset.eq||''; (loc.day.exercises||[]).forEach(function(x){ x.equip=_eq; }); save(); closeMenus(); renderProgramme(); toast(_eq?('Séance en '+_eq+' ('+(loc.day.exercises||[]).length+' exos)'):'Matériel retiré de la séance'); } break;
       case 'setEquip': if(loc.ex){ loc.ex.equip=b.dataset.eq||''; save(); closeMenus(); renderProgramme(); toast(loc.ex.equip?('Matériel : '+loc.ex.equip):'Matériel retiré'); } break;
       case 'dupEx': duplicateExercise(loc); break;
       case 'delEx': deleteExercise(loc); break;
