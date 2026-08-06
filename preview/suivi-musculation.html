@@ -406,6 +406,9 @@
   .day-card.celebrate { animation:flashComplete .75s ease-out; }
   #toast.party { background:var(--accent-grad); color:#fff; }
   .last-session { font-size:12px; color:var(--text-dim); margin:14px 2px 0; line-height:1.5; }
+  .last-session.alt { color:var(--text-faint); }
+  .alt-tag { display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.2px; color:var(--text-faint); background:var(--surface-3); border-radius:5px; padding:1px 6px; margin-left:6px; vertical-align:middle; }
+  .gym-stat.alt { border-style:dashed; }
   .prog-section-title { font-size:15px; font-weight:800; margin:8px 2px 12px; padding-top:20px; border-top:1px solid var(--border); letter-spacing:.2px; }
   .prog-tabs { display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:0 0 12px; scrollbar-width:none; }
   .prog-tabs::-webkit-scrollbar { display:none; }
@@ -786,7 +789,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v87';
+  var APP_VERSION = 'v88';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1454,7 +1457,17 @@
   function exDot(name, cls){ var g=exPrimaryGroup(name); return '<span class="'+(cls||'ex-dot')+'" style="background:'+groupColor(g)+'" title="'+escA(g)+'"></span>'; }
   function e1rm(w, reps){ w=+w||0; reps=+reps||0; if(w<=0||reps<=0) return 0; if(reps===1) return Math.round(w); return Math.round(w*(1+reps/30)); }
   function exBestE1RM(name, beforeISO){ name=(name||'').trim(); if(!name) return 0; var best=0; state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||''; if(beforeISO && di && di>=beforeISO) return; d.exercises.forEach(function(x){ if(exKey(x)!==name) return; x.sets.forEach(function(s){ if(s.done){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0, e=e1rm(wt,rp); if(e>best) best=e; } }); }); }); }); return best; }
-  function gymHeadStats(ex){ var nm=exKey(ex); if(!nm) return ''; var pr=exBestBefore(nm,''), e=exBestE1RM(nm,''), out=[]; if(pr>0) out.push('<span class="gym-stat">🏆 Record <b>'+fmt(pr)+' kg</b></span>'); if(e>0) out.push('<span class="gym-stat">1RM est. <b>~'+fmt(e)+' kg</b></span>'); return out.length?('<div class="gym-stats">'+out.join('')+'</div>'):''; }
+  function gymHeadStats(ex){
+    var nm=exKey(ex); if(!nm) return '';
+    var pr=exBestBefore(nm,''), e=exBestE1RM(nm,''), out=[];
+    if(pr>0) out.push('<span class="gym-stat">🏆 Record <b>'+fmt(pr)+' kg</b></span>');
+    if(e>0) out.push('<span class="gym-stat">1RM est. <b>~'+fmt(e)+' kg</b></span>');
+    if(out.length) return '<div class="gym-stats">'+out.join('')+'</div>';
+    // rien sur ce materiel : on montre la reference d'une autre salle, sans la compter comme record
+    var alt=altKeyFor(nm,''); if(!alt) return '';
+    var apr=exBestBefore(alt,''); if(apr<=0) return '';
+    return '<div class="gym-stats"><span class="gym-stat alt">Réf. <b>'+fmt(apr)+' kg</b><span class="alt-tag">'+esc(keyEquip(alt)||'autre matériel')+'</span></span></div>';
+  }
   function gymTargetCue(ex, day){
     var nm=(ex.name||'').trim(); if(!nm) return '';
     var lw=lastWorkWeight(exKey(ex), day&&day.date), lr=lastWorkReps(exKey(ex), day&&day.date);
@@ -2064,6 +2077,24 @@
     return {from:from, to:to, label:lab, preset:null};
   }
   function fmtSets(n){ var r=Math.round(n*2)/2; return (r%1===0)?String(r):(r.toFixed(1).replace('.',',')); }
+  // une cle d'historique vaut "Nom [Materiel]" — on sait en extraire les deux morceaux
+  function keyName(k){ return String(k||'').replace(/\s*\[[^\]]*\]$/,'').trim(); }
+  function keyEquip(k){ var m=/\[([^\]]*)\]$/.exec(String(k||'')); return m?m[1]:''; }
+  // meme exercice, mais sur un AUTRE materiel : la cle la plus recemment travaillee
+  function altKeyFor(key, beforeISO){
+    var nm=keyName(key); if(!nm) return '';
+    var best='', bestDate='';
+    state.weeks.forEach(function(w){ w.days.forEach(function(d){
+      var di=d.date||w.startDate||''; if(!di) return; if(beforeISO && di>=beforeISO) return;
+      d.exercises.forEach(function(x){
+        if((x.name||'').trim()!==nm) return;
+        var k=exKey(x); if(k===key) return;
+        if(!x.sets.some(function(z){ return z.done; })) return;
+        if(di>=bestDate){ bestDate=di; best=k; }
+      });
+    });});
+    return best;
+  }
   function lastDoneBefore(name, beforeISO){
     var best=null;
     state.weeks.forEach(function(w){ w.days.forEach(function(d){
@@ -2076,10 +2107,13 @@
   function lastSessionHTML(name, day){
     name=(name||'').trim(); if(!name) return '';
     var cut=(day&&day.date)?day.date:((curWeek()&&curWeek().startDate)?curWeek().startDate:'');
-    var last=lastDoneBefore(name, cut); if(!last) return '';
+    var last=lastDoneBefore(name, cut), alt='';
+    if(!last){ alt=altKeyFor(name, cut); if(alt) last=lastDoneBefore(alt, cut); }
+    if(!last) return '';
     var dp=last.iso.split('-'), dl=dp.length===3?(dp[2]+'/'+dp[1]):last.iso;
     var sets=last.sets.slice(0,6).map(function(s){ var w=numStr(s.w); return intStr(s.r)+(w!==''?'×'+w:''); }).join('  ·  ');
-    return '<div class="last-session">↩ Dernière fois ('+dl+') : '+esc(sets)+(last.sets.length>6?' …':'')+'</div>';
+    var tail=alt?('<span class="alt-tag">'+esc(keyEquip(alt)||'autre matériel')+'</span>'):'';
+    return '<div class="last-session'+(alt?' alt':'')+'">↩ Dernière fois ('+dl+') : '+esc(sets)+(last.sets.length>6?' …':'')+tail+'</div>';
   }
   function volStatus(group, n){
     if(group==='Autre') return {lbl:'—', col:'var(--text-faint)'};
