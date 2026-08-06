@@ -773,7 +773,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v85';
+  var APP_VERSION = 'v86';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1064,12 +1064,17 @@
           '<div class="menu menu-right ex-menu" id="exmenu-'+ex.id+'" hidden>' +
             '<input class="ex-note" data-field="exNote" value="'+escA(ex.note)+'" placeholder="Note (technique, tempo, réglage machine…)">' +
             '<div class="menu-sep"></div>' +
-            '<div class="exmenu-lbl">Matériel / marque</div>' +
+            '<div class="exmenu-lbl">Salle</div>' +
             '<div class="equip-pick">' +
-              EQUIP_PRESETS.map(function(p){ return '<button class="equip-btn'+(((ex.equip||'').trim()===p)?' active':'')+'" data-act="setEquip" data-eq="'+escA(p)+'">'+esc(p)+'</button>'; }).join('') +
-              '<button class="equip-btn'+(!(ex.equip||'').trim()?' active':'')+'" data-act="setEquip" data-eq="">Aucun</button>' +
+              EQUIP_PRESETS.map(function(p){ return '<button class="equip-btn'+((equipParts(ex.equip).gym===p)?' active':'')+'" data-act="setEquip" data-eq="'+escA(p)+'">'+esc(p)+'</button>'; }).join('') +
+              '<button class="equip-btn'+(!equipParts(ex.equip).gym?' active':'')+'" data-act="setEquip" data-eq="">Aucune</button>' +
             '</div>' +
-            '<input class="ex-note ex-equip" data-field="exEquip" value="'+escA(ex.equip||'')+'" placeholder="Autre marque (Technogym, Matrix, Hammer…)">' +
+            '<div class="exmenu-lbl">Marque de la machine</div>' +
+            '<div class="equip-pick">' +
+              EQUIP_BRANDS.map(function(p){ return '<button class="equip-btn'+((equipParts(ex.equip).brand===p)?' active':'')+'" data-act="setBrand" data-eq="'+escA(p)+'">'+esc(p)+'</button>'; }).join('') +
+              '<button class="equip-btn'+(!equipParts(ex.equip).brand?' active':'')+'" data-act="setBrand" data-eq="">Aucune</button>' +
+            '</div>' +
+            '<input class="ex-note ex-equip" data-field="exEquip" value="'+escA(ex.equip||'')+'" placeholder="Saisie libre (ex. Basic Fit · Technogym)">' +
             '<div class="menu-sep"></div>' +
             moveH +
             '<button data-act="dupEx">Dupliquer l\'exercice</button>' +
@@ -1286,7 +1291,17 @@
   // Identite d'un exercice pour l'HISTORIQUE : nom + materiel/marque.
   // Deux machines differentes ne se comparent pas -> courbes, records et
   // "Derniere fois" sont separes automatiquement quand le materiel differe.
-  var EQUIP_PRESETS=['Basic Fit','Fitness Park',"Gold's Gym"];
+  var EQUIP_PRESETS=['Basic Fit','Fitness Park',"Gold's Gym"];                                    // salles
+  var EQUIP_BRANDS=['Technogym','Matrix','Life Fitness','Hammer Strength','Precor','Panatta','Gym80'];  // marques de machines
+  // le materiel s'ecrit "Salle · Marque" : les deux parties se reglent independamment
+  function equipParts(v){
+    var p=String(v||'').split('·').map(function(t){return t.trim();}).filter(Boolean);
+    var gym='', brand='';
+    p.forEach(function(t){ if(EQUIP_PRESETS.indexOf(t)>=0) gym=t; else brand=brand?(brand+' · '+t):t; });
+    if(!gym && !brand && p.length) brand=p.join(' · ');
+    return { gym:gym, brand:brand };
+  }
+  function equipJoin(gym, brand){ return [gym,brand].filter(Boolean).join(' · '); }
   function exKey(x){ if(!x) return ''; var n=(x.name||'').trim(), e=(x.equip||'').trim(); return e?(n+' ['+e+']'):n; }
   function keyOf(name, equip){ return exKey({name:name, equip:equip}); }
   function keyName(k){ return String(k||'').replace(/\s*\[[^\]]*\]\s*$/,''); }   // nom seul (taxonomie, affichage)
@@ -1707,8 +1722,8 @@
   // materiel commun a TOUS les exercices du jour (sinon '')
   function dayEquip(day){
     var exs=(day&&day.exercises)||[]; if(!exs.length) return '';
-    var first=(exs[0].equip||'').trim();
-    for(var i=1;i<exs.length;i++){ if((exs[i].equip||'').trim()!==first) return ''; }
+    var first=equipParts(exs[0].equip).gym;
+    for(var i=1;i<exs.length;i++){ if(equipParts(exs[i].equip).gym!==first) return ''; }
     return first;
   }
   function dayChangeMenuHTML(day){
@@ -2541,8 +2556,9 @@
       case 'undo': doUndo(); break;
       case 'help': helpTopic(b.dataset.topic); break;
       case 'addEx': addExercise(loc); break;
-      case 'setDayEquip': if(loc.day){ var _eq=b.dataset.eq||''; (loc.day.exercises||[]).forEach(function(x){ x.equip=_eq; }); save(); closeMenus(); renderProgramme(); toast(_eq?('Séance en '+_eq+' ('+(loc.day.exercises||[]).length+' exos)'):'Matériel retiré de la séance'); } break;
-      case 'setEquip': if(loc.ex){ loc.ex.equip=b.dataset.eq||''; save(); closeMenus(); renderProgramme(); toast(loc.ex.equip?('Matériel : '+loc.ex.equip):'Matériel retiré'); } break;
+      case 'setDayEquip': if(loc.day){ var _eq=b.dataset.eq||''; (loc.day.exercises||[]).forEach(function(x){ x.equip=equipJoin(_eq, equipParts(x.equip).brand); }); save(); closeMenus(); renderProgramme(); toast(_eq?('Séance en '+_eq+' ('+(loc.day.exercises||[]).length+' exos)'):'Matériel retiré de la séance'); } break;
+      case 'setEquip': if(loc.ex){ loc.ex.equip=equipJoin(b.dataset.eq||'', equipParts(loc.ex.equip).brand); save(); closeMenus(); renderProgramme(); toast(loc.ex.equip?('Matériel : '+loc.ex.equip):'Matériel retiré'); } break;
+      case 'setBrand': if(loc.ex){ loc.ex.equip=equipJoin(equipParts(loc.ex.equip).gym, b.dataset.eq||''); save(); closeMenus(); renderProgramme(); toast(loc.ex.equip?('Matériel : '+loc.ex.equip):'Matériel retiré'); } break;
       case 'dupEx': duplicateExercise(loc); break;
       case 'delEx': deleteExercise(loc); break;
       case 'addCardio': addCardio(loc); break;
