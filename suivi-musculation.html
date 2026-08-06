@@ -174,7 +174,19 @@
   .equip-btn { flex:0 0 auto; font:inherit; font-size:12px; font-weight:700; color:var(--text-dim); background:var(--bg); border:1px solid var(--border); border-radius:999px; padding:6px 11px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .equip-btn:hover { background:var(--surface-2); color:var(--text); }
   .equip-btn.active { background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 42%,var(--border)); color:var(--accent); }
-  .gym-equip-tag { font-size:11px; font-weight:800; letter-spacing:.3px; color:var(--text-dim); background:var(--surface-3); border-radius:6px; padding:2px 8px; margin-left:8px; vertical-align:middle; }
+  .gym-equip-tag { font:inherit; font-size:11px; font-weight:800; letter-spacing:.3px; color:var(--text-dim); background:var(--surface-3); border:1px solid transparent; border-radius:8px; padding:6px 11px; margin-left:8px; vertical-align:middle; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .gym-equip-tag:hover { background:var(--surface-2); color:var(--text); border-color:var(--border); }
+  .gym-equip-tag.empty { background:transparent; border:1px dashed var(--border); color:var(--text-faint); }
+  .gsheet-ov { position:fixed; inset:0; z-index:360; background:color-mix(in srgb,var(--bg) 80%,#000); display:flex; align-items:flex-end; justify-content:center; -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
+  .gsheet-ov[hidden] { display:none; }
+  .gsheet { width:100%; max-width:460px; background:var(--surface); border:1px solid var(--border); border-bottom:0; border-radius:20px 20px 0 0; padding:18px 12px calc(14px + env(safe-area-inset-bottom)); box-shadow:0 -14px 44px rgba(0,0,0,.45); max-height:84vh; overflow:auto; }
+  .gsheet-h { font-size:16px; font-weight:800; text-align:center; line-height:1.25; margin:0 8px 4px; }
+  .gsheet-sub { font-size:12px; font-weight:600; text-align:center; color:var(--text-faint); margin-bottom:12px; }
+  .gsheet-lbl { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:var(--text-faint); padding:9px 8px 5px; }
+  .gsheet .equip-pick { padding:0 8px 6px; }
+  .gsheet .equip-btn { padding:9px 14px; font-size:13px; }
+  .gsheet-foot { margin-top:14px; padding:0 8px; }
+  .gsheet-foot .btn { width:100%; padding:12px; font-size:15px; }
   .ex-chip-prog { color:var(--success); border-color:color-mix(in srgb,var(--success) 34%,var(--border)); }
   .ex-chip-sets { padding:0 8px 0 14px; gap:12px; }
   .ex-chip-sets .chip-lbl { color:var(--text-faint); font-size:11.5px; text-transform:uppercase; letter-spacing:.3px; }
@@ -767,13 +779,14 @@
 <div id="toast"></div>
 <div id="gym" class="gym" hidden></div>
 <div id="recap" class="recap-ov" hidden></div>
+<div id="gym-sheet" class="gsheet-ov" hidden></div>
 <div id="composer" class="composer" hidden></div>
 
 <script>
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v86';
+  var APP_VERSION = 'v87';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1441,7 +1454,7 @@
   function exDot(name, cls){ var g=exPrimaryGroup(name); return '<span class="'+(cls||'ex-dot')+'" style="background:'+groupColor(g)+'" title="'+escA(g)+'"></span>'; }
   function e1rm(w, reps){ w=+w||0; reps=+reps||0; if(w<=0||reps<=0) return 0; if(reps===1) return Math.round(w); return Math.round(w*(1+reps/30)); }
   function exBestE1RM(name, beforeISO){ name=(name||'').trim(); if(!name) return 0; var best=0; state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||''; if(beforeISO && di && di>=beforeISO) return; d.exercises.forEach(function(x){ if(exKey(x)!==name) return; x.sets.forEach(function(s){ if(s.done){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0, e=e1rm(wt,rp); if(e>best) best=e; } }); }); }); }); return best; }
-  function gymHeadStats(ex){ var nm=(ex.name||'').trim(); if(!nm) return ''; var pr=exBestBefore(nm,''), e=exBestE1RM(nm,''), out=[]; if(pr>0) out.push('<span class="gym-stat">🏆 Record <b>'+fmt(pr)+' kg</b></span>'); if(e>0) out.push('<span class="gym-stat">1RM est. <b>~'+fmt(e)+' kg</b></span>'); return out.length?('<div class="gym-stats">'+out.join('')+'</div>'):''; }
+  function gymHeadStats(ex){ var nm=exKey(ex); if(!nm) return ''; var pr=exBestBefore(nm,''), e=exBestE1RM(nm,''), out=[]; if(pr>0) out.push('<span class="gym-stat">🏆 Record <b>'+fmt(pr)+' kg</b></span>'); if(e>0) out.push('<span class="gym-stat">1RM est. <b>~'+fmt(e)+' kg</b></span>'); return out.length?('<div class="gym-stats">'+out.join('')+'</div>'):''; }
   function gymTargetCue(ex, day){
     var nm=(ex.name||'').trim(); if(!nm) return '';
     var lw=lastWorkWeight(exKey(ex), day&&day.date), lr=lastWorkReps(exKey(ex), day&&day.date);
@@ -1516,6 +1529,32 @@
     if(gymNavDir){ if(_nb) animIn(_nb, {opacity:0, transform:'translateX('+(gymNavDir>0?'28px':'-28px')+')'}); gymNavDir=0; }
     gymTick();
   }
+  // selecteur salle + marque, accessible en pleine seance
+  function gymEquipOpen(){
+    var ov=$('gym-sheet'), ex=gymCurEx(); if(!ov || !ex) return;
+    var p=equipParts(ex.equip);
+    ov.innerHTML='<div class="gsheet">'
+      +'<div class="gsheet-h">'+(esc((ex.name||'').trim())||'Exercice')+'</div>'
+      +'<div class="gsheet-sub">'+(ex.equip?esc(ex.equip):'Aucun matériel renseigné')+'</div>'
+      +'<div class="gsheet-lbl">Salle</div><div class="equip-pick">'
+        +EQUIP_PRESETS.map(function(g){ return '<button class="equip-btn'+(p.gym===g?' active':'')+'" data-act="gymSetGym" data-eq="'+escA(g)+'">'+esc(g)+'</button>'; }).join('')
+        +'<button class="equip-btn'+(!p.gym?' active':'')+'" data-act="gymSetGym" data-eq="">Aucune</button>'
+      +'</div>'
+      +'<div class="gsheet-lbl">Marque de la machine</div><div class="equip-pick">'
+        +EQUIP_BRANDS.map(function(m){ return '<button class="equip-btn'+(p.brand===m?' active':'')+'" data-act="gymSetBrand" data-eq="'+escA(m)+'">'+esc(m)+'</button>'; }).join('')
+        +'<button class="equip-btn'+(!p.brand?' active':'')+'" data-act="gymSetBrand" data-eq="">Aucune</button>'
+      +'</div>'
+      +'<div class="gsheet-foot"><button class="btn primary" data-act="gymEquipClose">OK</button></div>'
+    +'</div>';
+    ov.hidden=false;
+  }
+  function gymEquipClose(){ var ov=$('gym-sheet'); if(ov){ ov.hidden=true; ov.innerHTML=''; } }
+  function gymEquipSet(part, val){
+    var ex=gymCurEx(); if(!ex) return;
+    var p=equipParts(ex.equip);
+    ex.equip = (part==='gym') ? equipJoin(val, p.brand) : equipJoin(p.gym, val);
+    save(); renderGym(); gymEquipOpen();
+  }
   function renderGym(){
     var ov=$('gym'); if(!ov) return;
     var day=gymDay();
@@ -1553,7 +1592,7 @@
       +'</div>'
       +'<div class="gym-progress"><i style="width:'+(totalSets?Math.round(doneSets/totalSets*100):0)+'%"></i></div>'
       +'<div class="gym-body" data-d="'+day.id+'" data-e="'+ex.id+'">'
-        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+(gymMode.exIndex<day.exercises.length-1?'<button class="gym-skip" data-act="gymSkip" title="Machine occupée ? Déplace cet exercice en fin de séance">Plus tard ⤵</button>':'')+'<h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+(gymUni?'<span class="gym-side-tag">G + D</span>':'')+((ex.equip||'').trim()?'<span class="gym-equip-tag">'+esc(ex.equip.trim())+'</span>':'')+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(ex.name, day)
+        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+(gymMode.exIndex<day.exercises.length-1?'<button class="gym-skip" data-act="gymSkip" title="Machine occupée ? Déplace cet exercice en fin de séance">Plus tard ⤵</button>':'')+'<h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+(gymUni?'<span class="gym-side-tag">G + D</span>':'')+'<button class="gym-equip-tag'+((ex.equip||'').trim()?'':' empty')+'" data-act="gymEquip" title="Salle et marque de la machine">'+((ex.equip||'').trim()?esc(ex.equip.trim()):'+ Matériel')+'</button>'+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(exKey(ex), day)
         +'<input class="gym-note" data-field="exNote" value="'+escA(ex.note||'')+'" placeholder="Note (réglage machine, tempo, siège…)">'
         +'</div>'
         +'<div class="gym-sets">'+setsH+'</div>'
@@ -2485,6 +2524,7 @@
   document.addEventListener('click', function(e){
     if(!e.target.closest('.menu-wrap')) closeMenus();
     if(e.target.id==='composer'){ closeComposer(); return; }
+    if(e.target.id==='gym-sheet'){ gymEquipClose(); return; }
     var b=e.target.closest('[data-act]'); if(!b) return;
     var act=b.dataset.act;
     if(act==='done'||act==='weekSelect') return;
@@ -2543,6 +2583,10 @@
       case 'gymNext': gymNav(1); break;
       case 'gymStep': gymStep(b); break;
       case 'gymDone': gymDone(b); break;
+      case 'gymEquip': gymEquipOpen(); break;
+      case 'gymEquipClose': gymEquipClose(); break;
+      case 'gymSetGym': gymEquipSet('gym', b.dataset.eq||''); break;
+      case 'gymSetBrand': gymEquipSet('brand', b.dataset.eq||''); break;
       case 'gymDoneSide': gymDoneSide(b); break;
       case 'gymSkip': gymSkip(); break;
       case 'gymAddSet': gymAddSet(); break;
