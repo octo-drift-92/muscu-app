@@ -789,7 +789,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v88';
+  var APP_VERSION = 'v89';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2021,7 +2021,7 @@
     if(/souleve de terre|deadlift|\bsdt\b/.test(n)) return [{g:'Lombaires',w:1},{g:'Fessiers',w:.5},{g:'Ischios',w:.5},{g:'Trapèzes',w:.5}];
     if(/hip thrust|pont fessier|abduction|fessier|glute/.test(n)) return P('Fessiers');
     if(/shrug|haussement|trapeze/.test(n)) return P('Trapèzes');
-    if(/rowing|\brow\b/.test(n)){
+    if(/rowing|\brow\b|\bt[\s-]?bar/.test(n)){
       if(/neutre|marteau/.test(n)) return [{g:'Grand dorsal',w:1},{g:'Milieu du dos',w:.5},{g:'Biceps',w:.5},{g:'Deltoïde post.',w:.5}];
       if(/haute|large/.test(n)) return [{g:'Milieu du dos',w:1},{g:'Trapèzes',w:.5},{g:'Deltoïde post.',w:.5},{g:'Biceps',w:.5}];
       return [{g:'Milieu du dos',w:1},{g:'Grand dorsal',w:.5},{g:'Biceps',w:.5},{g:'Deltoïde post.',w:.5},{g:'Trapèzes',w:.5}];
