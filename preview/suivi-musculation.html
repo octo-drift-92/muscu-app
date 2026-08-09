@@ -187,6 +187,15 @@
   .gsheet .equip-btn { padding:9px 14px; font-size:13px; }
   .gsheet-foot { margin-top:14px; padding:0 8px; }
   .gsheet-foot .btn { width:100%; padding:12px; font-size:15px; }
+  .info-grps { display:flex; flex-wrap:wrap; gap:6px; padding:0 8px 4px; }
+  .info-grp { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--text-dim); background:var(--bg); border:1px solid var(--border); border-radius:999px; padding:5px 11px; }
+  .info-grp i { width:9px; height:9px; border-radius:50%; flex:0 0 auto; }
+  .info-grp small { font-weight:600; color:var(--text-faint); }
+  .info-d { font-size:13.5px; line-height:1.55; color:var(--text-dim); margin:2px 8px 8px; }
+  .info-c { margin:2px 8px 8px; padding-left:19px; font-size:13.5px; line-height:1.6; color:var(--text-dim); }
+  .info-c li { margin-bottom:5px; }
+  .gym-info-btn { font:inherit; font-size:11px; font-weight:800; letter-spacing:.3px; color:var(--text-dim); background:var(--surface-3); border:1px solid transparent; border-radius:8px; padding:6px 11px; margin-left:6px; vertical-align:middle; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .gym-info-btn:hover { background:var(--surface-2); color:var(--text); border-color:var(--border); }
   .ex-chip-prog { color:var(--success); border-color:color-mix(in srgb,var(--success) 34%,var(--border)); }
   .ex-chip-sets { padding:0 8px 0 14px; gap:12px; }
   .ex-chip-sets .chip-lbl { color:var(--text-faint); font-size:11.5px; text-transform:uppercase; letter-spacing:.3px; }
@@ -789,7 +798,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v90';
+  var APP_VERSION = 'v91';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1079,6 +1088,8 @@
           '<button class="mini-btn ex-kebab" data-act="exMenu" title="Options de l\'exercice" aria-label="Options">'+kebab+'</button>' +
           '<div class="menu menu-right ex-menu" id="exmenu-'+ex.id+'" hidden>' +
             '<input class="ex-note" data-field="exNote" value="'+escA(ex.note)+'" placeholder="Note (technique, tempo, réglage machine…)">' +
+            '<div class="menu-sep"></div>' +
+            '<button data-act="exInfo" data-nm="'+escA(ex.name||'')+'">Fiche de l\'exercice</button>' +
             '<div class="menu-sep"></div>' +
             '<div class="exmenu-lbl">Salle</div>' +
             '<div class="equip-pick">' +
@@ -1605,7 +1616,7 @@
       +'</div>'
       +'<div class="gym-progress"><i style="width:'+(totalSets?Math.round(doneSets/totalSets*100):0)+'%"></i></div>'
       +'<div class="gym-body" data-d="'+day.id+'" data-e="'+ex.id+'">'
-        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+(gymMode.exIndex<day.exercises.length-1?'<button class="gym-skip" data-act="gymSkip" title="Machine occupée ? Déplace cet exercice en fin de séance">Plus tard ⤵</button>':'')+'<h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+(gymUni?'<span class="gym-side-tag">G + D</span>':'')+'<button class="gym-equip-tag'+((ex.equip||'').trim()?'':' empty')+'" data-act="gymEquip" title="Salle et marque de la machine">'+((ex.equip||'').trim()?esc(ex.equip.trim()):'+ Matériel')+'</button>'+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(exKey(ex), day)
+        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+(gymMode.exIndex<day.exercises.length-1?'<button class="gym-skip" data-act="gymSkip" title="Machine occupée ? Déplace cet exercice en fin de séance">Plus tard ⤵</button>':'')+'<h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+(gymUni?'<span class="gym-side-tag">G + D</span>':'')+'<button class="gym-equip-tag'+((ex.equip||'').trim()?'':' empty')+'" data-act="gymEquip" title="Salle et marque de la machine">'+((ex.equip||'').trim()?esc(ex.equip.trim()):'+ Matériel')+'</button>'+'<button class="gym-info-btn" data-act="exInfo" data-nm="'+escA(ex.name||'')+'" title="Comment faire cet exercice">Fiche</button>'+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(exKey(ex), day)
         +'<input class="gym-note" data-field="exNote" value="'+escA(ex.note||'')+'" placeholder="Note (réglage machine, tempo, siège…)">'
         +'</div>'
         +'<div class="gym-sets">'+setsH+'</div>'
@@ -2116,6 +2127,61 @@
     var tail=alt?('<span class="alt-tag">'+esc(keyEquip(alt)||'autre matériel')+'</span>'):'';
     return '<div class="last-session'+(alt?' alt':'')+'">↩ Dernière fois ('+dl+') : '+esc(sets)+(last.sets.length>6?' …':'')+tail+'</div>';
   }
+  var EXERCISE_INFO=[
+    {re:/echauffement|warm.?up|mobilit/, t:"Échauffement", d:"Préparation articulaire, exclue du volume d'entraînement.", c:["Charge très légère, amplitude complète","À faire avant tout mouvement de pressing","Prends le temps : c'est ce qui a réglé ton épaule"]},
+    {re:/face.?pull/, t:"Face pull", d:"Tirage vers le visage coudes hauts. Deltoïde postérieur et rotateurs externes : c'est l'exercice de prévention de l'épaule.", c:["Tire vers le front, mains qui finissent au niveau des oreilles","Coudes au-dessus des poignets pendant tout le mouvement","Charge légère, séries longues de 12 à 20 répétitions"]},
+    {re:/oiseau|reverse fly|rear delt|lever lateral inverse/, t:"Oiseau", d:"Écarté buste penché. Isole le deltoïde postérieur, souvent le plus en retard.", c:["Buste incliné, dos plat, tête dans le prolongement","Ouvre avec les coudes, pas avec les mains","Ne serre pas les omoplates : ce sont les épaules qui travaillent"]},
+    {re:/elevations? laterales?|lateral raise/, t:"Élévations latérales", d:"Isolation du deltoïde latéral, le muscle qui donne la largeur d'épaules.", c:["Monte jusqu'à l'horizontale, pas plus haut","Si tu balances, c'est trop lourd","Coude légèrement plus haut que la main"]},
+    {re:/shrug|haussement/, t:"Haussements d'épaules", d:"Isolation des trapèzes supérieurs. Mouvement strictement vertical.", c:["Monte les épaules vers les oreilles, sans rouler","Marque un temps d'arrêt en haut","Bras relâchés : ce ne sont pas les biceps qui tirent"]},
+    {re:/\bt[\s-]?bar|rowing.*(prise haute|prise large)/, t:"Rowing prise haute ou large", d:"Tirage horizontal coudes ouverts. Vise l'épaisseur du haut du dos et les trapèzes plutôt que la largeur.", c:["Coudes à 60-90° du buste, pas collés aux côtes","Tire vers le sternum, omoplates serrées en fin de course","Buste immobile, pas d'élan avec le bas du dos"]},
+    {re:/rowing.*(neutre|marteau)/, t:"Rowing prise neutre", d:"Tirage horizontal coudes serrés. La prise neutre recrute davantage le grand dorsal que la version coudes ouverts.", c:["Coudes qui frôlent les côtes, trajectoire vers le bas des abdos","Étire complètement en fin de retour","Tire avec les coudes, pas avec les mains"]},
+    {re:/rowing|\brow\b/, t:"Rowing", d:"Traction horizontale, moteur principal de l'épaisseur du dos.", c:["Buste stable, gainage serré","Tire avec les coudes, pas avec les mains","Contrôle le retour, ne laisse pas la charge te tirer"]},
+    {re:/pulldown|tirage vertical|traction|pull-?up|chin-?up/, t:"Tirage vertical", d:"Traction verticale. C'est l'exercice de largeur du dos, il cible le grand dorsal.", c:["Cuisses bien calées, buste très légèrement incliné en arrière","Tire les coudes vers les hanches","Laisse les épaules monter en haut pour étirer le dorsal"]},
+    {re:/pec deck|ecarte|butterfly|\bfly\b/, t:"Écarté", d:"Isolation des pectoraux en adduction pure, sans participation des triceps.", c:["Coudes légèrement fléchis et figés pendant tout le mouvement","Poignées à hauteur de poitrine, règle le siège","Cherche l'étirement en fin d'ouverture sans forcer sur l'épaule"]},
+    {re:/chest press|developpe couche|developpe incline|\bdips?\b|pompe|bench/, t:"Développé", d:"Poussée pectorale principale. Recrute aussi les triceps et le deltoïde antérieur.", c:["Omoplates serrées et basses, poitrine sortie","Coudes à 45-60° du buste, jamais à 90°","Ne verrouille pas les coudes en fin de poussée"]},
+    {re:/shoulder press|developpe militaire|overhead press|military/, t:"Développé vertical", d:"Poussée au-dessus de la tête. Deltoïde antérieur en moteur, latéral et triceps en soutien.", c:["Descends jusqu'où l'épaule reste confortable, pas plus bas","Gainage serré, ne cambre pas le bas du dos","Sur machine convergente, laisse les bras suivre leur arc naturel"]},
+    {re:/leg curl/, t:"Leg curl", d:"Flexion du genou, isolation des ischio-jambiers.", c:["Bassin bien calé, ne décolle pas les hanches","Amplitude complète jusqu'à l'étirement en bas","Pointes de pieds tirées vers toi pour mieux sentir"]},
+    {re:/preacher|pupitre/, t:"Curl au pupitre", d:"Curl bras calés. Supprime toute triche et charge le biceps en position étirée.", c:["Aisselles bien calées contre le haut du pupitre","Descends complètement sans lâcher la tension en bas","Charge modérée : la position basse est très exigeante"]},
+    {re:/marteau|hammer curl/, t:"Curl marteau", d:"Curl en prise neutre. Recrute le brachial et le brachio-radial en plus du biceps, il épaissit le bras.", c:["Paumes qui se font face pendant tout le mouvement","Coudes fixes le long du buste","Contrôle la descente sur deux secondes"]},
+    {re:/curl inverse|reverse grip|avant.?bras/, t:"Curl inversé", d:"Curl en pronation. Cible les avant-bras et le brachio-radial plus que le biceps.", c:["Poignets solides, dans l'axe de l'avant-bras","Charge nettement plus légère qu'en supination","Amplitude complète, sans à-coup"]},
+    {re:/curl/, t:"Curl biceps", d:"Flexion du coude, isolation du biceps.", c:["Coudes fixes, collés au buste","Pas d'élan avec le dos ni les épaules","Descends complètement à chaque répétition"]},
+    {re:/skull|barre au front/, t:"Barre au front", d:"Extension triceps allongé. Charge la longue portion du triceps.", c:["Coudes dirigés vers le plafond, immobiles","Descends derrière la tête plutôt qu'au front pour épargner les coudes","Charge modérée : l'articulation prime"]},
+    {re:/(triceps|extension).*(au-dessus de la tete|overhead)|triceps haltere/, t:"Extension triceps au-dessus de la tête", d:"Extension bras à la verticale. C'est la position qui étire le plus la longue portion du triceps.", c:["Coudes serrés vers l'avant, pas ouverts","Descends jusqu'à l'étirement complet","Gainage serré, pas de cambrure"]},
+    {re:/kickback/, t:"Kickback", d:"Extension du coude buste penché. Isolation courte, utile en finition.", c:["Bras collé au buste, seul l'avant-bras bouge","Marque un temps en extension complète","Charge légère, séries longues"]},
+    {re:/triceps press/, t:"Triceps à la machine", d:"Extension triceps guidée. Permet de charger lourd sans stabilisation.", c:["Siège réglé pour que les coudes soient à hauteur d'épaule","Coudes fixes contre le support","Ne verrouille pas en fin de poussée"]},
+    {re:/extension triceps|triceps.*poulie/, t:"Extension triceps à la poulie", d:"Extension du coude à la poulie haute. La barre permet de charger plus, la corde d'écarter en fin de course.", c:["Coudes plaqués le long du buste, immobiles","Buste très légèrement penché, gainage serré","Extension complète sans verrouiller brutalement"]},
+    {re:/leg press|presse a cuisse|hack|pendulum/, t:"Presse à cuisses", d:"Poussée jambes guidée. Quadriceps en moteur, fessiers en soutien selon la position des pieds.", c:["Pieds bas et serrés = plus de quadriceps ; hauts et écartés = plus de fessiers","Descends jusqu'à ce que le bas du dos commence à décoller, pas plus","Ne verrouille pas les genoux en haut"]},
+    {re:/leg extension/, t:"Leg extension", d:"Isolation des quadriceps. Le seul exercice qui les charge en contraction complète.", c:["Axe de rotation de la machine aligné avec le genou","Marque un temps en haut","Contrôle la descente, ne laisse pas retomber"]},
+    {re:/squat/, t:"Squat", d:"Flexion de jambes sous charge. Quadriceps et fessiers, avec un coût systémique élevé.", c:["Descends jusqu'à la profondeur où ton dos reste neutre","Genoux qui suivent l'axe des pieds","Gainage serré avant chaque répétition"]},
+    {re:/fente|\blunge\b/, t:"Fentes", d:"Travail unilatéral des jambes. Quadriceps et fessiers, plus une demande d'équilibre.", c:["Buste droit, genou arrière qui descend vers le sol","Pas trop courte : une fente courte transfère sur le genou","Pousse avec le talon avant"]},
+    {re:/roumain|jambes tendues|\brdl\b/, t:"Soulevé de terre roumain", d:"Charnière de hanche jambes quasi tendues. L'exercice d'étirement chargé des ischio-jambiers.", c:["Recule les hanches, ne plie pas le dos","Barre qui frôle les cuisses tout du long","Descends jusqu'à l'étirement, pas jusqu'au sol"]},
+    {re:/souleve de terre|deadlift/, t:"Soulevé de terre", d:"Tirage du sol. Chaîne postérieure complète : lombaires, fessiers, ischios, trapèzes.", c:["Dos neutre du début à la fin, jamais rond","Pousse dans le sol avec les jambes avant de tirer avec le dos","Coûteux en récupération, ne l'accumule pas en fin de semaine"]},
+    {re:/mollet|calf/, t:"Mollets", d:"Extension de cheville. Le soléaire travaille genou fléchi, les jumeaux genou tendu.", c:["Amplitude complète : descends bas, monte haut","Temps d'arrêt d'une seconde en haut","Séries longues, 12 à 20 répétitions"]},
+    {re:/adduction|adducteur/, t:"Adduction de hanche", d:"Fermeture de jambe contre résistance. Cible les adducteurs, face interne de cuisse.", c:["Ne force pas l'amplitude d'ouverture au départ","Serre progressivement, sans à-coup","Souvent négligés : utiles en prévention"]},
+    {re:/abduction|abducteur/, t:"Abduction de hanche", d:"Ouverture de jambe contre résistance. Cible le moyen fessier, stabilisateur du bassin.", c:["Buste droit ou légèrement penché en avant","Ouvre lentement, retiens le retour","Séries longues : le moyen fessier répond bien au volume"]},
+    {re:/gainage|plank|hollow/, t:"Gainage", d:"Maintien isométrique. Travaille la capacité des abdominaux à résister à l'extension.", c:["Bassin en rétroversion, fessiers serrés","Ligne droite épaules-hanches-talons","Arrête quand la position se dégrade, pas au chrono"]}
+  ];
+  function exerciseInfo(name){
+    var n=(name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    if(!n) return null;
+    for(var i=0;i<EXERCISE_INFO.length;i++){ if(EXERCISE_INFO[i].re.test(n)) return EXERCISE_INFO[i]; }
+    return null;
+  }
+  function infoOpen(name){
+    var ov=$('gym-sheet'); if(!ov) return;
+    var nfo=exerciseInfo(name), g=(muscleContribs(name)||[]).filter(function(c){ return c.g!=='Autre'; });
+    var muscles=g.map(function(c){ return '<span class="info-grp"><i style="background:'+groupColor(c.g)+'"></i>'+esc(c.g)+(c.w<1?' <small>secondaire</small>':'')+'</span>'; }).join('');
+    ov.innerHTML='<div class="gsheet">'
+      +'<div class="gsheet-h">'+(esc((name||'').trim())||'Exercice')+'</div>'
+      +(nfo?'<div class="gsheet-sub">'+esc(nfo.t)+'</div>':'<div class="gsheet-sub">Pas encore de fiche</div>')
+      +(muscles?'<div class="gsheet-lbl">Muscles travaillés</div><div class="info-grps">'+muscles+'</div>':'')
+      +(nfo?('<div class="gsheet-lbl">Le mouvement</div><p class="info-d">'+esc(nfo.d)+'</p>'
+            +'<div class="gsheet-lbl">Points d\'exécution</div><ul class="info-c">'+nfo.c.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul>')
+          :'<p class="info-d">Aucune fiche ne correspond à ce nom. Les muscles ci-dessus restent calculés par la taxonomie.</p>')
+      +'<div class="gsheet-foot"><button class="btn primary" data-act="sheetClose">Fermer</button></div>'
+    +'</div>';
+    ov.hidden=false;
+  }
   function volStatus(group, n){
     if(group==='Autre') return {lbl:'—', col:'var(--text-faint)'};
     if(n<=0) return {lbl:'absent', col:'var(--text-faint)'};
@@ -2621,6 +2687,8 @@
       case 'gymDone': gymDone(b); break;
       case 'gymEquip': gymEquipOpen(); break;
       case 'gymEquipClose': gymEquipClose(); break;
+      case 'sheetClose': gymEquipClose(); break;
+      case 'exInfo': closeMenus(); infoOpen(b.dataset.nm||''); break;
       case 'gymSetGym': gymEquipSet('gym', b.dataset.eq||''); break;
       case 'gymSetBrand': gymEquipSet('brand', b.dataset.eq||''); break;
       case 'gymDoneSide': gymDoneSide(b); break;
