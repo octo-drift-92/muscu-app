@@ -569,6 +569,8 @@
   .vol-zones .z-mid { background:color-mix(in srgb,var(--success) 35%,transparent); }
   .vol-zones .z-opt { background:color-mix(in srgb,var(--success) 65%,transparent); }
   .vol-marker { position:absolute; top:-3px; width:3px; height:15px; background:var(--text); border-radius:2px; transform:translateX(-50%); box-shadow:0 0 0 1.5px var(--surface); }
+  .vol-calc { font-size:11px; font-weight:600; color:var(--text-faint); white-space:nowrap; margin-top:2px; }
+  .vol-calc span { font-weight:500; opacity:.8; }
   .vol-stat { font-size:10px; font-weight:700; text-align:center; margin-top:3px; }
   .gym-top { display:flex; align-items:center; gap:10px; padding:12px 14px; padding-top:calc(12px + env(safe-area-inset-top)); border-bottom:1px solid var(--border); }
   .gym-x { width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:17px; cursor:pointer; flex:0 0 auto; }
@@ -798,7 +800,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v94';
+  var APP_VERSION = 'v95';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2060,16 +2062,16 @@
   function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return false; if(from && iso<from) return false; if(to && iso>to) return false; return true; }
   var volMode='plan'; // 'plan' = series planifiees, 'real' = series faites uniquement
   function volumeByGroupOverRange(from, to, mode){
-    var g={}, wk={};
+    var g={}, dir={}, ind={}, wk={};
     state.weeks.forEach(function(w){ w.days.forEach(function(d){
       if(!ptInRange(d.date||'', from, to)) return;
       var any=false;
-      d.exercises.forEach(function(x){ if(isWarmup(x.name)) return; var ns=(mode==='real')?x.sets.filter(function(s){return s.done;}).length:x.sets.length; if(!ns) return; any=true; muscleContribs(x.name).forEach(function(c){ g[c.g]=(g[c.g]||0)+ns*c.w; }); });
+      d.exercises.forEach(function(x){ if(isWarmup(x.name)) return; var ns=(mode==='real')?x.sets.filter(function(s){return s.done;}).length:x.sets.length; if(!ns) return; any=true; muscleContribs(x.name).forEach(function(c){ g[c.g]=(g[c.g]||0)+ns*c.w; if(c.w>=1) dir[c.g]=(dir[c.g]||0)+ns*c.w; else ind[c.g]=(ind[c.g]||0)+ns*c.w; }); });
       if(any) wk[w.id]=1;
     });});
-    var nw=Object.keys(wk).length||1, avg={};
-    Object.keys(g).forEach(function(k){ avg[k]=g[k]/nw; });
-    return {avg:avg, weeks:nw};
+    var nw=Object.keys(wk).length||1, avg={}, avgDir={}, avgInd={};
+    Object.keys(g).forEach(function(k){ avg[k]=g[k]/nw; avgDir[k]=(dir[k]||0)/nw; avgInd[k]=(ind[k]||0)/nw; });
+    return {avg:avg, dir:avgDir, ind:avgInd, weeks:nw};
   }
   function latestDataISO(){ var m=''; state.weeks.forEach(function(w){ w.days.forEach(function(d){ if(d.date && d.date>m) m=d.date; }); }); return m; }
   function resolveRange(){
@@ -2253,7 +2255,11 @@
     keys.sort(function(a,b){return (avg[b]||0)-(avg[a]||0);});
     var volSwitch='<div class="segmented vol-switch"><button data-act="volMode" data-vm="plan"'+(volMode==='plan'?' class="active"':'')+'>Prévu</button><button data-act="volMode" data-vm="real"'+(volMode==='real'?' class="active"':'')+'>Réalisé</button></div>';
     if(total>0){
-      var rows=keys.map(function(g){ var n=avg[g]||0, s=volStatus(g,n); return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+fmtSets(n)+'</td><td class="vol-cell">'+volBar(g,n)+'<div class="vol-stat" style="color:'+s.col+'">'+s.lbl+'</div></td></tr>'; }).join('');
+      var rows=keys.map(function(g){
+        var n=avg[g]||0, s=volStatus(g,n), dv=(V.dir&&V.dir[g])||0, iv=(V.ind&&V.ind[g])||0;
+        var calc=(n>0)?('<div class="vol-calc">'+fmtSets(dv)+' <span>direct</span> + '+fmtSets(iv)+' <span>indirect</span></div>'):'';
+        return '<tr><td>'+esc(g)+'</td><td style="text-align:right"><b>'+fmtSets(n)+'</b>'+calc+'</td><td class="vol-cell">'+volBar(g,n)+'<div class="vol-stat" style="color:'+s.col+'">'+s.lbl+'</div></td></tr>';
+      }).join('');
       html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><div class="help-box" data-help="volume" hidden>Séries éq./sem = volume hebdo par muscle (direct = 1, indirect = 0,5, préhension sur machine = 0,25 ; échauffements exclus). Tous les groupes sont affichés (0 = non travaillé). La barre situe ton volume entre les repères RP : <b>MEV</b> (minimum efficace) · <b>MAV</b> (zone optimale) · <b>MRV</b> (max récupérable). Sous MEV = léger, MEV–MAV = productif, MAV–MRV = optimal, au-delà = élevé. Gros muscles : MEV 6 / MRV 20 · petits : MEV 4 / MRV 16. Moyenne sur '+V.weeks+' semaines. La carte montre les groupes majeurs (deltoïde latéral, milieu du dos et avant-bras restent dans le tableau). <b>Prévu</b> compte les séries planifiées (analyse du programme, semaines futures incluses) · <b>Réalisé</b> ne compte que les séries réellement cochées.</div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="segmented vol-switch"><button data-act="volView" data-vv="carte"'+(volView==='carte'?' class="active"':'')+'>Carte</button><button data-act="volView" data-vv="tableau"'+(volView==='tableau'?' class="active"':'')+'>Tableau</button></div>'+volSwitch+'</div>'+(volView==='carte'?muscleMapSVG(avg):'<table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:center">Cible MEV→MRV</th></tr></thead><tbody>'+rows+'</tbody></table>')+'</div>';
     } else {
       html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div>'+volSwitch+'<p class="hint" style="margin-top:8px">'+(volMode==='real'?'Aucune série cochée sur cette période — repasse en « Prévu » pour voir le volume planifié.':'Aucune donnée sur cette période.')+'</p></div>';
