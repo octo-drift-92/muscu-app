@@ -789,7 +789,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v89';
+  var APP_VERSION = 'v90';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1451,7 +1451,7 @@
     }
   }
   function gymRirBadge(){ var w=curWeek(); return (w&&w.rirTarget!=null)?'<span class="gym-rir">vise '+w.rirTarget+' RIR</span>':''; }
-  var GROUP_COLORS={'Pectoraux':'#ef6f6c','Grand dorsal':'#4f86c6','Milieu du dos':'#6f9fd8','Deltoïde ant.':'#e8973a','Deltoïde lat.':'#f0b54e','Deltoïde post.':'#cf7d2e','Biceps':'#9b6dd6','Triceps':'#19b8aa','Quadriceps':'#3fa869','Ischios':'#7cc24a','Fessiers':'#e070a8','Mollets':'#b08152','Abdos':'#e6c64a','Lombaires':'#8090a6','Trapèzes':'#3fb1ca','Avant-bras':'#9aa3ad','Autre':'#8090a6'};
+  var GROUP_COLORS={'Pectoraux':'#ef6f6c','Grand dorsal':'#4f86c6','Milieu du dos':'#6f9fd8','Deltoïde ant.':'#e8973a','Deltoïde lat.':'#f0b54e','Deltoïde post.':'#cf7d2e','Biceps':'#9b6dd6','Triceps':'#19b8aa','Quadriceps':'#3fa869','Ischios':'#7cc24a','Fessiers':'#e070a8','Adducteurs':'#b5738a','Mollets':'#b08152','Abdos':'#e6c64a','Lombaires':'#8090a6','Trapèzes':'#3fb1ca','Avant-bras':'#9aa3ad','Autre':'#8090a6'};
   function exPrimaryGroup(name){ var c=muscleContribs(name); return (c&&c.length)?c[0].g:'Autre'; }
   function groupColor(g){ return GROUP_COLORS[g]||'#8090a6'; }
   function exDot(name, cls){ var g=exPrimaryGroup(name); return '<span class="'+(cls||'ex-dot')+'" style="background:'+groupColor(g)+'" title="'+escA(g)+'"></span>'; }
@@ -2006,7 +2006,7 @@
     return out;
   }
   /* ---------- analyses : groupe musculaire, dernière séance, plateaux ---------- */
-  var MUSCLE_GROUPS=['Pectoraux','Grand dorsal','Milieu du dos','Trapèzes','Deltoïde ant.','Deltoïde lat.','Deltoïde post.','Biceps','Triceps','Avant-bras','Quadriceps','Ischios','Fessiers','Mollets','Abdos','Lombaires'];
+  var MUSCLE_GROUPS=['Pectoraux','Grand dorsal','Milieu du dos','Trapèzes','Deltoïde ant.','Deltoïde lat.','Deltoïde post.','Biceps','Triceps','Avant-bras','Quadriceps','Ischios','Fessiers','Adducteurs','Mollets','Abdos','Lombaires'];
   function isWarmup(name){ return /echauffement|warm-?up|mobilit|activation|etirement|stretch/.test((name||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')); }
   function muscleContribs(name){
     var n=(name||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
@@ -2019,7 +2019,8 @@
     if(/leg curl|leg-curl/.test(n)) return P('Ischios');
     if(/jambes tendues|romanian|\brdl\b|souleve de terre roumain|good ?morning/.test(n)) return [{g:'Ischios',w:1},{g:'Fessiers',w:.5},{g:'Lombaires',w:.5}];
     if(/souleve de terre|deadlift|\bsdt\b/.test(n)) return [{g:'Lombaires',w:1},{g:'Fessiers',w:.5},{g:'Ischios',w:.5},{g:'Trapèzes',w:.5}];
-    if(/hip thrust|pont fessier|abduction|fessier|glute/.test(n)) return P('Fessiers');
+    if(/adduction|adducteur/.test(n)) return P('Adducteurs');
+    if(/hip thrust|pont fessier|abduction|abducteur|fessier|glute/.test(n)) return P('Fessiers');
     if(/shrug|haussement|trapeze/.test(n)) return P('Trapèzes');
     if(/rowing|\brow\b|\bt[\s-]?bar/.test(n)){
       if(/neutre|marteau/.test(n)) return [{g:'Grand dorsal',w:1},{g:'Milieu du dos',w:.5},{g:'Biceps',w:.5},{g:'Deltoïde post.',w:.5}];
@@ -2181,11 +2182,12 @@
     var total=0; Object.keys(avg).forEach(function(k){ total+=avg[k]; });
     var keys=MUSCLE_GROUPS.slice(); Object.keys(avg).forEach(function(g){ if(keys.indexOf(g)===-1) keys.push(g); });
     keys.sort(function(a,b){return (avg[b]||0)-(avg[a]||0);});
+    var volSwitch='<div class="segmented vol-switch"><button data-act="volMode" data-vm="plan"'+(volMode==='plan'?' class="active"':'')+'>Prévu</button><button data-act="volMode" data-vm="real"'+(volMode==='real'?' class="active"':'')+'>Réalisé</button></div>';
     if(total>0){
       var rows=keys.map(function(g){ var n=avg[g]||0, s=volStatus(g,n); return '<tr><td>'+esc(g)+'</td><td style="text-align:right;font-weight:700">'+fmtSets(n)+'</td><td class="vol-cell">'+volBar(g,n)+'<div class="vol-stat" style="color:'+s.col+'">'+s.lbl+'</div></td></tr>'; }).join('');
-      html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><div class="help-box" data-help="volume" hidden>Séries éq./sem = volume hebdo par muscle (direct = 1, indirect = 0,5 ; échauffements exclus). Tous les groupes sont affichés (0 = non travaillé). La barre situe ton volume entre les repères RP : <b>MEV</b> (minimum efficace) · <b>MAV</b> (zone optimale) · <b>MRV</b> (max récupérable). Sous MEV = léger, MEV–MAV = productif, MAV–MRV = optimal, au-delà = élevé. Gros muscles : MEV 6 / MRV 20 · petits : MEV 4 / MRV 16. Moyenne sur '+V.weeks+' semaines. La carte montre les groupes majeurs (deltoïde latéral, milieu du dos et avant-bras restent dans le tableau). <b>Prévu</b> compte les séries planifiées (analyse du programme, semaines futures incluses) · <b>Réalisé</b> ne compte que les séries réellement cochées.</div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="segmented vol-switch"><button data-act="volView" data-vv="carte"'+(volView==='carte'?' class="active"':'')+'>Carte</button><button data-act="volView" data-vv="tableau"'+(volView==='tableau'?' class="active"':'')+'>Tableau</button></div><div class="segmented vol-switch"><button data-act="volMode" data-vm="plan"'+(volMode==='plan'?' class="active"':'')+'>Prévu</button><button data-act="volMode" data-vm="real"'+(volMode==='real'?' class="active"':'')+'>Réalisé</button></div></div>'+(volView==='carte'?muscleMapSVG(avg):'<table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:center">Cible MEV→MRV</th></tr></thead><tbody>'+rows+'</tbody></table>')+'</div>';
+      html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><div class="help-box" data-help="volume" hidden>Séries éq./sem = volume hebdo par muscle (direct = 1, indirect = 0,5 ; échauffements exclus). Tous les groupes sont affichés (0 = non travaillé). La barre situe ton volume entre les repères RP : <b>MEV</b> (minimum efficace) · <b>MAV</b> (zone optimale) · <b>MRV</b> (max récupérable). Sous MEV = léger, MEV–MAV = productif, MAV–MRV = optimal, au-delà = élevé. Gros muscles : MEV 6 / MRV 20 · petits : MEV 4 / MRV 16. Moyenne sur '+V.weeks+' semaines. La carte montre les groupes majeurs (deltoïde latéral, milieu du dos et avant-bras restent dans le tableau). <b>Prévu</b> compte les séries planifiées (analyse du programme, semaines futures incluses) · <b>Réalisé</b> ne compte que les séries réellement cochées.</div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="segmented vol-switch"><button data-act="volView" data-vv="carte"'+(volView==='carte'?' class="active"':'')+'>Carte</button><button data-act="volView" data-vv="tableau"'+(volView==='tableau'?' class="active"':'')+'>Tableau</button></div>'+volSwitch+'</div>'+(volView==='carte'?muscleMapSVG(avg):'<table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:center">Cible MEV→MRV</th></tr></thead><tbody>'+rows+'</tbody></table>')+'</div>';
     } else {
-      html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><p class="hint">Aucune donnée sur cette période.</p></div>';
+      html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div>'+volSwitch+'<p class="hint" style="margin-top:8px">'+(volMode==='real'?'Aucune série cochée sur cette période — repasse en « Prévu » pour voir le volume planifié.':'Aucune donnée sur cette période.')+'</p></div>';
     }
     function balanceRow(label,a,b,vCol,vIco,vTxt){
       var tot=a+b; if(tot<=0) return ''; var pa=Math.round(a/tot*100);
