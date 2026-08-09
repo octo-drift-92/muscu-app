@@ -219,6 +219,7 @@
   .day-est { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:12.5px; color:var(--text-dim); margin:10px 2px 2px; }
   .day-est b { font-size:14px; color:var(--text); font-weight:800; }
   .day-est span { color:var(--text-faint); }
+  .day-est .day-reel { font-size:12.5px; font-weight:800; color:var(--success); background:color-mix(in srgb,var(--success) 12%,transparent); border-radius:6px; padding:2px 8px; }
   .day-body.drop-into { outline:2px dashed var(--accent); outline-offset:-5px; border-radius:12px; }
   .day-note { width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:9px; font:inherit; font-size:13px; color:var(--text); padding:8px 11px; margin:12px 0; }
   .day-note:focus { outline:none; border-color:var(--accent); }
@@ -803,7 +804,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v96';
+  var APP_VERSION = 'v97';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1145,7 +1146,8 @@
       '</div>' +
       '<div class="day-body">' +
         (function(){ var e=sessionEst(day); if(!e) return '';
-          return '<div class="day-est">≈ <b>'+e.min+' min</b><span> · '+e.sets+' séries · '+e.exos+' exos'+(e.echauf?' · '+e.echauf+' échauf.':'')+(e.cardio?' · '+e.cardio+' min cardio':'')+'</span>'+
+          var reel=(day.durMin!=null && day.durMin>0)?('<span class="day-reel">réel '+day.durMin+' min</span>'):'';
+          return '<div class="day-est">≈ <b>'+e.min+' min</b>'+reel+'<span> · '+e.sets+' séries · '+e.exos+' exos'+(e.echauf?' · '+e.echauf+' échauf.':'')+(e.cardio?' · '+e.cardio+' min cardio':'')+'</span>'+
             '<button class="help-q" data-act="help" data-topic="duree">?</button></div>'+
             '<div class="help-box" data-help="duree" hidden>Estimation : <b>40 s</b> par série de travail, <b>'+mmss(e.rest)+'</b> de repos entre séries (ton repos cible, modifiable en mode séance), <b>65 s</b> par série d\'échauffement, <b>90 s</b> à chaque changement de machine (trouver, régler, charger). L\'échauffement compte 2 séries sur le premier exercice puis 1 sur le premier de chaque nouveau groupe musculaire. Le cardio ajoute sa durée plus 1 min d\'installation. Une machine occupée ou une salle pleine peuvent facilement ajouter 10 à 15 min.</div>';
         })() +
@@ -1407,7 +1409,7 @@
     }
     box.innerHTML=head+hero+weekH;
   }
-  function gymStartToday(btn){ var wid=btn.dataset.w, did=btn.dataset.d; if(wid && state.currentWeekId!==wid){ state.currentWeekId=wid; save(); renderProgramme(); } var w=curWeek(); var day=w&&w.days.filter(function(d){return d.id===did;})[0]; if(day && day.exercises.length){ gymMode={dayId:did, exIndex:gymFirstTodo(day)}; gymMode.t0=Date.now(); gymRestStart=0; renderGym(); } }
+  function gymStartToday(btn){ var wid=btn.dataset.w, did=btn.dataset.d; if(wid && state.currentWeekId!==wid){ state.currentWeekId=wid; save(); renderProgramme(); } var w=curWeek(); var day=w&&w.days.filter(function(d){return d.id===did;})[0]; if(day && day.exercises.length){ gymMode={dayId:did, exIndex:gymFirstTodo(day)}; gymMode.t0=Date.now(); markStart(day); gymRestStart=0; renderGym(); } }
   function helpTopic(t){ var el=document.querySelector('.help-box[data-help="'+t+'"]'); if(el) el.hidden=!el.hidden; }
 
   /* ---------- mode séance (gym) ---------- */
@@ -1415,7 +1417,10 @@
   function gymDay(){ var w=curWeek(); return (gymMode && w) ? w.days.filter(function(d){return d.id===gymMode.dayId;})[0] : null; }
   function gymCurEx(){ var day=gymDay(); return day ? day.exercises[gymMode.exIndex] : null; }
   function gymFirstTodo(day){ for(var i=0;i<day.exercises.length;i++){ if(day.exercises[i].sets.some(function(s){return !s.done;})) return i; } return 0; }
-  function gymStart(loc){ if(!loc.day || !loc.day.exercises.length) return; gymMode={dayId:loc.day.id, exIndex:gymFirstTodo(loc.day)}; gymMode.t0=Date.now(); gymRestStart=0; renderGym(); }
+  function gymStart(loc){ if(!loc.day || !loc.day.exercises.length) return; gymMode={dayId:loc.day.id, exIndex:gymFirstTodo(loc.day)}; gymMode.t0=Date.now(); markStart(loc.day); gymRestStart=0; renderGym(); }
+  // le debut est ecrit dans la donnee, pas seulement en memoire : il survit a un rechargement,
+  // a une fermeture de l app et a une synchro. On ne l ecrase pas si la seance est deja entamee.
+  function markStart(day){ if(day && !day.startedAt){ day.startedAt=Date.now(); save(); } }
   function gymExit(){ gymMode=null; gymStopTimer(); var ov=$('gym'); if(ov){ ov.hidden=true; ov.innerHTML=''; } document.documentElement.classList.remove('gym-open'); renderProgramme(); }
   function gymNav(d){ var day=gymDay(); if(!day) return; var ni=Math.max(0, Math.min(day.exercises.length, gymMode.exIndex+d)); if(ni===gymMode.exIndex) return; gymNavDir=d>0?1:-1; gymMode.exIndex=ni; renderGym(); }
   // machine occupee : decale l'exercice courant en fin de seance, sans le perdre
@@ -1542,10 +1547,13 @@
     var setsDone=0, tonnage=0, exNames=0, prs=[], grp={};
     day.exercises.forEach(function(x){ var nm=(x.name||'').trim(); var ds=x.sets.filter(function(s){return s.done;}); if(!ds.length) return; exNames++; var top=0; ds.forEach(function(s){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0; setsDone++; tonnage+=wt*rp; if(wt>top) top=wt; }); if(!isWarmup(nm)) muscleContribs(nm).forEach(function(c){ grp[c.g]=(grp[c.g]||0)+ds.length*c.w; }); var rec=exBestBefore(exKey(x), day.date); if(nm && top>0 && top>rec) prs.push({nm:exKey(x), kg:top, prev:rec}); });
     // duree de seance (depuis l'ouverture du mode seance) + estimation calorique
-    var mins=(gymMode&&gymMode.t0)?Math.round((Date.now()-gymMode.t0)/60000):0;
-    if(mins<0||mins>300) mins=0;
+    var t0=day.startedAt||(gymMode&&gymMode.t0)||0;
+    var mins=t0?Math.round((Date.now()-t0)/60000):0;
+    if(mins<0||mins>300) mins=0;                      // seance oubliee ouverte : on prefere ne rien noter
     var K=sessionKcal(day, mins);
-    if(K){ day.durMin=mins; day.kcalEst=K.total; save(); }
+    if(mins>0) day.durMin=mins;                       // la duree ne depend plus du poids renseigne
+    if(K) day.kcalEst=K.total;
+    if(mins>0 || K) save();
     var kcalTile = K ? ('<div><b>'+fmt(K.total)+'</b><span>kcal est.</span></div>') : '';
     var kcalNote = K
       ? ('<p class="hint" style="margin-top:10px">≈ '+fmt(K.lift)+' kcal de muscu ('+mins+' min)'+(K.cardio>0?(' + '+fmt(K.cardio)+' kcal de cardio'):'')+'. Estimation MET, ±30 % — et <b>ne l\'ajoute pas à ton budget calories</b> : ta dépense (MacroFactor) inclut déjà tes entraînements.</p>')
@@ -1558,7 +1566,16 @@
     ov.hidden=false; document.documentElement.classList.add('gym-open'); animIn(ov.querySelector('.recap-card'), {opacity:0, transform:'translateY(16px) scale(.97)'}); if(navigator.vibrate){ try{ navigator.vibrate([90,50,90,50,170]); }catch(e){} }
   }
   function recapClose(){ var ov=$('recap'); if(ov){ ov.hidden=true; ov.innerHTML=''; } }
-  function recapFinish(){ recapClose(); gymExit(); }
+  function recapFinish(){
+    var day=gymDay();
+    if(day){
+      day.endedAt=Date.now();
+      var t0=day.startedAt||(gymMode&&gymMode.t0)||0;
+      if(t0){ var m=Math.round((day.endedAt-t0)/60000); if(m>0 && m<=300) day.durMin=m; }
+      save();
+    }
+    recapClose(); gymExit();
+  }
   function gymGoCardio(){ recapClose(); if(!gymMode) return; var day=gymDay(); if(!day) return; gymNavDir=1; gymMode.exIndex=day.exercises.length; renderGym(); }
   function gymFinishCardio(){ gymStopTimer(); var day=gymDay(); if(day && dayIsComplete(day)){ showSessionSummary(day); return; } gymExit(); }
   function renderGymCardio(ov, day){
