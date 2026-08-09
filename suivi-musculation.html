@@ -798,7 +798,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v91';
+  var APP_VERSION = 'v92';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2141,6 +2141,7 @@
     {re:/chest press|developpe couche|developpe incline|\bdips?\b|pompe|bench/, t:"Développé", d:"Poussée pectorale principale. Recrute aussi les triceps et le deltoïde antérieur.", c:["Omoplates serrées et basses, poitrine sortie","Coudes à 45-60° du buste, jamais à 90°","Ne verrouille pas les coudes en fin de poussée"]},
     {re:/shoulder press|developpe militaire|overhead press|military/, t:"Développé vertical", d:"Poussée au-dessus de la tête. Deltoïde antérieur en moteur, latéral et triceps en soutien.", c:["Descends jusqu'où l'épaule reste confortable, pas plus bas","Gainage serré, ne cambre pas le bas du dos","Sur machine convergente, laisse les bras suivre leur arc naturel"]},
     {re:/leg curl/, t:"Leg curl", d:"Flexion du genou, isolation des ischio-jambiers.", c:["Bassin bien calé, ne décolle pas les hanches","Amplitude complète jusqu'à l'étirement en bas","Pointes de pieds tirées vers toi pour mieux sentir"]},
+    {re:/curl.*(incline|decline)|incline curl/, t:"Curl incliné", d:"Curl sur banc incliné : le bras pend derrière le buste, ce qui charge la longue portion du biceps en position étirée — celle que le curl assis ou au pupitre ne travaille pas.", c:["Banc à 45° : plus il est couché, plus l'étirement est fort et plus l'épaule est sollicitée","Laisse le bras pendre à la verticale entre les répétitions, ne le ramène pas vers l'avant","Charge nettement plus légère qu'au curl debout : la position basse est très exigeante"]},
     {re:/preacher|pupitre/, t:"Curl au pupitre", d:"Curl bras calés. Supprime toute triche et charge le biceps en position étirée.", c:["Aisselles bien calées contre le haut du pupitre","Descends complètement sans lâcher la tension en bas","Charge modérée : la position basse est très exigeante"]},
     {re:/marteau|hammer curl/, t:"Curl marteau", d:"Curl en prise neutre. Recrute le brachial et le brachio-radial en plus du biceps, il épaissit le bras.", c:["Paumes qui se font face pendant tout le mouvement","Coudes fixes le long du buste","Contrôle la descente sur deux secondes"]},
     {re:/curl inverse|reverse grip|avant.?bras/, t:"Curl inversé", d:"Curl en pronation. Cible les avant-bras et le brachio-radial plus que le biceps.", c:["Poignets solides, dans l'axe de l'avant-bras","Charge nettement plus légère qu'en supination","Amplitude complète, sans à-coup"]},
