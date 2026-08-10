@@ -804,7 +804,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v98';
+  var APP_VERSION = 'v99';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1147,9 +1147,9 @@
       '<div class="day-body">' +
         (function(){ var e=sessionEst(day); if(!e) return '';
           var reel=(day.durMin!=null && day.durMin>0)?('<span class="day-reel">réel '+day.durMin+' min</span>'):'';
-          return '<div class="day-est">≈ <b>'+e.min+' min</b>'+reel+'<span> · '+e.sets+' séries · '+e.exos+' exos'+(e.echauf?' · '+e.echauf+' échauf.':'')+(e.uni?' · '+e.uni+' unilat.':'')+(e.cardio?' · '+e.cardio+' min cardio':'')+'</span>'+
+          return '<div class="day-est">≈ <b>'+e.min+' min</b>'+reel+'<span> · '+e.sets+' séries · '+e.exos+' exos'+(e.echauf?' · '+e.echauf+' échauf.':'')+(e.uni?' · '+e.uni+' unilat.':'')+(e.cal?' · calé sur '+e.cal+' séance'+(e.cal>1?'s':''):' · non calibré')+(e.cardio?' · '+e.cardio+' min cardio':'')+'</span>'+
             '<button class="help-q" data-act="help" data-topic="duree">?</button></div>'+
-            '<div class="help-box" data-help="duree" hidden>Estimation : <b>40 s</b> par série de travail, <b>'+mmss(e.rest)+'</b> de repos entre séries (ton repos cible, modifiable en mode séance), <b>65 s</b> par série d\'échauffement, <b>90 s</b> à chaque changement de machine (trouver, régler, charger). L\'échauffement compte 2 séries sur le premier exercice puis 1 sur le premier de chaque nouveau groupe musculaire. Une série <b>unilatérale</b> compte double (gauche puis droite) plus 20 s de bascule, en supposant que tu enchaînes les deux côtés sans repos entre eux — si tu prends un repos complet entre gauche et droite, compte environ 2 min de plus par série. Le cardio ajoute sa durée plus 1 min d\'installation. Une machine occupée ou une salle pleine peuvent facilement ajouter 10 à 15 min.</div>';
+            '<div class="help-box" data-help="duree" hidden>Estimation : une série dure <b>3,5 s par répétition</b> plus <b>15 s</b> pour s’installer et sortir (10 reps → 50 s, 17 reps → 75 s), <b>'+mmss(e.rest)+'</b> de repos entre séries (ton repos cible, modifiable en mode séance), <b>65 s</b> par série d\'échauffement, <b>90 s</b> à chaque changement de machine (trouver, régler, charger). L\'échauffement compte 2 séries sur le premier exercice puis 1 sur le premier de chaque nouveau groupe musculaire. Une série <b>unilatérale</b> compte double (gauche puis droite) plus 20 s de bascule, en supposant que tu enchaînes les deux côtés sans repos entre eux — si tu prends un repos complet entre gauche et droite, compte environ 2 min de plus par série. Le cardio ajoute sa durée plus 1 min d\'installation. Ce total est ensuite <b>recalé sur tes séances réellement terminées</b> : l\'app compare la durée mesurée à la durée modélisée sur tes 6 dernières séances et applique le rapport moyen. Plus tu termines de séances par le bouton Terminer, plus l\'estimation colle à ton rythme réel.</div>';
         })() +
         ((day.note&&day.note.trim())?'<input class="day-note" data-field="dayNote" value="'+escA(day.note)+'" placeholder="Note de séance (ressenti, forme du jour…)">':'<div class="day-note-wrap"><button class="day-note-add" data-act="dayNoteShow">+ note de séance</button></div>') +
         (day.exercises.length && day.date===todayISO()?'<button class="btn primary gym-launch" data-act="gymStart">▶ Mode séance</button>':'') +
@@ -1197,8 +1197,9 @@
   // Estimation de duree d une seance. Constantes assumees, documentees dans l aide :
   // 40 s de travail par serie · repos = repos cible reglable · 65 s par serie d echauffement
   // (20 s d effort + 45 s de repos court) · 90 s par changement de machine (trouver, regler, charger).
-  var EST_SERIE=40, EST_ECHAUF=65, EST_CHANGT=90, EST_COTE=20;
-  function sessionEst(day){
+  var EST_REP=3.5, EST_INSTALL=15, EST_ECHAUF=65, EST_CHANGT=90, EST_COTE=20;
+  function estSerie(sets){ var t=0; (sets||[]).forEach(function(z){ var r=(z.planReps!=null&&z.planReps>0)?z.planReps:10; t+=r*EST_REP+EST_INSTALL; }); return t; }
+  function sessionEstBrut(day){
     if(!day) return null;
     var exs=(day.exercises||[]).filter(function(x){ return (x.sets||[]).length; });
     var cMin=(day.cardio||[]).reduce(function(a,c){ var m=(c.min!=null&&c.min!=='')?+c.min:0; return a+(m>0?m:0); },0);
@@ -1208,7 +1209,7 @@
     exs.forEach(function(x,i){
       var n=(x.sets||[]).length; nSets+=n;
       var uni=isUnilateral(x.name); if(uni) nUni+=n;
-      sec += n*EST_SERIE*(uni?2:1) + (uni?n*EST_COTE:0) + Math.max(0,n-1)*rest;
+      sec += estSerie(x.sets)*(uni?2:1) + (uni?n*EST_COTE:0) + Math.max(0,n-1)*rest;
       if(i>0) sec += EST_CHANGT;
       if(isWarmup(x.name)) return;                       // un echauffement ne s echauffe pas
       var c=(muscleContribs(x.name)||[])[0], g=c?c.g:'Autre';
@@ -1217,6 +1218,27 @@
     });
     sec += cardio;
     return { min:Math.round(sec/60), sets:nSets, exos:exs.length, echauf:nEchauf, cardio:cMin, rest:rest, uni:nUni };
+  }
+  // facteur de recalage : moyenne du rapport (durée réelle / durée modélisée)
+  // sur les 6 dernières séances effectivement terminées. Aucune séance terminée -> 1.
+  function estFacteur(){
+    var r=[];
+    state.weeks.forEach(function(w){ (w.days||[]).forEach(function(dd){
+      if(dd.durMin==null || dd.durMin<=0) return;
+      var e=sessionEstBrut(dd); if(!e || !e.min) return;
+      r.push({ d:dd.date||'', k:dd.durMin/e.min });
+    }); });
+    if(!r.length) return { k:1, n:0 };
+    r.sort(function(a,b){ return a.d.localeCompare(b.d); });
+    r = r.slice(-6);
+    var m=0; r.forEach(function(x){ m+=x.k; }); m/=r.length;
+    return { k:Math.max(0.5, Math.min(3, m)), n:r.length };
+  }
+  function sessionEst(day){
+    var e=sessionEstBrut(day); if(!e) return null;
+    var f=estFacteur();
+    e.brut=e.min; e.min=Math.round(e.min*f.k); e.cal=f.n; e.k=Math.round(f.k*100)/100;
+    return e;
   }
   function daySelOptInner(d){
     var st=dayStats(d), comp=dayIsComplete(d);
