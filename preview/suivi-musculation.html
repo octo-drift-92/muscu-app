@@ -804,7 +804,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v99';
+  var APP_VERSION = 'v100';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2097,6 +2097,7 @@
     function P(g){ return [{g:g,w:1}]; }
     // prehension : 0,5 sur engin libre ou a disques, 0,25 sur machine ou poulie
     function AB(){ return {g:'Avant-bras', w:(/\bt[\s-]?bar|barre|haltere|poids libres|souleve de terre|deadlift|traction|pull-?up|chin-?up/.test(n) ? .5 : .25)}; }
+    if(/omoplate|scapulaire|retraction scap/.test(n)) return [{g:'Trapèzes',w:1},{g:'Deltoïde post.',w:.5}];
     if(/face.?pull/.test(n)) return [{g:'Deltoïde post.',w:1},{g:'Trapèzes',w:.5}];
     if(/oiseau|reverse fly|l-?fly|rotation ext|coiffe|rotateur|lever lateral|rear delt|reverse pec/.test(n)) return P('Deltoïde post.');
     if(/elevations? laterales?|lateral raise/.test(n)) return P('Deltoïde lat.');
@@ -2203,6 +2204,8 @@
     return '<div class="last-session'+(alt?' alt':'')+'">↩ Dernière fois ('+dl+') : '+esc(sets)+(last.sets.length>6?' …':'')+tail+'</div>';
   }
   var EXERCISE_INFO=[
+    {re:/rotation ext/, t:"Rotation externe à la poulie", d:"Renforce les rotateurs externes, les muscles profonds qui maintiennent la tête de l'humérus centrée dans son articulation. Amplitude médiane, le bras ne se lève jamais.", c:["Poulie à hauteur de coude, tu te places de profil","Coude collé au buste et fléchi à 90° : seul l'avant-bras s'ouvre, comme une porte","Charge dérisoire, 2 à 5 kg. Si tu tires avec le dos, c'est trop lourd","Ne doit rien faire sentir dans l'épaule. Si oui, tu sors l'exercice"]},
+    {re:/omoplate|scapulaire/, t:"Rétraction des omoplates", d:"Bras tendus, on ne bouge que les omoplates : on les rapproche et on les descend. Travaille le trapèze moyen et inférieur, qui positionnent l'omoplate — une omoplate mal placée fait travailler l'épaule de travers à chaque série.", c:["Coudes verrouillés : l'amplitude ne fait que quelques centimètres","Serre ET descends les omoplates, ne hausse pas les épaules","Temps d'arrêt d'une seconde en position serrée","Charge légère, 15 répétitions, en début de séance"]},
     {re:/echauffement|warm.?up|mobilit/, t:"Échauffement", d:"Préparation articulaire, exclue du volume d'entraînement.", c:["Charge très légère, amplitude complète","À faire avant tout mouvement de pressing","Prends le temps : c'est ce qui a réglé ton épaule"]},
     {re:/face.?pull/, t:"Face pull", d:"Tirage vers le visage coudes hauts. Deltoïde postérieur et rotateurs externes : c'est l'exercice de prévention de l'épaule.", c:["Tire vers le front, mains qui finissent au niveau des oreilles","Coudes au-dessus des poignets pendant tout le mouvement","Charge légère, séries longues de 12 à 20 répétitions"]},
     {re:/oiseau|reverse fly|rear delt|lever lateral inverse/, t:"Oiseau", d:"Écarté buste penché. Isole le deltoïde postérieur, souvent le plus en retard.", c:["Buste incliné, dos plat, tête dans le prolongement","Ouvre avec les coudes, pas avec les mains","Ne serre pas les omoplates : ce sont les épaules qui travaillent"]},
