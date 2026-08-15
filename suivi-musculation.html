@@ -455,6 +455,14 @@
   .alt-tag { display:inline-block; font-size:var(--fs-2xs); font-weight:800; letter-spacing:.2px; color:var(--text-dim); background:var(--surface-3); border-radius:var(--r-xs); padding:2px 6px; margin-left:6px; vertical-align:middle; }
   .gym-stat.alt { border-style:dashed; }
   .prog-section-title { font-size:var(--fs-md); font-weight:800; margin:8px 2px 12px; padding-top:20px; border-top:1px solid var(--border); letter-spacing:.2px; }
+  /* conflit de synchro : rare, mais on ne dit plus « ok » quand quelque chose a disparu */
+  .conflit { display:flex; flex-direction:column; gap:12px; background:var(--warning-bg); border:1px solid color-mix(in srgb,var(--warning) 40%,transparent); border-radius:var(--r-lg); padding:12px 16px; margin-bottom:16px; }
+  .conflit[hidden] { display:none; }
+  .conflit-txt { display:flex; flex-direction:column; gap:4px; }
+  .conflit-txt b { color:var(--warning); font-size:var(--fs-base); font-weight:800; }
+  .conflit-txt span { color:var(--text-dim); font-size:var(--fs-sm); line-height:1.45; }
+  .conflit-act { display:flex; gap:8px; flex-wrap:wrap; }
+  .conflit-act .btn { flex:0 1 auto; }
   .vol-head { display:flex; align-items:flex-start; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
   .vol-head .section-label { flex:1 1 180px; margin:0; }
   .vol-switches { display:flex; gap:8px; flex-wrap:wrap; margin-left:auto; }
@@ -791,6 +799,17 @@
 </header>
 
 <main class="wrap">
+  <div id="conflit" class="conflit" hidden role="alert">
+    <div class="conflit-txt">
+      <b>Des modifications locales ont été remplacées</b>
+      <span id="conflit-detail">La version du cloud était plus récente. Une copie de ce qui a été écrasé est conservée sur cet appareil.</span>
+    </div>
+    <div class="conflit-act">
+      <button class="btn" data-act="conflitVoir">Ce qui a été perdu</button>
+      <button class="btn primary" data-act="conflitRestaurer">Récupérer</button>
+      <button class="btn ghost" data-act="conflitIgnorer">Ignorer</button>
+    </div>
+  </div>
   <section id="view-accueil" class="view active">
     <div id="accueil-body"></div>
   </section>
@@ -877,7 +896,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v109';
+  var APP_VERSION = 'v110';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2880,6 +2899,9 @@
       case 'palette': setPalette(b.dataset.pal); break;
       case 'metric': setMetric(b.dataset.metric); break;
       case 'period': if(b.dataset.weeks==='now') progThisWeek(); else setPeriod(b.dataset.weeks); periodClose(); break;
+      case 'conflitVoir': conflitVoir(); break;
+      case 'conflitRestaurer': conflitRestaurer(); break;
+      case 'conflitIgnorer': conflitIgnorer(); break;
       case 'periodOpen': periodOpen(); break;
       case 'periodClose': periodClose(); break;
       case 'progWeekPrev': progWeekNav(-1); break;
@@ -3070,7 +3092,7 @@
       sync.pushing=true; setSyncStatus('syncing');
       ghPull().then(function(res){
         sync.pushing=false;
-        if(!res.empty && doneSetsCount(res.data)>0){ sync.cfg.lastSha=res.sha; saveSyncCfg(); applyRemoteState(res.data); setSyncStatus('ok'); return; }
+        if(!res.empty && doneSetsCount(res.data)>0){ sync.cfg.lastSha=res.sha; saveSyncCfg(); applyRemoteSafely(res.data); setSyncStatus('ok'); return; }
         if(!res.empty){ sync.cfg.lastSha=res.sha; saveSyncCfg(); }
         doPush(true);
       }).catch(function(){ sync.pushing=false; setSyncStatus('error','Vérification du cloud impossible — envoi annulé par sécurité.'); });
@@ -3086,7 +3108,7 @@
       if(!retry && (e.status===409 || e.status===422)){
         ghPull().then(function(res){
           if(!res.empty){ sync.cfg.lastSha=res.sha; saveSyncCfg();
-            if((res.data.updatedAt||0) > (state.updatedAt||0)){ applyRemoteState(res.data); setSyncStatus('ok'); return; } }
+            if((res.data.updatedAt||0) > (state.updatedAt||0)){ applyRemoteSafely(res.data); setSyncStatus('ok'); return; } }
           doPush(true);
         }).catch(function(){ setSyncStatus('error','Conflit de synchronisation.'); });
       } else { setSyncStatus('error', e.message); }
@@ -3100,9 +3122,81 @@
       sync.pulling=false;
       if(res.empty){ setSyncStatus('ok'); return; }
       sync.cfg.lastSha=res.sha; saveSyncCfg();
-      if((res.data.updatedAt||0) > (state.updatedAt||0) || opts.force || (doneSetsCount(state)===0 && doneSetsCount(res.data)>0)){ applyRemoteState(res.data); }
+      if((res.data.updatedAt||0) > (state.updatedAt||0) || opts.force || (doneSetsCount(state)===0 && doneSetsCount(res.data)>0)){ applyRemoteSafely(res.data); }
       setSyncStatus('ok');
     }).catch(function(e){ sync.pulling=false; setSyncStatus('error', e.message); });
+  }
+  /* Le cloud gagne quand il est plus recent — c est la regle, et elle convient a un
+     usage a une personne. Ce qui n allait pas, c est le silence : l app ecrasait des
+     saisies locales et affichait « ok ». On garde desormais une copie de ce qui est
+     ecrase et on le dit. Ce n est pas une fusion : c est une annulation possible. */
+  var SECOURS_KEY = KEY + '-secours';
+  // des modifications locales n ont jamais ete envoyees si l etat est plus recent
+  // que le dernier envoi reussi.
+  function localNonEnvoye(){ return (state.updatedAt||0) > ((sync.cfg && sync.cfg.lastPushedAt)||0); }
+  function ecartLocal(remote){
+    var d=doneSetsCount(state)-doneSetsCount(remote);
+    var ex=0, exR=0;
+    (state.weeks||[]).forEach(function(w){ (w.days||[]).forEach(function(j){ ex+=(j.exercises||[]).length; }); });
+    (remote.weeks||[]).forEach(function(w){ (w.days||[]).forEach(function(j){ exR+=(j.exercises||[]).length; }); });
+    return { series:d, exos:ex-exR };
+  }
+  function applyRemoteSafely(remote){
+    if(!remote || !Array.isArray(remote.weeks)) return;
+    if(localNonEnvoye()){
+      var e=ecartLocal(remote);
+      try{ localStorage.setItem(SECOURS_KEY, JSON.stringify({ at:Date.now(), ecart:e, state:state })); }catch(err){}
+      applyRemoteState(remote);
+      majConflit();
+      return;
+    }
+    applyRemoteState(remote);
+  }
+  function secoursLu(){ try{ return JSON.parse(localStorage.getItem(SECOURS_KEY)||'null'); }catch(e){ return null; } }
+  function majConflit(){
+    var el=$('conflit'); if(!el) return;
+    var c=secoursLu();
+    if(!c){ el.hidden=true; return; }
+    var d=$('conflit-detail');
+    if(d){
+      var bits=[];
+      if(c.ecart && c.ecart.series>0) bits.push(c.ecart.series+' série'+(c.ecart.series>1?'s':'')+' faite'+(c.ecart.series>1?'s':''));
+      if(c.ecart && c.ecart.exos>0) bits.push(c.ecart.exos+' exercice'+(c.ecart.exos>1?'s':''));
+      var quand=''; try{ quand=new Date(c.at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }catch(e){}
+      d.textContent = (bits.length ? ('Il manque au moins '+bits.join(' et ')+' par rapport à ta version locale. ') : '')
+        + 'La version du cloud, plus récente, a été appliquée'+(quand?' à '+quand:'')+'. Une copie de ta version est conservée sur cet appareil.';
+    }
+    el.hidden=false;
+  }
+  function conflitVoir(){
+    var c=secoursLu(); if(!c){ majConflit(); return; }
+    var e=c.ecart||{};
+    alert('Ta version locale, mise de côté :\n\n'
+      + '• '+doneSetsCount(c.state)+' séries faites (version actuelle : '+doneSetsCount(state)+')\n'
+      + '• écart au moment du remplacement : '+(e.series||0)+' série(s), '+(e.exos||0)+' exercice(s)\n\n'
+      + '« Récupérer » remet cette version en place sur cet appareil et l\'envoie au cloud.');
+  }
+  function conflitRestaurer(){
+    var c=secoursLu(); if(!c || !c.state || !Array.isArray(c.state.weeks)){ conflitIgnorer(); return; }
+    if(!confirm('Remettre ta version locale en place et l\'envoyer au cloud ?\n\nLa version actuellement affichée sera remplacée.')) return;
+    var r=c.state;
+    SYNC_SUSPEND=true;
+    state.weeks=r.weeks;
+    state.library=(Array.isArray(r.library)&&r.library.length)?r.library:DEFAULT_LIB.slice();
+    state.templates=Array.isArray(r.templates)?r.templates:[];
+    state.measurements=Array.isArray(r.measurements)?r.measurements:[];
+    state.settings=Object.assign({theme:'dark',metric:'weight'}, r.settings||{});
+    state.currentWeekId=r.currentWeekId||(r.weeks[0]&&r.weeks[0].id)||null;
+    SYNC_SUSPEND=false;
+    try{ localStorage.removeItem(SECOURS_KEY); }catch(e){}
+    save();                                  // updatedAt repart a maintenant : l envoi gagnera
+    applyTheme(); renderAll(); if(isReglagesActive()) renderReglages();
+    majConflit();
+    toast('Version locale rétablie — envoi au cloud en cours');
+  }
+  function conflitIgnorer(){
+    try{ localStorage.removeItem(SECOURS_KEY); }catch(e){}
+    majConflit();
   }
   function applyRemoteState(remote){
     if(!remote || !Array.isArray(remote.weeks)) return;
@@ -3208,6 +3302,7 @@
   document.addEventListener('visibilitychange', function(){ if(!document.hidden) maybePull(); });
   window.addEventListener('online', function(){ if(syncConfigured()) schedulePush(); });
   /* Service worker : mise a jour auto (reseau d'abord) + fonctionnement hors-ligne. */
+  majConflit();
   (function(){ var t=$('prog-tabs'); if(t) t.addEventListener('scroll', function(){
     var w=$('prog-tabs-wrap'); if(w) w.classList.toggle('peut-defiler', t.scrollLeft + t.clientWidth < t.scrollWidth - 2);
   }, {passive:true}); })();
