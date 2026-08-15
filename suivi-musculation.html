@@ -455,6 +455,13 @@
   .alt-tag { display:inline-block; font-size:var(--fs-2xs); font-weight:800; letter-spacing:.2px; color:var(--text-dim); background:var(--surface-3); border-radius:var(--r-xs); padding:2px 6px; margin-left:6px; vertical-align:middle; }
   .gym-stat.alt { border-style:dashed; }
   .prog-section-title { font-size:var(--fs-md); font-weight:800; margin:8px 2px 12px; padding-top:20px; border-top:1px solid var(--border); letter-spacing:.2px; }
+  .vol-head { display:flex; align-items:flex-start; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  .vol-head .section-label { flex:1 1 180px; margin:0; }
+  .vol-switches { display:flex; gap:8px; flex-wrap:wrap; margin-left:auto; }
+  .prog-tabs-wrap { position:relative; }
+  /* la bande d onglets defile : sans indice, elle se coupe en plein mot */
+  .prog-tabs-wrap::after { content:""; position:absolute; top:0; right:0; bottom:12px; width:36px; pointer-events:none; background:linear-gradient(to right,transparent,var(--bg)); opacity:0; transition:opacity .15s ease; }
+  .prog-tabs-wrap.peut-defiler::after { opacity:1; }
   .prog-tabs { display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:0 0 12px; scrollbar-width:none; }
   .prog-tabs::-webkit-scrollbar { display:none; }
   .prog-tabs button { flex:0 0 auto; padding:8px 16px; border-radius:var(--r-pill); border:1px solid var(--border); background:var(--surface); color:var(--text-dim); font:inherit; font-weight:700; font-size:var(--fs-sm); cursor:pointer; white-space:nowrap; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
@@ -463,7 +470,16 @@
   .vol-switch { display:flex; margin:4px 0 6px; }
   .vol-switch button { flex:1; }
   .muscle-map { display:block; width:100%; max-width:330px; margin:6px auto 2px; }
-  .period-bar { display:flex; flex-direction:column; align-items:stretch; gap:10px; margin-bottom:16px; }
+  .period-bar { display:flex; align-items:center; gap:8px; margin-bottom:16px; }
+  .period-pick { flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); color:var(--text); font:inherit; padding:8px 12px; cursor:pointer; text-align:left; }
+  .period-pick:hover { border-color:color-mix(in srgb,var(--accent) 40%,var(--border)); }
+  .period-pick-txt { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:2px; }
+  .period-pick-l { font-size:var(--fs-2xs); font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--text-faint); }
+  .period-pick-v { max-width:100%; font-size:var(--fs-sm); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .period-pick-car { flex:0 0 auto; color:var(--text-faint); font-size:var(--fs-xs); }
+  .gsheet-row { padding:0 8px 4px; }
+  .gsheet-row select { width:100%; padding:10px 12px; border-radius:var(--r-sm); border:1px solid var(--border); background:var(--bg); color:var(--text); font:inherit; font-size:var(--fs-sm); font-weight:600; }
+  .gsheet-row.period-dates { display:flex; gap:10px; flex-wrap:wrap; }
   .period-week-nav { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .period-week-nav select { flex:1 1 auto; min-width:0; max-width:320px; padding:8px 12px; border-radius:var(--r-sm); border:1px solid var(--border); background:var(--surface); color:var(--text); font:inherit; font-weight:700; font-size:var(--fs-base); }
   .period-presets-row { display:flex; align-items:center; gap:10px 16px; flex-wrap:wrap; }
@@ -786,23 +802,36 @@
 
   <section id="view-progression" class="view">
     <div class="period-bar">
-      <div class="period-week-nav">
-        <button class="icon-btn" data-act="progWeekPrev" title="Semaine précédente">◀</button>
-        <select id="period-week" aria-label="Semaine à analyser"></select>
-        <button class="icon-btn" data-act="progWeekNext" title="Semaine suivante">▶</button>
-        <button class="btn btn-sm" data-act="progThisWeek" title="Revenir à la semaine en cours">Cette semaine</button>
-      </div>
-      <div class="period-presets-row">
-        <span class="period-lbl">Période :</span>
-        <div class="segmented period-presets">
-          <button data-act="period" data-weeks="4">4 sem.</button>
-          <button data-act="period" data-weeks="8">8 sem.</button>
-          <button data-act="period" data-weeks="12">12 sem.</button>
-          <button data-act="period" data-weeks="0">Tout</button>
+      <button class="icon-btn" data-act="progWeekPrev" title="Semaine précédente" aria-label="Semaine précédente">◀</button>
+      <button class="period-pick" data-act="periodOpen" aria-haspopup="dialog">
+        <span class="period-pick-txt">
+          <span class="period-pick-l">Période analysée</span>
+          <span class="period-pick-v" id="period-label">—</span>
+        </span>
+        <span class="period-pick-car" aria-hidden="true">▾</span>
+      </button>
+      <button class="icon-btn" data-act="progWeekNext" title="Semaine suivante" aria-label="Semaine suivante">▶</button>
+    </div>
+    <div id="period-sheet" class="gsheet-ov" hidden>
+      <div class="gsheet" role="dialog" aria-label="Période analysée">
+        <div class="gsheet-h">Période analysée</div>
+        <div class="gsheet-sub" id="period-sheet-sub">—</div>
+        <div class="gsheet-lbl">Raccourcis</div>
+        <div class="equip-pick period-presets">
+          <button class="equip-btn" data-act="period" data-weeks="now">Semaine en cours</button>
+          <button class="equip-btn" data-act="period" data-weeks="4">4 sem.</button>
+          <button class="equip-btn" data-act="period" data-weeks="8">8 sem.</button>
+          <button class="equip-btn" data-act="period" data-weeks="12">12 sem.</button>
+          <button class="equip-btn" data-act="period" data-weeks="0">Tout</button>
         </div>
-        <div class="period-dates"><label>Du <input type="date" id="period-from"></label><label>au <input type="date" id="period-to"></label></div>
+        <div class="gsheet-lbl">Une semaine précise</div>
+        <div class="gsheet-row"><select id="period-week" aria-label="Semaine à analyser"></select></div>
+        <div class="gsheet-lbl">Dates personnalisées</div>
+        <div class="gsheet-row period-dates"><label>Du <input type="date" id="period-from"></label><label>au <input type="date" id="period-to"></label></div>
+        <div class="gsheet-foot"><button class="btn primary" data-act="periodClose">OK</button></div>
       </div>
     </div>
+    <div class="prog-tabs-wrap" id="prog-tabs-wrap">
     <div class="prog-tabs" id="prog-tabs">
       <button data-act="progTab" data-ptab="bilan">Bilan</button>
       <button data-act="progTab" data-ptab="volume" class="active">Volume</button>
@@ -811,6 +840,7 @@
       <button data-act="progTab" data-ptab="records">Records</button>
       <button data-act="progTab" data-ptab="cardio">Cardio</button>
       <button data-act="progTab" data-ptab="parexo">Par exo</button>
+    </div>
     </div>
     <div id="prog-global"></div>
     <h3 class="prog-section-title" id="prog-detail-label">Progression par exercice</h3>
@@ -847,7 +877,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v108';
+  var APP_VERSION = 'v109';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2431,7 +2461,7 @@
     var B=monthlyBilan(bilanOffset);
     html+='<div class="card prog-sec" data-psec="bilan" style="padding:10px 12px"><div class="section-label" style="display:flex;align-items:center;gap:8px">Bilan — '+esc(B.label)+'<span style="margin-left:auto;display:flex;gap:6px"><button class="mini-btn" data-act="bilanPrev" aria-label="Mois précédent">◀</button><button class="mini-btn" data-act="bilanNext"'+(bilanOffset>=0?' disabled':'')+' aria-label="Mois suivant">▶</button></span></div><div class="bilan-stats"><div><b>'+B.seances+'</b><span>séances</span></div><div><b>'+B.sets+'</b><span>séries faites</span></div><div><b>'+fmtKg(B.tonnage)+'</b><span>kg soulevés</span></div></div>'+(B.records.length?('<div style="margin-top:10px;font-weight:700;font-size:var(--fs-xs);color:var(--text-faint);letter-spacing:.3px">RECORDS DE CHARGE DU MOIS ('+B.records.length+')</div><table class="hist"><tbody>'+B.records.slice(0,8).map(function(r){return '<tr><td>'+esc(r.nm)+'</td><td style="text-align:right;color:var(--success);font-weight:700">'+fmt(r.kg)+' kg</td><td style="text-align:right;color:var(--text-faint)">'+(r.prev?'+'+fmt(r.kg-r.prev):'1er')+'</td></tr>';}).join('')+'</tbody></table>'):'<p class="hint" style="margin-top:8px">Aucun nouveau record de charge ce mois.</p>')+'</div>';
     var V=volumeByGroupOverRange(R.from, R.to, volMode), avg=V.avg;
-    var sub=((R.preset===null)?R.label:('moyenne/sem · '+R.label))+(volMode==='real'?' · réalisé':' · prévu');
+    var sub=(((R.preset===null)?'':'moyenne/sem · ')+(volMode==='real'?'réalisé':'prévu'));
     var total=0; Object.keys(avg).forEach(function(k){ total+=avg[k]; });
     var keys=MUSCLE_GROUPS.slice(); Object.keys(avg).forEach(function(g){ if(keys.indexOf(g)===-1) keys.push(g); });
     keys.sort(function(a,b){return (avg[b]||0)-(avg[a]||0);});
@@ -2442,9 +2472,9 @@
         var calc=(n>0)?('<div class="vol-calc">'+fmtSets(dv)+' <span>direct</span> + '+fmtSets(iv)+' <span>indirect</span></div>'):'';
         return '<tr><td>'+esc(g)+'</td><td style="text-align:right"><b>'+fmtSets(n)+'</b>'+calc+'</td><td class="vol-cell">'+volBar(g,n)+'<div class="vol-stat" style="color:'+s.col+'">'+s.lbl+'</div></td></tr>';
       }).join('');
-      html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><div class="help-box" data-help="volume" hidden>Séries éq./sem = volume hebdo par muscle (direct = 1, indirect = 0,5, préhension sur machine = 0,25 ; échauffements exclus). Tous les groupes sont affichés (0 = non travaillé). La barre situe ton volume entre les repères RP : <b>MEV</b> (minimum efficace) · <b>MAV</b> (zone optimale) · <b>MRV</b> (max récupérable). Sous MEV = léger, MEV–MAV = productif, MAV–MRV = optimal, au-delà = élevé. Gros muscles : MEV 6 / MRV 20 · petits : MEV 4 / MRV 16. Moyenne sur '+V.weeks+' semaines. La carte montre les groupes majeurs (deltoïde latéral, milieu du dos et avant-bras restent dans le tableau). <b>Prévu</b> compte les séries planifiées (analyse du programme, semaines futures incluses) · <b>Réalisé</b> ne compte que les séries réellement cochées.</div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="segmented vol-switch"><button data-act="volView" data-vv="carte"'+(volView==='carte'?' class="active"':'')+'>Carte</button><button data-act="volView" data-vv="tableau"'+(volView==='tableau'?' class="active"':'')+'>Tableau</button></div>'+volSwitch+'</div>'+(volView==='carte'?muscleMapSVG(avg):'<table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:center">Cible MEV→MRV</th></tr></thead><tbody>'+rows+'</tbody></table>')+'</div>';
+      html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="vol-head"><div class="section-label">Volume par groupe — '+esc(sub)+' <button class="help-q" data-act="help" data-topic="volume">?</button></div><div class="vol-switches"><div class="segmented vol-switch"><button data-act="volView" data-vv="carte"'+(volView==='carte'?' class="active"':'')+'>Carte</button><button data-act="volView" data-vv="tableau"'+(volView==='tableau'?' class="active"':'')+'>Tableau</button></div>'+volSwitch+'</div></div><div class="help-box" data-help="volume" hidden>Séries éq./sem = volume hebdo par muscle (direct = 1, indirect = 0,5, préhension sur machine = 0,25 ; échauffements exclus). Tous les groupes sont affichés (0 = non travaillé). La barre situe ton volume entre les repères RP : <b>MEV</b> (minimum efficace) · <b>MAV</b> (zone optimale) · <b>MRV</b> (max récupérable). Sous MEV = léger, MEV–MAV = productif, MAV–MRV = optimal, au-delà = élevé. Gros muscles : MEV 6 / MRV 20 · petits : MEV 4 / MRV 16. Moyenne sur '+V.weeks+' semaines. La carte montre les groupes majeurs (deltoïde latéral, milieu du dos et avant-bras restent dans le tableau). <b>Prévu</b> compte les séries planifiées (analyse du programme, semaines futures incluses) · <b>Réalisé</b> ne compte que les séries réellement cochées.</div>'+(volView==='carte'?muscleMapSVG(avg):'<table class="hist"><thead><tr><th>Groupe</th><th style="text-align:right">Séries éq./sem</th><th style="text-align:center">Cible MEV→MRV</th></tr></thead><tbody>'+rows+'</tbody></table>')+'</div>';
     } else {
-      html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="section-label">Volume par groupe — '+esc(sub)+'</div>'+volSwitch+'<p class="hint" style="margin-top:8px">'+(volMode==='real'?'Aucune série cochée sur cette période — repasse en « Prévu » pour voir le volume planifié.':'Aucune donnée sur cette période.')+'</p></div>';
+      html+='<div class="card prog-sec" data-psec="volume" style="padding:10px 12px"><div class="vol-head"><div class="section-label">Volume par groupe — '+esc(sub)+'</div><div class="vol-switches">'+volSwitch+'</div></div><p class="hint" style="margin-top:8px">'+(volMode==='real'?'Aucune série cochée sur cette période — repasse en « Prévu » pour voir le volume planifié.':'Aucune donnée sur cette période.')+'</p></div>';
     }
     function balanceRow(label,a,b,vCol,vIco,vTxt){
       var tot=a+b; if(tot<=0) return ''; var pa=Math.round(a/tot*100);
@@ -2548,6 +2578,7 @@
     var dl=$('prog-detail-label'), ctrls=document.querySelector('#view-progression .controls'), body=$('prog-body');
     [dl,ctrls,body].forEach(function(el){ if(el) el.style.display=detail?'':'none'; });
     var tb=document.querySelectorAll('#prog-tabs button'); for(var k=0;k<tb.length;k++) tb[k].classList.toggle('active', tb[k].getAttribute('data-ptab')===progTab);
+    syncProgTabs();
     animIn(detail ? $('prog-body') : document.querySelector('#prog-global [data-psec="'+progTab+'"]'));
   }
   function renderProgression(){
@@ -2578,6 +2609,16 @@
     box.innerHTML='<div class="card chart-card">'+buildChartSVG(pts,metric)+'</div>'+stats+table;
   }
   function setMetric(m){ state.settings.metric=m; save(); var b=document.querySelectorAll('#metric-seg button'); for(var i=0;i<b.length;i++) b[i].classList.toggle('active', b[i].dataset.metric===m); renderProgBody(); }
+  function periodOpen(){ var o=$('period-sheet'); if(o){ syncPeriodUI(); o.hidden=false; } }
+  function periodClose(){ var o=$('period-sheet'); if(o) o.hidden=true; }
+  // la bande d onglets ne tient pas a l ecran : on ramene l onglet actif dans le champ
+  // de vision et on signale qu il reste quelque chose a droite.
+  function syncProgTabs(){
+    var t=$('prog-tabs'), w=$('prog-tabs-wrap'); if(!t||!w) return;
+    w.classList.toggle('peut-defiler', t.scrollLeft + t.clientWidth < t.scrollWidth - 2);
+    var a=t.querySelector('button.active');
+    if(a && a.scrollIntoView) a.scrollIntoView({block:'nearest', inline:'nearest'});
+  }
   function setPeriod(weeks){ state.settings.progWeeks=+weeks; state.settings.progFrom=''; state.settings.progTo=''; save(); renderProgression(); }
   function setPeriodCustom(){ state.settings.progWeeks=null; state.settings.progFrom=$('period-from').value||''; state.settings.progTo=$('period-to').value||''; save(); renderProgression(); }
   function weekSpan(w){ var lo=w.startDate||'', hi=w.startDate||''; (w.days||[]).forEach(function(d){ if(d.date){ if(!lo||d.date<lo)lo=d.date; if(d.date>hi)hi=d.date; } }); return {from:lo,to:hi}; }
@@ -2592,7 +2633,17 @@
     else { idx=Math.max(0, Math.min(sorted.length-1, idx+dir)); }
     setPeriodWeek(sorted[idx].id);
   }
-  function syncPeriodUI(){ var R=resolveRange(), f=$('period-from'), t=$('period-to'); if(f) f.value=R.from||''; if(t) t.value=R.to||''; var pb=document.querySelectorAll('.period-presets button'); for(var i=0;i<pb.length;i++) pb[i].classList.toggle('active', pb[i].dataset.weeks===String(R.preset)); var ws=$('period-week'); if(ws){ var sorted=state.weeks.slice().sort(function(a,b){return (b.startDate||'').localeCompare(a.startDate||'');}); var sel=''; ws.innerHTML='<option value="">Une semaine…</option>'+sorted.map(function(w){ var sp=weekSpan(w); if(sp.from&&sp.from===R.from&&sp.to===R.to) sel=w.id; return '<option value="'+w.id+'">Sem. du '+esc(formatDateFR(w.startDate||sp.from))+'</option>'; }).join(''); ws.value=sel; } }
+  function periodLabel(R){
+    var l=R.label.charAt(0).toUpperCase()+R.label.slice(1);
+    if(R.from && R.to && R.preset!==null) l+=' · '+formatDateFR(R.from).slice(0,5)+' → '+formatDateFR(R.to).slice(0,5);
+    else if(R.from && R.to && !/\d/.test(R.label)) l+=' · '+formatDateFR(R.from).slice(0,5)+' → '+formatDateFR(R.to).slice(0,5);
+    return l;
+  }
+  function syncPeriodUI(){ var R=resolveRange(), f=$('period-from'), t=$('period-to'); if(f) f.value=R.from||''; if(t) t.value=R.to||''; var pb=document.querySelectorAll('.period-presets button'); var _def=(state.settings.progWeeks===undefined && !state.settings.progFrom && !state.settings.progTo);
+    for(var i=0;i<pb.length;i++) pb[i].classList.toggle('active', pb[i].dataset.weeks==='now' ? _def : (!_def && pb[i].dataset.weeks===String(R.preset)));
+    var _lb=periodLabel(R), _pl=$('period-label'), _ps=$('period-sheet-sub');
+    if(_pl) _pl.textContent=_lb;
+    if(_ps) _ps.textContent=_lb; var ws=$('period-week'); if(ws){ var sorted=state.weeks.slice().sort(function(a,b){return (b.startDate||'').localeCompare(a.startDate||'');}); var sel=''; ws.innerHTML='<option value="">Une semaine…</option>'+sorted.map(function(w){ var sp=weekSpan(w); if(sp.from&&sp.from===R.from&&sp.to===R.to) sel=w.id; return '<option value="'+w.id+'">Sem. du '+esc(formatDateFR(w.startDate||sp.from))+'</option>'; }).join(''); ws.value=sel; } }
 
   /* ---------- réglages ---------- */
   function globalStats(){
@@ -2828,7 +2879,9 @@
       case 'theme': toggleTheme(); break;
       case 'palette': setPalette(b.dataset.pal); break;
       case 'metric': setMetric(b.dataset.metric); break;
-      case 'period': setPeriod(b.dataset.weeks); break;
+      case 'period': if(b.dataset.weeks==='now') progThisWeek(); else setPeriod(b.dataset.weeks); periodClose(); break;
+      case 'periodOpen': periodOpen(); break;
+      case 'periodClose': periodClose(); break;
       case 'progWeekPrev': progWeekNav(-1); break;
       case 'progWeekNext': progWeekNav(1); break;
       case 'progThisWeek': progThisWeek(); break;
@@ -2945,7 +2998,7 @@
     if(el.id==='mens-chart-part'){ mensChartPart=el.value; renderMensurations(); return; }
     if(el.id==='set-height'){ state.settings.heightCm=toNumN(el.value); save(); return; }
     if(el.id==='set-weight'){ state.settings.weightKg=toNumN(el.value); save(); return; }
-    if(el.id==='period-week'){ if(el.value) setPeriodWeek(el.value); return; }
+    if(el.id==='period-week'){ if(el.value){ setPeriodWeek(el.value); periodClose(); } return; }
     if(el.id==='prog-exercise'){ progSelected=el.value; renderProgBody(); return; }
     if(el.dataset.field==='exName'){ addLibrary(el.value); return; }
     if(el.dataset.field) applyField(el);
@@ -3155,6 +3208,9 @@
   document.addEventListener('visibilitychange', function(){ if(!document.hidden) maybePull(); });
   window.addEventListener('online', function(){ if(syncConfigured()) schedulePush(); });
   /* Service worker : mise a jour auto (reseau d'abord) + fonctionnement hors-ligne. */
+  (function(){ var t=$('prog-tabs'); if(t) t.addEventListener('scroll', function(){
+    var w=$('prog-tabs-wrap'); if(w) w.classList.toggle('peut-defiler', t.scrollLeft + t.clientWidth < t.scrollWidth - 2);
+  }, {passive:true}); })();
   if('serviceWorker' in navigator){ window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }
   /* iOS PWA : env(safe-area-inset-*) vaut 0 au 1er paint et ne se remplit (bottom≈34, top≈62) que
      PLUS TARD — souvent seulement apres la 1re interaction — d'ou une barre de nav trop basse a
