@@ -22,6 +22,7 @@
   }
 } catch(e) {} })();
 </script>
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f1320">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -411,6 +412,16 @@
   .btn, .icon-btn, .mini-btn, nav.tabs button, .segmented button, .day-card, .ex-block { transition:background .18s ease, border-color .18s ease, color .18s ease, box-shadow .2s ease, transform .12s ease; }
   /* ---- passe feel : retour à l'appui + tap-highlight + entrée des modales ---- */
   button, .btn, .mini-btn, .icon-btn, .fb-btn, .gym-pm, [role="button"], select, summary { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+  /* focus clavier : les champs signalent deja le leur par la bordure, les boutons n avaient rien.
+     :focus-visible n apparait qu au clavier — souris et doigt ne voient aucun changement. */
+  button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visible,
+  [role="button"]:focus-visible, [tabindex]:focus-visible, input[type="file"]:focus-visible {
+    outline:2px solid var(--accent); outline-offset:2px; border-radius:6px;
+  }
+  /* fonds colores : l accent s y confondrait, on passe a un anneau contraste */
+  .btn.primary:focus-visible, .gym-done:focus-visible, .fb-btn:focus-visible {
+    outline-color:var(--text); outline-offset:3px;
+  }
   .fb-btn, .gym-x, .help-q, .toast-undo, .reo-add, .composer-link, .gym-pm, .composer-input { transition:transform .09s ease, background-color .14s ease, border-color .14s ease, color .14s ease, filter .12s ease; }
   .btn:active, .icon-btn:active, .mini-btn:active, nav.tabs button:active:active, .segmented button:active, .fb-btn:active, .reo-add:active, .composer-link:active, .gym-x:active, .help-q:active, .toast-undo:active, .week-bar select:active { transform:scale(.95); filter:brightness(.92); }
   .gym-pm:active { transform:scale(.96); }
@@ -823,7 +834,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v106';
+  var APP_VERSION = 'v107';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
