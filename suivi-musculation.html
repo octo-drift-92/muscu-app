@@ -181,8 +181,8 @@
   .gsheet-ov[hidden] { display:none; }
   .gsheet { width:100%; max-width:460px; background:var(--surface); border:1px solid var(--border); border-bottom:0; border-radius:20px 20px 0 0; padding:18px 12px calc(14px + env(safe-area-inset-bottom)); box-shadow:0 -14px 44px rgba(0,0,0,.45); max-height:84vh; overflow:auto; }
   .gsheet-h { font-size:16px; font-weight:800; text-align:center; line-height:1.25; margin:0 8px 4px; }
-  .gsheet-sub { font-size:12px; font-weight:600; text-align:center; color:var(--text-faint); margin-bottom:12px; }
-  .gsheet-lbl { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:var(--text-faint); padding:9px 8px 5px; }
+  .gsheet-sub { font-size:12px; font-weight:600; text-align:center; color:var(--text-dim); margin-bottom:12px; }
+  .gsheet-lbl { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:var(--text-dim); padding:9px 8px 5px; }
   .gsheet .equip-pick { padding:0 8px 6px; }
   .gsheet .equip-btn { padding:9px 14px; font-size:13px; }
   .gsheet-foot { margin-top:14px; padding:0 8px; }
@@ -218,8 +218,9 @@
   .day-body { padding:4px 14px 16px; border-top:1px solid var(--border-soft); }
   .day-est { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:12.5px; color:var(--text-dim); margin:10px 2px 2px; }
   .day-est b { font-size:14px; color:var(--text); font-weight:800; }
-  .day-est span { color:var(--text-faint); }
-  .day-est .day-reel { font-size:12.5px; font-weight:800; color:var(--success); background:color-mix(in srgb,var(--success) 12%,transparent); border-radius:6px; padding:2px 8px; }
+  .day-est .day-est-meta { color:var(--text-dim); flex:1 1 100%; min-width:0; }
+  .day-est .day-est-meta .help-q { vertical-align:-3px; margin-left:2px; }
+  .day-est .day-reel { font-size:12.5px; font-weight:800; color:color-mix(in srgb,var(--success) 68%,var(--text)); background:color-mix(in srgb,var(--success) 12%,transparent); border-radius:6px; padding:2px 8px; }
   .day-body.drop-into { outline:2px dashed var(--accent); outline-offset:-5px; border-radius:12px; }
   .day-note { width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:9px; font:inherit; font-size:13px; color:var(--text); padding:8px 11px; margin:12px 0; }
   .day-note:focus { outline:none; border-color:var(--accent); }
@@ -419,8 +420,8 @@
   .day-card.celebrate { animation:flashComplete .75s ease-out; }
   #toast.party { background:var(--accent-grad); color:#fff; }
   .last-session { font-size:12px; color:var(--text-dim); margin:14px 2px 0; line-height:1.5; }
-  .last-session.alt { color:var(--text-faint); }
-  .alt-tag { display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.2px; color:var(--text-faint); background:var(--surface-3); border-radius:5px; padding:1px 6px; margin-left:6px; vertical-align:middle; }
+  .last-session.alt { color:var(--text-dim); }
+  .alt-tag { display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.2px; color:var(--text-dim); background:var(--surface-3); border-radius:5px; padding:1px 6px; margin-left:6px; vertical-align:middle; }
   .gym-stat.alt { border-style:dashed; }
   .prog-section-title { font-size:15px; font-weight:800; margin:8px 2px 12px; padding-top:20px; border-top:1px solid var(--border); letter-spacing:.2px; }
   .prog-tabs { display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:0 0 12px; scrollbar-width:none; }
@@ -804,7 +805,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v101';
+  var APP_VERSION = 'v103';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1146,8 +1147,13 @@
       '<div class="day-body">' +
         (function(){ var e=sessionEst(day); if(!e) return '';
           var reel=(day.durMin!=null && day.durMin>0)?('<span class="day-reel">réel '+day.durMin+' min</span>'):'';
-          return '<div class="day-est">≈ <b>'+e.min+' min</b>'+reel+'<span> · '+e.sets+' séries · '+e.exos+' exos'+(e.echauf?' · '+e.echauf+' échauf.':'')+(e.uni?' · '+e.uni+' unilat.':'')+(e.cal?' · calé sur '+e.cal+' séance'+(e.cal>1?'s':''):' · non calibré')+(e.cardio?' · '+e.cardio+' min cardio':'')+'</span>'+
-            '<button class="help-q" data-act="help" data-topic="duree">?</button></div>'+
+          var bits=[e.sets+' séries', e.exos+' exos'];
+          if(e.echauf) bits.push(e.echauf+' échauf.');
+          if(e.uni) bits.push(e.uni+' unilat.');
+          if(e.cardio) bits.push(e.cardio+' min cardio');
+          bits.push(e.cal ? ('calé sur '+e.cal+' séance'+(e.cal>1?'s':'')) : 'non calibré');
+          return '<div class="day-est">≈ <b>'+e.min+' min</b>'+reel+
+            '<span class="day-est-meta">'+bits.join(' · ')+' <button class="help-q" data-act="help" data-topic="duree">?</button></span></div>'+
             '<div class="help-box" data-help="duree" hidden>Estimation : une série dure <b>3,5 s par répétition</b> plus <b>15 s</b> pour s’installer et sortir (10 reps → 50 s, 17 reps → 75 s), <b>'+mmss(e.rest)+'</b> de repos entre séries (ton repos cible, modifiable en mode séance), <b>65 s</b> par série d\'échauffement, <b>90 s</b> à chaque changement de machine (trouver, régler, charger). L\'échauffement compte 2 séries sur le premier exercice puis 1 sur le premier de chaque nouveau groupe musculaire. Une série <b>unilatérale</b> compte double (gauche puis droite) plus 20 s de bascule, en supposant que tu enchaînes les deux côtés sans repos entre eux — si tu prends un repos complet entre gauche et droite, compte environ 2 min de plus par série. Le cardio ajoute sa durée plus 1 min d\'installation. Ce total est ensuite <b>recalé sur tes séances réellement terminées</b> : l\'app compare la durée mesurée à la durée modélisée sur tes 6 dernières séances et applique le rapport moyen. Plus tu termines de séances par le bouton Terminer, plus l\'estimation colle à ton rythme réel.</div>';
         })() +
         ((day.note&&day.note.trim())?'<input class="day-note" data-field="dayNote" value="'+escA(day.note)+'" placeholder="Note de séance (ressenti, forme du jour…)">':'<div class="day-note-wrap"><button class="day-note-add" data-act="dayNoteShow">+ note de séance</button></div>') +
