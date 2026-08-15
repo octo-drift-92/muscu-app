@@ -804,7 +804,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v100';
+  var APP_VERSION = 'v101';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1004,7 +1004,6 @@
   }
   function dayIsComplete(day){ if(!day) return false; var s=dayStats(day); return s.total>0 && s.done>=s.total; }
   function exIsComplete(ex){ return !!(ex.sets && ex.sets.length && ex.sets.every(function(s){ return s.done; })); }
-  function daySumHTML(day){ var s=dayStats(day); return '<b>'+s.done+'/'+s.total+'</b> séries'; }
   function weekSumHTML(week){
     var t=0,d=0;
     week.days.forEach(function(day){ var s=dayStats(day); t+=s.total; d+=s.done; });
@@ -1388,22 +1387,12 @@
   }
   function equipJoin(gym, brand){ return [gym,brand].filter(Boolean).join(' · '); }
   function exKey(x){ if(!x) return ''; var n=(x.name||'').trim(), e=(x.equip||'').trim(); return e?(n+' ['+e+']'):n; }
-  function keyOf(name, equip){ return exKey({name:name, equip:equip}); }
   function keyName(k){ return String(k||'').replace(/\s*\[[^\]]*\]\s*$/,''); }   // nom seul (taxonomie, affichage)
   function keyEquip(k){ var m=String(k||'').match(/\[([^\]]*)\]\s*$/); return m?m[1]:''; }
   function exBestBefore(name, beforeISO){ var best=0; state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||''; if(beforeISO && di && di>=beforeISO) return; d.exercises.forEach(function(x){ if(exKey(x)!==name) return; x.sets.forEach(function(s){ if(s.done){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0; if(wt>best) best=wt; } }); }); }); }); return best; }
   function uniqueWeekDate(iso){ var used={}; state.weeks.forEach(function(w){ if(w.startDate) used[w.startDate]=1; }); var d=iso, g=0; while(used[d] && g<260){ d=addDaysISO(d,7); g++; } return d; }
   function todaySession(){ var t=todayISO(); for(var i=0;i<state.weeks.length;i++){ var w=state.weeks[i]; for(var j=0;j<w.days.length;j++){ if(w.days[j].date===t) return {week:w, day:w.days[j]}; } } return null; }
   function weekStreak(){ var wk={}; state.weeks.forEach(function(w){ w.days.forEach(function(d){ if(d.date && d.exercises.some(function(x){return x.sets.some(function(s){return s.done;});})) wk[mondayISO(d.date)]=1; }); }); var keys=Object.keys(wk).sort(); if(!keys.length) return 0; var last=keys[keys.length-1], curM=mondayISO(todayISO()); if(last<addDaysISO(curM,-7)) return 0; var n=0, cur=last, g=0; while(wk[cur] && g<520){ n++; cur=addDaysISO(cur,-7); g++; } return n; }
-  function todayCardHTML(){
-    var ts=todaySession(), streak=weekStreak();
-    var sk = streak>1 ? '<span class="today-streak">'+streak+' sem. d\'affilée</span>' : '';
-    if(!ts){ return '<div class="today-card"><div class="today-head"><span class="today-label">Aujourd\'hui</span>'+sk+'</div><p class="today-prog">Pas de séance prévue aujourd\'hui — bon repos.</p></div>'; }
-    var day=ts.day, st=dayStats(day);
-    var badge = st.total===0 ? 'à planifier' : (st.done>=st.total ? '✓ terminée' : (st.done>0 ? 'en cours' : 'à faire'));
-    var btn = st.total>0 ? '<button class="btn primary today-go" data-act="gymStartToday" data-d="'+day.id+'" data-w="'+ts.week.id+'">'+(st.done>=st.total?'Revoir la séance':(st.done>0?'▶ Reprendre la séance':'▶ Commencer la séance'))+'</button>' : '';
-    return '<div class="today-card"><div class="today-head"><span class="today-label">Aujourd\'hui · '+esc(day.name||'Séance')+'</span><span class="today-badge">'+badge+'</span>'+sk+'</div><p class="today-prog">'+st.done+' / '+st.total+' séries · '+esc(ts.week.name||'')+(ts.week.rirTarget!=null?' · '+ts.week.rirTarget+' RIR':'')+'</p>'+btn+'</div>';
-  }
   function nextSession(){ var t=todayISO(), best=null; state.weeks.forEach(function(w){ w.days.forEach(function(d){ if(d.date && d.date>t && d.exercises.length && (!best || d.date<best.day.date)){ best={week:w, day:d}; } }); }); return best; }
   function renderAccueil(){
     var box=$('accueil-body'); if(!box) return;
@@ -1526,7 +1515,6 @@
   var GROUP_COLORS={'Pectoraux':'#ef6f6c','Grand dorsal':'#4f86c6','Milieu du dos':'#6f9fd8','Deltoïde ant.':'#e8973a','Deltoïde lat.':'#f0b54e','Deltoïde post.':'#cf7d2e','Biceps':'#9b6dd6','Triceps':'#19b8aa','Quadriceps':'#3fa869','Ischios':'#7cc24a','Fessiers':'#e070a8','Adducteurs':'#b5738a','Mollets':'#b08152','Abdos':'#e6c64a','Lombaires':'#8090a6','Trapèzes':'#3fb1ca','Avant-bras':'#9aa3ad','Autre':'#8090a6'};
   function exPrimaryGroup(name){ var c=muscleContribs(name); return (c&&c.length)?c[0].g:'Autre'; }
   function groupColor(g){ return GROUP_COLORS[g]||'#8090a6'; }
-  function exDot(name, cls){ var g=exPrimaryGroup(name); return '<span class="'+(cls||'ex-dot')+'" style="background:'+groupColor(g)+'" title="'+escA(g)+'"></span>'; }
   function e1rm(w, reps){ w=+w||0; reps=+reps||0; if(w<=0||reps<=0) return 0; if(reps===1) return Math.round(w); return Math.round(w*(1+reps/30)); }
   function exBestE1RM(name, beforeISO){ name=(name||'').trim(); if(!name) return 0; var best=0; state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||''; if(beforeISO && di && di>=beforeISO) return; d.exercises.forEach(function(x){ if(exKey(x)!==name) return; x.sets.forEach(function(s){ if(s.done){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0, e=e1rm(wt,rp); if(e>best) best=e; } }); }); }); }); return best; }
   function gymHeadStats(ex){
@@ -1747,7 +1735,6 @@
   function selectWeek(id){ state.currentWeekId=id; save(); renderProgramme(); }
   function weekRename(){ var w=curWeek(); if(!w) return; var name=prompt('Nom de la semaine :', w.name||''); if(name===null) return; name=name.trim(); if(!name) return; w.name=name; save(); closeMenus(); renderProgramme(); }
   function defaultNextMonday(){ var latest=''; state.weeks.forEach(function(w){ if(w.startDate && w.startDate>latest) latest=w.startDate; }); return latest ? addDaysISO(latest,7) : mondayISO(todayISO()); }
-  function refreshWeekNameUI(week){ var ni=document.querySelector('#week-view [data-field="weekName"]'); if(ni) ni.value=week.name; var o=document.querySelector('#week-select option[value="'+week.id+'"]'); if(o) o.textContent=week.name; }
   function addWeek(){ var iso=uniqueWeekDate(defaultNextMonday()); var w=freshWeek(weekNameFromDate(iso)); w.startDate=iso; state.weeks.push(w); state.currentWeekId=w.id; save(); renderProgramme(); toast('Semaine ajoutée'); focusField('[data-field="weekName"]'); }
 
   function setCopy(s){ return { id:uid(), planReps:s.planReps, planWeight:s.planWeight, done:false, realReps:null, realWeight:null, comment:'' }; }
