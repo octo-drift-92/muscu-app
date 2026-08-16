@@ -92,6 +92,41 @@ bloc('muscleContribs — invariants');
     C.MUSCLE_GROUPS.filter(g => !C.GROUP_COLORS[g]).join(' '));
 }
 
+bloc('muscleContribs — lecture des attributs');
+{
+  // La prise pilote le recrutement : un rowing prise large ne recrute pas comme un
+  // rowing prise neutre. Quand la prise sort du NOM pour aller dans un CHAMP, la
+  // taxonomie doit continuer de la voir — sans quoi migrer un nom change
+  // silencieusement le volume par groupe. Vérifié avant l'écriture, en v122.
+  var EQUIV = [
+    ['Rowing T-bar prise large', 'Rowing T-bar', 'Disques · Large'],
+    ['Rowing assis à disques unilatéral (prise neutre)', 'Rowing assis unilatéral', 'Disques · Neutre'],
+    ['Rowing machine prise haute', 'Rowing machine', 'Sélecteur · Haute'],
+    ['Rowing machine prise neutre', 'Rowing machine', 'Sélecteur · Neutre'],
+    ['Élévations latérales haltères', 'Élévations latérales', 'Haltères'],
+    ['Preacher curl haltères', 'Preacher curl', 'Haltères'],
+  ];
+  EQUIV.forEach(function (t) {
+    egal('« ' + t[1] + ' » + {' + t[2] + '} recrute comme « ' + t[0] + ' »',
+      C.muscleContribs(t[1], t[2]), C.muscleContribs(t[0]));
+  });
+
+  // La préhension suit la charge : engin libre 0,5, poulie et sélecteur 0,25.
+  egal('charge Haltères donne 0,5 de préhension',
+    (C.muscleContribs('Rowing machine', 'Haltères') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
+    [{ g: 'Avant-bras', w: 0.5 }]);
+  egal('charge Poulie donne 0,25',
+    (C.muscleContribs('Rowing machine', 'Poulie') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
+    [{ g: 'Avant-bras', w: 0.25 }]);
+
+  // NON-RÉGRESSION : sans attribut, rien ne bouge.
+  ['Lat pulldown', 'Pec deck machine', 'Soulevé de terre', 'Curl marteau', 'Leg Extension',
+   'Rowing T-bar prise large', 'Développé incliné haltères'].forEach(function (n) {
+    egal('sans attribut, « ' + n + ' » est inchangé', C.muscleContribs(n, ''), C.muscleContribs(n));
+    egal('attribut absent, « ' + n + ' » est inchangé', C.muscleContribs(n), C.muscleContribs(n, undefined));
+  });
+}
+
 bloc('isWarmup / isUnilateral');
 verifie('un échauffement est reconnu', C.isWarmup('Échauffement rotation externe poulie') === true);
 verifie('un exercice normal ne l\'est pas', C.isWarmup('Lat pulldown') === false);

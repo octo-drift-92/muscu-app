@@ -990,8 +990,13 @@
   // exercices unilateraux : suivi par cote. Une serie = G + D (le comptage du volume ne change pas)
   function isUnilateral(name){ return /unilat|1 bras|un bras|une jambe|alterne/i.test(name||''); }
 
-  function muscleContribs(name){
-    var n=(name||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  // 2e parametre : la chaine d attributs (« Disques · Neutre · 45° »). Elle est
+  // concatenee au nom avant normalisation, parce que les valeurs des champs sont
+  // deja les mots que les motifs cherchent — « Large » -> large, « Neutre » ->
+  // neutre, « Halteres » -> haltere. Aucune table de correspondance n est donc
+  // necessaire, et une prise sortie du nom continue de peser sur le recrutement.
+  function muscleContribs(name, attrs){
+    var n=((name||'')+' '+(attrs||'')).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
     function P(g){ return [{g:g,w:1}]; }
     // prehension : 0,5 sur engin libre ou a disques, 0,25 sur machine ou poulie
     function AB(){ return {g:'Avant-bras', w:(/\bt[\s-]?bar|barre|haltere|poids libres|souleve de terre|deadlift|traction|pull-?up|chin-?up/.test(n) ? .5 : .25)}; }
@@ -1107,7 +1112,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v121';
+  var APP_VERSION = 'v122';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1876,7 +1881,7 @@ function exBestE1RM(name, beforeISO){ name=(name||'').trim(); if(!name) return 0
     var ov=$('recap'); if(!ov || !day) return;
     var setsDone=0, tonnage=0, exNames=0, prs=[], grp={};
     var passes=day.exercises.filter(exSkipped).map(function(x){ return (x.name||'').trim()||'Exercice'; });
-    day.exercises.forEach(function(x){ var nm=(x.name||'').trim(); var ds=x.sets.filter(function(s){return s.done;}); if(!ds.length) return; exNames++; var top=0; ds.forEach(function(s){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0; setsDone++; tonnage+=wt*rp; if(wt>top) top=wt; }); if(!isWarmup(nm)) muscleContribs(nm).forEach(function(c){ grp[c.g]=(grp[c.g]||0)+ds.length*c.w; }); var rec=exBestBefore(exKey(x), day.date); if(nm && top>0 && top>rec) prs.push({nm:exKey(x), kg:top, prev:rec}); });
+    day.exercises.forEach(function(x){ var nm=(x.name||'').trim(); var ds=x.sets.filter(function(s){return s.done;}); if(!ds.length) return; exNames++; var top=0; ds.forEach(function(s){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0; setsDone++; tonnage+=wt*rp; if(wt>top) top=wt; }); if(!isWarmup(nm)) muscleContribs(nm, exAttrs(x)).forEach(function(c){ grp[c.g]=(grp[c.g]||0)+ds.length*c.w; }); var rec=exBestBefore(exKey(x), day.date); if(nm && top>0 && top>rec) prs.push({nm:exKey(x), kg:top, prev:rec}); });
     // duree de seance (depuis l'ouverture du mode seance) + estimation calorique
     var t0=day.startedAt||(gymMode&&gymMode.t0)||0;
     var mins=t0?Math.round((Date.now()-t0)/60000):0;
@@ -2420,7 +2425,7 @@ function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return
     state.weeks.forEach(function(w){ w.days.forEach(function(d){
       if(!ptInRange(d.date||'', from, to)) return;
       var any=false;
-      d.exercises.forEach(function(x){ if(isWarmup(x.name)||exSkipped(x)) return; var ns=(mode==='real')?x.sets.filter(function(s){return s.done;}).length:x.sets.length; if(!ns) return; any=true; muscleContribs(x.name).forEach(function(c){ g[c.g]=(g[c.g]||0)+ns*c.w; if(c.w>=1) dir[c.g]=(dir[c.g]||0)+ns*c.w; else ind[c.g]=(ind[c.g]||0)+ns*c.w; }); });
+      d.exercises.forEach(function(x){ if(isWarmup(x.name)||exSkipped(x)) return; var ns=(mode==='real')?x.sets.filter(function(s){return s.done;}).length:x.sets.length; if(!ns) return; any=true; muscleContribs(x.name, exAttrs(x)).forEach(function(c){ g[c.g]=(g[c.g]||0)+ns*c.w; if(c.w>=1) dir[c.g]=(dir[c.g]||0)+ns*c.w; else ind[c.g]=(ind[c.g]||0)+ns*c.w; }); });
       if(any) wk[w.id]=1;
     });});
     var nw=Object.keys(wk).length||1, avg={}, avgDir={}, avgInd={};

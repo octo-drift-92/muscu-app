@@ -37,8 +37,13 @@ function isWarmup(name){ return /echauffement|warm-?up|mobilit|activation|etirem
 // exercices unilateraux : suivi par cote. Une serie = G + D (le comptage du volume ne change pas)
 function isUnilateral(name){ return /unilat|1 bras|un bras|une jambe|alterne/i.test(name||''); }
 
-function muscleContribs(name){
-  var n=(name||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+// 2e parametre : la chaine d attributs (« Disques · Neutre · 45° »). Elle est
+// concatenee au nom avant normalisation, parce que les valeurs des champs sont
+// deja les mots que les motifs cherchent — « Large » -> large, « Neutre » ->
+// neutre, « Halteres » -> haltere. Aucune table de correspondance n est donc
+// necessaire, et une prise sortie du nom continue de peser sur le recrutement.
+function muscleContribs(name, attrs){
+  var n=((name||'')+' '+(attrs||'')).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
   function P(g){ return [{g:g,w:1}]; }
   // prehension : 0,5 sur engin libre ou a disques, 0,25 sur machine ou poulie
   function AB(){ return {g:'Avant-bras', w:(/\bt[\s-]?bar|barre|haltere|poids libres|souleve de terre|deadlift|traction|pull-?up|chin-?up/.test(n) ? .5 : .25)}; }
