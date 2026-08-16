@@ -47,7 +47,7 @@
   }
   :root, [data-theme="dark"] {
     --bg:#0f1320; --surface:#181d2b; --surface-2:#212838; --surface-3:#2a3346;
-    --border:#2f3850; --border-soft:#242c40; --text:#e6e9ef; --text-dim:#9aa4b2; --text-faint:#6b7482;
+    --border:#2f3850; --border-soft:#242c40; --text:#e6e9ef; --text-dim:#9aa4b2; --text-faint:#7c8593;   /* 4,5:1 mini sur --bg et --surface */
     --accent:#4f8cff; --accent-press:#3b78ef; --accent-soft:rgba(79,140,255,.16); --on-accent:#fff;
     --accent-grad:linear-gradient(135deg,#4f8cff,#8b5cf6);
     --success:#34d399; --success-bg:rgba(52,211,153,.14); --success-line:rgba(52,211,153,.40);
@@ -58,10 +58,10 @@
   }
   [data-theme="light"] {
     --bg:#eef1f5; --surface:#ffffff; --surface-2:#f3f5f8; --surface-3:#e8ebf0;
-    --border:#d7dce5; --border-soft:#e4e8ef; --text:#1c2330; --text-dim:#5b6573; --text-faint:#8a93a1;
+    --border:#d7dce5; --border-soft:#e4e8ef; --text:#1c2330; --text-dim:#5b6573; --text-faint:#656e7c;   /* 4,5:1 mini sur --bg et --surface */
     --accent:#2563eb; --accent-press:#1d4ed8; --accent-soft:rgba(37,99,235,.10); --on-accent:#fff;
     --accent-grad:linear-gradient(135deg,#2563eb,#7c3aed);
-    --success:#059669; --success-bg:rgba(5,150,105,.10); --success-line:rgba(5,150,105,.30);
+    --success:#007e51; --success-bg:rgba(0,126,81,.10); --success-line:rgba(0,126,81,.30);   /* 4,5:1 mini sur --bg */
     --warning:#b45309; --warning-bg:rgba(180,83,9,.10);
     --danger:#dc2626; --danger-bg:rgba(220,38,38,.08);
     --shadow-c:rgba(20,30,50,.14); --shadow-c-soft:rgba(20,30,50,.08);
@@ -92,6 +92,11 @@
 
   header { position:sticky; top:0; z-index:40; background:color-mix(in srgb,var(--bg) 88%,transparent); backdrop-filter:saturate(160%) blur(10px); border-bottom:1px solid var(--border); }
   .topbar { display:flex; align-items:center; gap:20px; height:58px; }
+  /* visible des lecteurs d ecran uniquement : donne une structure de titres au
+     document sans rien afficher. */
+  .sr-only { position:absolute; width:1px; height:1px; margin:-1px; padding:0;
+    overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
+  h1.logo { font-size:var(--fs-md); }
   .logo { display:flex; align-items:center; gap:10px; font-weight:800; font-size:var(--fs-md); letter-spacing:-.2px; white-space:nowrap; }
   .logo .icon { color:var(--accent); width:24px; height:24px; }
   .logo-mark { width:30px; height:30px; flex:0 0 auto; }
@@ -380,7 +385,7 @@
   .section-label { font-size:var(--fs-xs); font-weight:700; color:var(--text-dim); margin:0 2px 12px; text-transform:uppercase; letter-spacing:.5px; }
   .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
   .chip { display:inline-flex; align-items:center; gap:8px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-pill); padding:6px 8px 6px 12px; font-size:var(--fs-base); }
-  .chip small { color:var(--text-faint); }
+  .chip small { color:var(--text-dim); }   /* --text-faint reste court sur --surface-2 */
   .chip button { width:21px; height:21px; border-radius:50%; border:none; background:var(--surface-3); color:var(--text-dim); cursor:pointer; font-size:var(--fs-base); line-height:1; display:grid; place-items:center; }
   .chip button:hover { background:var(--danger-bg); color:var(--danger); }
   .add-exo { display:flex; gap:8px; max-width:420px; }
@@ -807,10 +812,10 @@
 
 <header>
   <div class="wrap topbar">
-    <div class="logo">
+    <h1 class="logo">
       <svg class="logo-mark" viewBox="0 0 1024 1024" aria-hidden="true"><path d="M512.0 143.4 L234.3 327.7 L234.3 696.3 L512.0 880.6 L789.7 696.3 L789.7 327.7 Z" fill="none" stroke="#3E7BFA" stroke-width="20.48" stroke-linejoin="round"/><rect x="302.1" y="468.5" width="419.8" height="87.0" rx="43.5" fill="#F2F3F5"/><rect x="250.9" y="363.5" width="102.4" height="297.0" rx="31.7" fill="#F2F3F5"/><rect x="169.0" y="435.2" width="61.4" height="153.6" rx="24.6" fill="#3E7BFA"/><rect x="670.7" y="363.5" width="102.4" height="297.0" rx="31.7" fill="#F2F3F5"/><rect x="793.6" y="435.2" width="61.4" height="153.6" rx="24.6" fill="#3E7BFA"/></svg>
       <span>Increm</span>
-    </div>
+    </h1>
     <nav class="tabs">
       <button data-act="view" data-view="accueil" class="active"><svg class="icon" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>Accueil</span></button>
       <button data-act="view" data-view="programme"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>Programme</span></button>
@@ -837,15 +842,18 @@
     </div>
   </div>
   <section id="view-accueil" class="view active">
+    <h2 class="sr-only">Accueil</h2>
     <div id="accueil-body"></div>
   </section>
 
   <section id="view-programme" class="view">
+    <h2 class="sr-only">Programme</h2>
     <div class="week-bar" id="week-bar"></div>
     <div id="week-view"></div>
   </section>
 
   <section id="view-progression" class="view">
+    <h2 class="sr-only">Progression</h2>
     <div class="period-bar">
       <button class="icon-btn" data-act="progWeekPrev" title="Semaine précédente" aria-label="Semaine précédente">◀</button>
       <button class="period-pick" data-act="periodOpen" aria-haspopup="dialog">
@@ -890,7 +898,7 @@
     <div id="prog-global"></div>
     <h3 class="prog-section-title" id="prog-detail-label">Progression par exercice</h3>
     <div class="controls">
-      <select id="prog-exercise"></select>
+      <select id="prog-exercise" aria-label="Exercice à afficher"></select>
       <div class="segmented" id="metric-seg">
         <button data-act="metric" data-metric="weight" class="active">Charge max</button>
         <button data-act="metric" data-metric="e1rm">1RM est.</button>
@@ -901,10 +909,12 @@
   </section>
 
   <section id="view-mensurations" class="view">
+    <h2 class="sr-only">Mesures</h2>
     <div id="mens-body"></div>
   </section>
 
   <section id="view-reglages" class="view">
+    <h2 class="sr-only">Réglages</h2>
     <div id="reglages-body"></div>
   </section>
 </main>
@@ -1055,7 +1065,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v114';
+  var APP_VERSION = 'v115';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2837,8 +2847,8 @@ function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return
         '<div style="border-top:1px solid var(--border);margin:16px 0 12px"></div>'+
         '<div class="section-label" style="font-size:var(--fs-xs)">Fusionner des doublons</div>'+
         '<div style="display:flex;flex-direction:column;gap:8px">'+
-          '<select id="lib-merge-from" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font:inherit;font-size:var(--fs-base);padding:10px 10px"><option value="">Doublon à absorber…</option>'+state.library.slice().sort().map(function(n){return '<option value="'+escA(n)+'">'+esc(n)+'</option>';}).join('')+'</select>'+
-          '<select id="lib-merge-to" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font:inherit;font-size:var(--fs-base);padding:10px 10px"><option value="">Nom à conserver…</option>'+state.library.slice().sort().map(function(n){return '<option value="'+escA(n)+'">'+esc(n)+'</option>';}).join('')+'</select>'+
+          '<select id="lib-merge-from" aria-label="Doublon à absorber" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font:inherit;font-size:var(--fs-base);padding:10px 10px"><option value="">Doublon à absorber…</option>'+state.library.slice().sort().map(function(n){return '<option value="'+escA(n)+'">'+esc(n)+'</option>';}).join('')+'</select>'+
+          '<select id="lib-merge-to" aria-label="Nom à conserver" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font:inherit;font-size:var(--fs-base);padding:10px 10px"><option value="">Nom à conserver…</option>'+state.library.slice().sort().map(function(n){return '<option value="'+escA(n)+'">'+esc(n)+'</option>';}).join('')+'</select>'+
           '<button class="btn" data-act="libMerge">Fusionner →</button>'+
         '</div>'+
         '<p class="hint" style="margin-top:8px">La fusion renomme aussi tout l\'historique (les records et « Dernière fois » suivent), puis retire le doublon de la liste.</p></div></details>'+
@@ -2972,7 +2982,6 @@ function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return
       case 'periodClose': periodClose(); break;
       case 'progWeekPrev': progWeekNav(-1); break;
       case 'progWeekNext': progWeekNav(1); break;
-      case 'progThisWeek': progThisWeek(); break;
       case 'mensSave': mensSave(); break;
       case 'mensDel': mensDelete(b.dataset.id); break;
       case 'mensGuide': mensGuideToggle(); break;
@@ -2994,7 +3003,6 @@ function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return
       case 'composerClose': closeComposer(); break;
       case 'composerGenerate': generateBlock(); break;
       case 'composerBlank': composerStartBlank(); break;
-      case 'addDay': addDay(); break;
       case 'selectDay': { var _w=curWeek(); if(_w && b.dataset.d){ selectedDayByWeek[_w.id]=b.dataset.d; renderProgramme(); } break; }
       case 'dayAddMenu': toggleMenu(b.dataset.menu || 'day-add-menu'); break;
       case 'menu': toggleMenu(b.dataset.menu); break;
@@ -3051,10 +3059,8 @@ function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return
       case 'exMenu': if(loc.ex) toggleMenu('exmenu-'+loc.ex.id); break;
       case 'moveEx': openMoveMenu(loc); break;
       case 'moveExTo': if(loc.ex&&loc.day){ var _lbl=b.textContent; moveExerciseDnD(loc.day.id, loc.ex.id, b.dataset.day, null, false); closeMenus(); toast('Exercice déplacé vers '+_lbl); } break;
-      case 'addSet': addSet(loc); break;
       case 'setsPlus': setsAdd(loc); break;
       case 'setsMinus': setsRemove(loc); break;
-      case 'delSet': deleteSet(loc); break;
       case 'addLib': addLibFromInput(); break;
       case 'libMerge': libMerge(); break;
       case 'delLib': delLibrary(b.dataset.lib); break;
