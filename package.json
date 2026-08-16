@@ -1,0 +1,10 @@
+{
+  "name": "increm",
+  "private": true,
+  "type": "commonjs",
+  "description": "Increm — suivi de musculation, application d'un seul fichier. Aucune dépendance : ce fichier ne sert qu'à fixer le mode CommonJS pour core/ et build.js.",
+  "scripts": {
+    "build": "node build.js",
+    "test": "node core/core.test.js"
+  }
+}
