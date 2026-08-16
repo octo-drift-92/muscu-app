@@ -1125,7 +1125,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v125';
+  var APP_VERSION = 'v126';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1956,6 +1956,7 @@ function exBestE1RM(name, beforeISO){ name=(name||'').trim(); if(!name) return 0
   // selecteur salle + marque, accessible en pleine seance
   function gymEquipOpen(){
     var ov=$('gym-sheet'), ex=gymCurEx(); if(!ov || !ex) return;
+    var _os=ov.querySelector('.gsheet'), _keep=_os?_os.scrollTop:0;
     var p=equipParts(ex.equip);
     ov.innerHTML='<div class="gsheet">'
       +'<div class="gsheet-h">'+(esc((ex.name||'').trim())||'Exercice')+'</div>'
@@ -1977,6 +1978,7 @@ function exBestE1RM(name, beforeISO){ name=(name||'').trim(); if(!name) return 0
       +'<div class="gsheet-foot"><button class="btn primary" data-act="gymEquipClose">OK</button></div>'
     +'</div>';
     ov.hidden=false;
+    var _ns=ov.querySelector('.gsheet'); if(_ns && _keep) _ns.scrollTop=_keep;
   }
   function gymEquipClose(){ var ov=$('gym-sheet'); if(ov){ ov.hidden=true; ov.innerHTML=''; } if(gymMode) renderGym(); }
   function gymEquipSet(part, val){
