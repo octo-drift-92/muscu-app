@@ -60,6 +60,7 @@
     --bg:#0f1320; --surface:#181d2b; --surface-2:#212838; --surface-3:#2a3346;
     --border:#2f3850; --border-soft:#242c40; --text:#e6e9ef; --text-dim:#9aa4b2; --text-faint:#7c8593;   /* 4,5:1 mini sur --bg et --surface */
     --accent:#4f8cff; --accent-press:#3b78ef; --accent-soft:rgba(79,140,255,.16); --on-accent:#fff;
+    --accent-ink:#7aa8ff;   /* texte sur --accent-soft — 4,9:1 mini */
     --accent-grad:linear-gradient(135deg,#4f8cff,#8b5cf6);
     --success:#34d399; --success-bg:rgba(52,211,153,.14); --success-line:rgba(52,211,153,.40);
     --warning:#fbbf24; --warning-bg:rgba(251,191,36,.14);
@@ -71,6 +72,7 @@
     --bg:#eef1f5; --surface:#ffffff; --surface-2:#f3f5f8; --surface-3:#e8ebf0;
     --border:#d7dce5; --border-soft:#e4e8ef; --text:#1c2330; --text-dim:#5b6573; --text-faint:#656e7c;   /* 4,5:1 mini sur --bg et --surface */
     --accent:#2563eb; --accent-press:#1d4ed8; --accent-soft:rgba(37,99,235,.10); --on-accent:#fff;
+    --accent-ink:#1d4ed8;   /* texte sur --accent-soft — 5,2:1 mini */
     --accent-grad:linear-gradient(135deg,#2563eb,#7c3aed);
     --success:#007e51; --success-bg:rgba(0,126,81,.10); --success-line:rgba(0,126,81,.30);   /* 4,5:1 mini sur --bg */
     --warning:#b45309; --warning-bg:rgba(180,83,9,.10);
@@ -83,9 +85,10 @@
     --bg:#0d1614; --surface:#15211d; --surface-2:#1d2c27; --surface-3:#263831;
     --border:#2f443c; --border-soft:#243630;
     --accent:#2dd4a7; --accent-press:#17b890; --accent-soft:rgba(45,212,167,.16); --on-accent:#06241c;
+    --accent-ink:#2dd4a7;   /* deja 5,5:1 sur --accent-soft */
     --accent-grad:linear-gradient(135deg,#10b981,#2dd4ee);
   }
-  [data-theme="light"][data-palette="emeraude"] { --accent:#059669; --accent-press:#047857; --accent-soft:rgba(5,150,105,.12); --accent-grad:linear-gradient(135deg,#059669,#0891b2); }
+  [data-theme="light"][data-palette="emeraude"] { --accent-ink:#046a4b; --accent:#059669; --accent-press:#047857; --accent-soft:rgba(5,150,105,.12); --accent-grad:linear-gradient(135deg,#059669,#0891b2); }
   * { box-sizing:border-box; margin:0; padding:0; }
   /* sans cette regle, iOS peut gonfler le texte sans agrandir les conteneurs */
   html { -webkit-text-size-adjust:100%; text-size-adjust:100%; min-height:100vh; min-height:100dvh; background:var(--bg); }
@@ -187,7 +190,7 @@
   .exsuggest { position:absolute; z-index:60; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); box-shadow:var(--shadow); padding:4px; max-height:225px; overflow:auto; }
   .exsuggest button { display:block; width:100%; text-align:left; background:none; border:none; color:var(--text); font:inherit; font-size:var(--fs-base); font-weight:600; padding:10px 12px; border-radius:var(--r-sm); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .exsuggest button:hover { background:var(--surface-2); }
-  .ex-num { flex:0 0 auto; width:22px; height:22px; border-radius:50%; background:var(--accent-soft); color:var(--accent); font-size:var(--fs-xs); font-weight:800; display:grid; place-items:center; font-variant-numeric:tabular-nums; }
+  .ex-num { flex:0 0 auto; width:22px; height:22px; border-radius:50%; background:var(--accent-soft); color:var(--accent-ink); font-size:var(--fs-xs); font-weight:800; display:grid; place-items:center; font-variant-numeric:tabular-nums; }
   .ex-block.done { opacity:.78; }
   .ex-block.done .ex-num { background:color-mix(in srgb,var(--success) 22%,transparent); color:var(--success); }
   .ex-name { font-size:var(--fs-md); font-weight:700; flex:1; min-width:60px; }
@@ -206,16 +209,18 @@
   .ex-chip { display:inline-flex; align-items:center; gap:6px; min-height:34px; font-size:var(--fs-sm); font-weight:700; color:var(--text-dim); background:var(--bg); border:1px solid var(--border); border-radius:var(--r-pill); padding:0 16px; white-space:nowrap; }
   .ex-chip b { color:var(--text); font-variant-numeric:tabular-nums; font-size:var(--fs-base); }
   .ex-chip-mus { color:var(--text); }
-  .ex-chip-rir { color:var(--accent); background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 30%,var(--border)); }
+  .ex-chip-rir { color:var(--accent-ink); background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 30%,var(--border)); }
   /* materiel / marque : historique et records suivis separement */
-  .ex-chip-attr { color:var(--accent); background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 32%,var(--border)); font-weight:700; }
+  .ex-chip-attr { color:var(--accent-ink); background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 32%,var(--border)); font-weight:700; }
   .ex-chip-equip { color:var(--text-dim); background:var(--surface-3); border-color:var(--border); font-weight:600; }
   .equip-pick { display:flex; flex-wrap:wrap; gap:6px; padding:0 6px 8px; }
   .equip-btn { flex:0 0 auto; font:inherit; font-size:var(--fs-xs); font-weight:700; color:var(--text-dim); background:var(--bg); border:1px solid var(--border); border-radius:var(--r-pill); padding:6px 12px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .equip-btn:hover { background:var(--surface-2); color:var(--text); }
-  .equip-btn.active { background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 42%,var(--border)); color:var(--accent); }
+  .equip-btn.active { background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 42%,var(--border)); color:var(--accent-ink); }
   .gym-equip-tag { font:inherit; font-size:var(--fs-2xs); font-weight:800; letter-spacing:.3px; color:var(--text-dim); background:var(--surface-3); border:1px solid transparent; border-radius:var(--r-sm); padding:6px 12px; margin-left:8px; vertical-align:middle; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .gym-equip-tag:hover { background:var(--surface-2); color:var(--text); border-color:var(--border); }
+  .gym-attr-tag { color:var(--accent-ink); background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 32%,var(--border)); }
+  .gym-attr-tag:hover { background:color-mix(in srgb,var(--accent) 16%,var(--surface)); color:var(--accent-ink); border-color:color-mix(in srgb,var(--accent) 50%,var(--border)); }
   .gym-equip-tag.empty { background:transparent; border:1px dashed var(--border); color:var(--text-faint); }
   .gsheet-ov { position:fixed; inset:0; z-index:360; background:color-mix(in srgb,var(--bg) 80%,#000); display:flex; align-items:flex-end; justify-content:center; -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
   .gsheet-ov[hidden] { display:none; }
@@ -429,7 +434,7 @@
     nav.tabs button { flex:1; justify-content:center; padding:10px 0; border-radius:var(--r-md); }
     nav.tabs button .icon { width:23px; height:23px; }
     nav.tabs button:hover { background:none; color:var(--text-dim); }
-    nav.tabs button.active { background:var(--accent-soft); color:var(--accent); box-shadow:none; }
+    nav.tabs button.active { background:var(--accent-soft); color:var(--accent-ink); box-shadow:none; }
     main.wrap { padding-top:24px; }
     .stats-grid { grid-template-columns:repeat(2,1fr); }
     .btn-grid { grid-template-columns:1fr; }
@@ -703,7 +708,7 @@
   /* exercices unilateraux : un bouton par cote (la serie n'est validee que quand G ET D sont faits) */
   .gym-sides { flex:0 0 100%; display:flex; gap:8px; }
   .gym-sides .gym-done { flex:1 1 0; }
-  .gym-side-tag { font-size:var(--fs-2xs); font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:var(--accent); background:var(--accent-soft); border-radius:var(--r-sm); padding:2px 8px; margin-left:8px; }
+  .gym-side-tag { font-size:var(--fs-2xs); font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:var(--accent-ink); background:var(--accent-soft); border-radius:var(--r-sm); padding:2px 8px; margin-left:8px; }
   .gym-nav { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 16px; padding-bottom:calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--border); background:var(--surface); }
   .gym-nav .btn { min-width:60px; font-size:var(--fs-lg); }
   .gym-nav .btn[disabled] { opacity:.35; pointer-events:none; }
@@ -1120,7 +1125,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v123';
+  var APP_VERSION = 'v125';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2019,7 +2024,7 @@ function exBestE1RM(name, beforeISO){ name=(name||'').trim(); if(!name) return 0
       +'</div>'
       +'<div class="gym-progress"><i style="width:'+(totalSets?Math.round(doneSets/totalSets*100):0)+'%"></i></div>'
       +'<div class="gym-body" data-d="'+day.id+'" data-e="'+ex.id+'">'
-        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+(gymMode.exIndex<day.exercises.length-1?'<button class="gym-skip" data-act="gymSkip" title="Machine occupée ? Déplace cet exercice en fin de séance">Plus tard ⤵</button>':'')+'<h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+(gymUni?'<span class="gym-side-tag">G + D</span>':'')+'<button class="gym-equip-tag'+((ex.equip||'').trim()?'':' empty')+'" data-act="gymEquip" title="Salle et marque de la machine">'+((ex.equip||'').trim()?esc(ex.equip.trim()):'+ Matériel')+'</button>'+'<button class="gym-info-btn" data-act="exInfo" data-nm="'+escA(ex.name||'')+'" title="Comment faire cet exercice">Fiche</button>'+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(exKey(ex), day)
+        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+(gymMode.exIndex<day.exercises.length-1?'<button class="gym-skip" data-act="gymSkip" title="Machine occupée ? Déplace cet exercice en fin de séance">Plus tard ⤵</button>':'')+'<h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+(gymUni?'<span class="gym-side-tag">G + D</span>':'')+'<button class="gym-equip-tag'+((ex.equip||'').trim()?'':' empty')+'" data-act="gymEquip" title="Salle et marque de la machine">'+((ex.equip||'').trim()?esc(ex.equip.trim()):'+ Matériel')+'</button>'+(exAttrs(ex)?('<button class="gym-equip-tag gym-attr-tag" data-act="gymEquip" title="Charge, prise et inclinaison prévues — touche pour changer">'+esc(exAttrs(ex))+'</button>'):'')+'<button class="gym-info-btn" data-act="exInfo" data-nm="'+escA(ex.name||'')+'" title="Comment faire cet exercice">Fiche</button>'+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(exKey(ex), day)
         +'<input class="gym-note" data-field="exNote" value="'+escA(ex.note||'')+'" placeholder="Note (réglage machine, tempo, siège…)">'
         +'</div>'
         +(gymPasse?'<div class="gym-passed-note">Exercice passé. Il reste dans ta prog et apparaîtra comme passé dans l’historique — il ne compte ni dans les séries ni dans le volume.</div>':'')
