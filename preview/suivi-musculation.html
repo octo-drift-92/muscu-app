@@ -248,7 +248,7 @@
   .day-note::placeholder { color:var(--text-faint); }
   /* etats vides discrets : la note repliee + les deux ajouts sur une rangee */
   .day-note-wrap { margin:8px 0 10px; }
-  .day-note-add { background:none; border:none; color:var(--text-faint); font:inherit; font-size:var(--fs-sm); font-weight:600; padding:2px 0; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .day-note-add { background:none; border:none; color:var(--text-faint); font:inherit; font-size:var(--fs-sm); font-weight:600; padding:10px 0; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .day-note-add:hover { color:var(--accent); }
   .cardio-list { margin-top:12px; }
   .day-add2 { display:flex; gap:8px; margin-top:10px; }
@@ -338,7 +338,9 @@
 
   .controls { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
   .segmented { display:inline-flex; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-md); padding:4px; gap:4px; }
-  .segmented button { border:none; background:transparent; color:var(--text-dim); font:inherit; font-weight:600; font-size:var(--fs-sm); padding:8px 16px; border-radius:var(--r-sm); cursor:pointer; }
+  /* 33px de haut : sous le seuil confortable. Les halos sont exclus ici,
+     les boutons etant adjacents — ils se voleraient les clics. */
+  .segmented button { border:none; background:transparent; color:var(--text-dim); font:inherit; font-weight:600; font-size:var(--fs-sm); padding:12px 16px; border-radius:var(--r-sm); cursor:pointer; }
   .segmented button.active { background:var(--accent); color:var(--on-accent); }
   .card { background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-lg); padding:16px; margin-bottom:16px; box-shadow:var(--elev); }
   .chart-card { padding:16px 12px 10px; }
@@ -655,6 +657,7 @@
   .gym-set.done { border-color:var(--success); background:color-mix(in srgb,var(--success) 9%,var(--surface)); }
   .gym-set-n { font-weight:800; font-size:var(--fs-base); flex:0 0 100%; color:var(--text-faint); }
   .gym-stepper { display:flex; align-items:center; gap:10px; flex:0 0 100%; }
+  .gym-rest, .gym-pm, .gym-done { font-family:inherit; }
   .gym-pm { width:80px; height:58px; border-radius:var(--r-md); border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:var(--fs-2xl); font-weight:700; cursor:pointer; flex:0 0 auto; line-height:1; display:grid; place-items:center; user-select:none; -webkit-user-select:none; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
   .gym-pm:active { background:var(--surface); }
   .gym-val { flex:1; text-align:center; font-size:var(--fs-2xl); font-weight:800; font-variant-numeric:tabular-nums; display:flex; flex-direction:column; line-height:1; min-width:0; }
@@ -751,6 +754,14 @@
   .today-prog { font-size:var(--fs-sm); color:var(--text-faint); margin:6px 0 10px; }
   .today-go { width:100%; font-weight:800; }
   .toast-undo { margin-left:10px; background:transparent; border:1px solid rgba(255,255,255,.55); color:inherit; border-radius:var(--r-sm); padding:4px 10px; font-weight:700; font-size:var(--fs-xs); cursor:pointer; }
+  /* cible tactile : l aspect est inchange, seule la surface sensible grandit.
+     Ecarts mesures : help-q 131px du voisin, chip-step 32px, mini-btn 10px. */
+  .help-q, .chip-step, .mini-btn, .chip button { position:relative; }
+  .help-q::after, .chip-step::after, .mini-btn::after, .chip button::after {
+    content:""; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:40px; height:40px; border-radius:50%;
+  }
+  .help-q::after { width:44px; height:44px; }
   .help-q { display:inline-grid; place-items:center; width:18px; height:18px; border-radius:50%; border:1px solid var(--border); background:var(--surface); color:var(--text-faint); font-size:var(--fs-2xs); font-weight:700; cursor:pointer; vertical-align:middle; }
   .help-box { background:var(--bg); border:1px solid var(--border); border-radius:var(--r-sm); padding:10px 12px; margin:8px 0 4px; font-size:var(--fs-xs); line-height:1.5; color:var(--text-faint); }
   .help-box[hidden] { display:none; }
@@ -896,7 +907,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v110';
+  var APP_VERSION = 'v111';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1751,7 +1762,7 @@
       +'<div class="gym-top">'
         +'<button class="gym-x" data-act="gymExit" aria-label="Quitter">✕</button>'
         +'<div class="gym-title">'+esc(day.name||'Séance')+(day.date?' · '+esc(formatDateFR(day.date).slice(0,5)):'')+'</div>'
-        +'<div class="gym-rest idle" id="gym-rest" data-act="restAdj" role="button" title="Touchez pour changer le repos cible"><span class="gr-ic">⏱</span><span class="gr-t">Repos</span></div>'
+        +'<button type="button" class="gym-rest idle" id="gym-rest" data-act="restAdj" title="Touchez pour changer le repos cible"><span class="gr-ic">⏱</span><span class="gr-t">Repos</span></button>'
       +'</div>'
       +'<div class="gym-progress"><i style="width:100%"></i></div>'
       +'<div class="gym-body" data-d="'+day.id+'">'
@@ -1819,14 +1830,14 @@
       var isActive=(i===gymActiveIdx);
       return '<div class="gym-set'+(s.done?' done':'')+(isPR?' pr':'')+(isActive?' active':'')+'">'
         +'<div class="gym-set-n">'+'Série '+(i+1)+(isPR?' <span class="pr-badge">🏆 PR</span>':'')+(isActive?' <span class="gym-set-active-tag">à faire</span>':'')+'</div>'
-        +'<div class="gym-stepper"><div class="gym-pm" role="button" aria-label="moins" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="-1">−</div><span class="gym-val"><input class="gym-num" data-gf="reps" data-si="'+i+'" inputmode="numeric" value="'+escA(intStr(rr))+'" aria-label="reps série '+(i+1)+'"><small>reps</small></span><div class="gym-pm" role="button" aria-label="plus" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="1">+</div></div>'
-        +'<div class="gym-stepper"><div class="gym-pm" role="button" aria-label="moins" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="-2.5">−</div><span class="gym-val"><input class="gym-num" data-gf="weight" data-si="'+i+'" inputmode="decimal" value="'+escA(numStr(rw))+'" aria-label="charge série '+(i+1)+'"><small>kg</small></span><div class="gym-pm" role="button" aria-label="plus" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="2.5">+</div></div>'
+        +'<div class="gym-stepper"><button type="button" class="gym-pm" aria-label="moins" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="-1">−</button><span class="gym-val"><input class="gym-num" data-gf="reps" data-si="'+i+'" inputmode="numeric" value="'+escA(intStr(rr))+'" aria-label="reps série '+(i+1)+'"><small>reps</small></span><button type="button" class="gym-pm" aria-label="plus" data-act="gymStep" data-si="'+i+'" data-f="reps" data-d="1">+</button></div>'
+        +'<div class="gym-stepper"><button type="button" class="gym-pm" aria-label="moins" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="-2.5">−</button><span class="gym-val"><input class="gym-num" data-gf="weight" data-si="'+i+'" inputmode="decimal" value="'+escA(numStr(rw))+'" aria-label="charge série '+(i+1)+'"><small>kg</small></span><button type="button" class="gym-pm" aria-label="plus" data-act="gymStep" data-si="'+i+'" data-f="weight" data-d="2.5">+</button></div>'
         +(gymUni
           ? ('<div class="gym-sides">'
-              +'<div class="gym-done'+(sideDone(s,'L')?' on':'')+'" role="button" data-act="gymDoneSide" data-si="'+i+'" data-side="L" aria-label="côté gauche série '+(i+1)+'">'+(sideDone(s,'L')?'✓ G':'G')+'</div>'
-              +'<div class="gym-done'+(sideDone(s,'R')?' on':'')+'" role="button" data-act="gymDoneSide" data-si="'+i+'" data-side="R" aria-label="côté droit série '+(i+1)+'">'+(sideDone(s,'R')?'✓ D':'D')+'</div>'
+              +'<button type="button" class="gym-done'+(sideDone(s,'L')?' on':'')+'" data-act="gymDoneSide" data-si="'+i+'" data-side="L" aria-pressed="'+(sideDone(s,'L')?'true':'false')+'" aria-label="côté gauche série '+(i+1)+'">'+(sideDone(s,'L')?'✓ G':'G')+'</button>'
+              +'<button type="button" class="gym-done'+(sideDone(s,'R')?' on':'')+'" data-act="gymDoneSide" data-si="'+i+'" data-side="R" aria-pressed="'+(sideDone(s,'R')?'true':'false')+'" aria-label="côté droit série '+(i+1)+'">'+(sideDone(s,'R')?'✓ D':'D')+'</button>'
             +'</div>')
-          : ('<div class="gym-done'+(s.done?' on':'')+'" role="button" data-act="gymDone" data-si="'+i+'">'+(s.done?'✓ Fait':'Fait')+'</div>'))
+          : ('<button type="button" class="gym-done'+(s.done?' on':'')+'" data-act="gymDone" data-si="'+i+'" aria-pressed="'+(s.done?'true':'false')+'">'+(s.done?'✓ Fait':'Fait')+'</button>'))
         +'</div>';
     }).join('');
     var _ob=ov.querySelector('.gym-body'), _keep=(_ob && ov.getAttribute('data-exidx')===String(gymMode.exIndex))?_ob.scrollTop:0;
@@ -1835,7 +1846,7 @@
       +'<div class="gym-top">'
         +'<button class="gym-x" data-act="gymExit" aria-label="Quitter">✕</button>'
         +'<div class="gym-title">'+esc(day.name||'Séance')+(day.date?' · '+esc(formatDateFR(day.date).slice(0,5)):'')+'</div>'
-        +'<div class="gym-rest idle" id="gym-rest" data-act="restAdj" role="button" title="Touchez pour changer le repos cible"><span class="gr-ic">⏱</span><span class="gr-t">Repos</span></div>'
+        +'<button type="button" class="gym-rest idle" id="gym-rest" data-act="restAdj" title="Touchez pour changer le repos cible"><span class="gr-ic">⏱</span><span class="gr-t">Repos</span></button>'
       +'</div>'
       +'<div class="gym-progress"><i style="width:'+(totalSets?Math.round(doneSets/totalSets*100):0)+'%"></i></div>'
       +'<div class="gym-body" data-d="'+day.id+'" data-e="'+ex.id+'">'
