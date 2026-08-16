@@ -808,7 +808,12 @@
        navSettle() garantit que nav.tabs est le dernier enfant de <body> (fin de colonne flex). */
     body { position:fixed; top:0; left:0; right:0; height:100vh; height:var(--app-h, 100dvh); min-height:0; display:flex; flex-direction:column; overflow:hidden; }
     body::before { display:none; }  /* halo fixe : encore une couche fixe, inutile ici */
-    main.wrap { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding-bottom:24px; }
+    /* .wrap porte margin:0 auto : dans une colonne flex, des marges automatiques
+       empechent l etirement et l element se dimensionne sur son CONTENU — trop
+       etroit quand il est court, plus large que l ecran quand une rangee ne se
+       replie pas. Les neutraliser restore align-self:stretch. */
+    main.wrap { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding-bottom:24px;
+                margin-left:0; margin-right:0; width:100%; max-width:100%; }
     nav.tabs {
       position:static; left:auto; right:auto; bottom:auto;
       padding-bottom:16px !important;
@@ -1077,7 +1082,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v118';
+  var APP_VERSION = 'v119';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
