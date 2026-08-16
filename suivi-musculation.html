@@ -1077,7 +1077,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v117';
+  var APP_VERSION = 'v118';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2856,10 +2856,25 @@ function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return
       probe.textContent='M'; document.body.appendChild(probe);
       var fs=getComputedStyle(probe).fontSize; probe.remove();
       var st=getComputedStyle(document.documentElement);
+      function L(sel){
+        var e=(sel==='body')?document.body:document.querySelector(sel);
+        if(!e) return sel+' —';
+        var r=e.getBoundingClientRect(), c=getComputedStyle(e);
+        return sel.replace(/^[.#]/,'')+' '+Math.round(r.left)+'→'+Math.round(r.right)
+          +'('+Math.round(r.width)+')'+(e.scrollWidth>Math.ceil(r.width)+1?' sw'+e.scrollWidth:'')
+          +' p'+c.paddingLeft.replace('px','')+'/'+c.paddingRight.replace('px','');
+      }
+      var v=document.querySelector('.view.active');
+      var carte=v?v.querySelector('.card,.day-card,.acc-hero'):null;
       return 'win '+window.innerWidth+'×'+window.innerHeight+' · page '+document.documentElement.scrollWidth
+        +' · scrollX '+Math.round(window.scrollX||window.pageXOffset||0)
         +' · 14px rendu '+fs+' · --app-h '+(st.getPropertyValue('--app-h').trim()||'—')
-        +' · --nav-pb '+(st.getPropertyValue('--nav-pb').trim()||'—');
-    }catch(e){ return '—'; }
+        +' · --nav-pb '+(st.getPropertyValue('--nav-pb').trim()||'—')
+        +'\n' + L('body') + ' | ' + L('main.wrap') + ' | ' + L('header')
+        +'\n' + (v?('vue '+Math.round(v.getBoundingClientRect().left)+'→'+Math.round(v.getBoundingClientRect().right)):'vue —')
+        +' | ' + (carte?('carte '+Math.round(carte.getBoundingClientRect().left)+'→'+Math.round(carte.getBoundingClientRect().right)):'carte —')
+        +' | ' + L('nav.tabs');
+    }catch(e){ return 'erreur : '+e.message; }
   }
   function renderReglages(){
     var g=globalStats();
