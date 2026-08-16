@@ -119,6 +119,24 @@ bloc('muscleContribs — lecture des attributs');
     (C.muscleContribs('Rowing machine', 'Poulie') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
     [{ g: 'Avant-bras', w: 0.25 }]);
 
+  // La charge fait autorité, y compris contre le nom : un nom contenant « poulie »
+  // avec une charge « Barre » compte 0,5, parce que c'est bien la main qui tient.
+  egal('charge Disques donne 0,5',
+    (C.muscleContribs('Rowing machine', 'Disques') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
+    [{ g: 'Avant-bras', w: 0.5 }]);
+  egal('charge Sélecteur donne 0,25',
+    (C.muscleContribs('Rowing machine', 'Sélecteur') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
+    [{ g: 'Avant-bras', w: 0.25 }]);
+  egal('charge Poids du corps donne 0,5',
+    (C.muscleContribs('Traction', 'Poids du corps') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
+    [{ g: 'Avant-bras', w: 0.5 }]);
+  egal('le champ l emporte sur le nom : « poulie » + charge Barre = 0,5',
+    (C.muscleContribs('Rowing poulie basse', 'Barre') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
+    [{ g: 'Avant-bras', w: 0.5 }]);
+  egal('sans champ, « poulie basse » reste à 0,25',
+    (C.muscleContribs('Rowing poulie basse', '') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
+    [{ g: 'Avant-bras', w: 0.25 }]);
+
   // NON-RÉGRESSION : sans attribut, rien ne bouge.
   ['Lat pulldown', 'Pec deck machine', 'Soulevé de terre', 'Curl marteau', 'Leg Extension',
    'Rowing T-bar prise large', 'Développé incliné haltères'].forEach(function (n) {

@@ -998,8 +998,16 @@
   function muscleContribs(name, attrs){
     var n=((name||'')+' '+(attrs||'')).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
     function P(g){ return [{g:g,w:1}]; }
-    // prehension : 0,5 sur engin libre ou a disques, 0,25 sur machine ou poulie
-    function AB(){ return {g:'Avant-bras', w:(/\bt[\s-]?bar|barre|haltere|poids libres|souleve de terre|deadlift|traction|pull-?up|chin-?up/.test(n) ? .5 : .25)}; }
+    var ch=String(attrs||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    // Prehension : 0,5 quand on tient la charge (disques, barre, halteres, son propre
+    // poids), 0,25 quand une machine la guide (poulie, selecteur). Le CHAMP charge fait
+    // autorite ; le nom n est qu un repli pour les exercices qui n en ont pas encore.
+    function AB(){
+      if(/disque|barre|haltere|poids du corps/.test(ch)) return {g:'Avant-bras', w:.5};
+      if(/poulie|selecteur/.test(ch)) return {g:'Avant-bras', w:.25};
+      return {g:'Avant-bras', w:(/\bt[\s-]?bar|barre|haltere|disque|poids libres|souleve de terre|deadlift|traction|pull-?up|chin-?up/.test(n) ? .5 : .25)};
+    }
+
     if(/omoplate|scapulaire|retraction scap/.test(n)) return [{g:'Trapèzes',w:1},{g:'Deltoïde post.',w:.5}];
     if(/face.?pull/.test(n)) return [{g:'Deltoïde post.',w:1},{g:'Trapèzes',w:.5}];
     if(/oiseau|reverse fly|l-?fly|rotation ext|coiffe|rotateur|lever lateral|rear delt|reverse pec/.test(n)) return P('Deltoïde post.');
@@ -1112,7 +1120,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v122';
+  var APP_VERSION = 'v123';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
