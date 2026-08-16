@@ -364,6 +364,19 @@
   table.hist td:nth-child(n+2), table.hist th:nth-child(n+2) { text-align:right; }
   table.hist tr:last-child td { border-bottom:none; }
 
+  /* Réglages : 8 sections empilées faisaient 4,4 écrans de défilement à plat.
+     Repliées, elles tiennent en un écran et servent de sommaire. L état de chaque
+     section est mémorisé, donc celles qu'il ouvre restent ouvertes. */
+  .rgl { padding:0; overflow:hidden; }
+  .rgl > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:12px; padding:16px; -webkit-tap-highlight-color:transparent; }
+  .rgl > summary::-webkit-details-marker { display:none; }
+  .rgl > summary:hover { background:var(--surface-2); }
+  .rgl > summary .section-label { margin:0; flex:1 1 auto; }
+  .rgl-car { flex:0 0 auto; color:var(--text-faint); font-size:var(--fs-sm); transition:transform .18s ease; }
+  .rgl[open] > summary .rgl-car { transform:rotate(180deg); }
+  .rgl[open] > summary { border-bottom:1px solid var(--border-soft); }
+  .rgl-body { padding:16px; }
+  @media (prefers-reduced-motion:reduce){ .rgl-car { transition:none; } }
   .section-label { font-size:var(--fs-xs); font-weight:700; color:var(--text-dim); margin:0 2px 12px; text-transform:uppercase; letter-spacing:.5px; }
   .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
   .chip { display:inline-flex; align-items:center; gap:8px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-pill); padding:6px 8px 6px 12px; font-size:var(--fs-base); }
@@ -909,7 +922,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = 'v112';
+  var APP_VERSION = 'v113';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2759,25 +2772,36 @@
   }
   function mensDelete(id){ state.measurements=(state.measurements||[]).filter(function(m){return m.id!==id;}); save(); renderMensurations(); toast('Mesure supprimée'); }
   function mensGuideToggle(){ mensGuideOpen=!mensGuideOpen; renderMensurations(); }
+  // Par defaut seule « Apparence » est ouverte : la page reste un sommaire lisible,
+  // et le premier volet deplie montre que les autres s ouvrent aussi.
+  function rglOuvert(k){
+    var l=(state.settings && state.settings.rglOuverts) || ['apparence'];
+    return l.indexOf(k)>=0 ? ' open' : '';
+  }
+  function rglEnTete(k, titre){
+    return '<details class="card rgl" data-rgl="'+k+'"'+rglOuvert(k)+'>'
+      +'<summary class="rgl-h"><span class="section-label">'+titre+'</span>'
+      +'<span class="rgl-car" aria-hidden="true">▾</span></summary><div class="rgl-body">';
+  }
   function renderReglages(){
     var g=globalStats();
     var libChips=state.library.map(function(e){ return '<span class="chip">'+esc(e)+'<button data-act="delLib" data-lib="'+escA(e)+'" title="Retirer">×</button></span>'; }).join('') || '<span class="hint">Aucun exercice.</span>';
     var tplChips=state.templates.length?state.templates.map(function(t){ return '<span class="chip">'+esc(t.name)+' <small>('+t.exercises.length+')</small><button data-act="delTpl" data-tpl="'+t.id+'" title="Supprimer le modèle">×</button></span>'; }).join(''):'<span class="hint">Aucun modèle. Enregistre une séance via l\'icône signet dans le Programme.</span>';
     $('reglages-body').innerHTML =
-      '<div class="card"><div class="section-label">Apparence</div>'+
+      rglEnTete('apparence','Apparence')+
         '<button class="btn ghost" data-act="theme">'+ic('','theme-icon')+'<span>Basculer clair / sombre</span></button>'+
         '<div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap"><span class="hint" style="margin:0">Couleur :</span><div class="segmented">'+
           '<button data-act="palette" data-pal=""'+(!(state.settings.palette)?' class="active"':'')+'><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#4f8cff;margin-right:6px;vertical-align:middle"></span>Bleu</button>'+
           '<button data-act="palette" data-pal="emeraude"'+(state.settings.palette==='emeraude'?' class="active"':'')+'><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2dd4a7;margin-right:6px;vertical-align:middle"></span>Émeraude</button>'+
-        '</div></div></div>'+
-      '<div class="card"><div class="section-label">Profil</div>'+
+        '</div></div></div></details>'+
+      rglEnTete('profil','Profil')+
         '<label style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="hint" style="margin:0">Taille :</span><span style="display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:0 10px"><input id="set-height" inputmode="numeric" value="'+escA(state.settings.heightCm!=null?String(state.settings.heightCm):'')+'" placeholder="180" style="width:64px;background:transparent;border:none;color:var(--text);font:inherit;font-size:var(--fs-md);font-weight:700;padding:10px 0;outline:none"><small style="color:var(--text-faint)">cm</small></span></label>'+
         '<label style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px"><span class="hint" style="margin:0">Poids :</span><span style="display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:0 10px"><input id="set-weight" inputmode="decimal" value="'+escA(state.settings.weightKg!=null?String(state.settings.weightKg):'')+'" placeholder="80" style="width:64px;background:transparent;border:none;color:var(--text);font:inherit;font-size:var(--fs-md);font-weight:700;padding:10px 0;outline:none"><small style="color:var(--text-faint)">kg</small></span></label>'+
-        '<p class="hint" style="margin-top:8px">La <b>taille</b> sert à estimer ton % de gras (formule Navy) dans l\'onglet Mesures. Le <b>poids</b> sert à estimer les calories brûlées à la fin de chaque séance.</p></div>'+
-      '<div class="card"><div class="section-label">Modèles de séance</div>'+
+        '<p class="hint" style="margin-top:8px">La <b>taille</b> sert à estimer ton % de gras (formule Navy) dans l\'onglet Mesures. Le <b>poids</b> sert à estimer les calories brûlées à la fin de chaque séance.</p></div></details>'+
+      rglEnTete('modeles','Modèles de séance')+
         '<div class="chips">'+tplChips+'</div>'+
-        '<p class="hint">Insère un modèle dans n\'importe quelle semaine via « Depuis un modèle » sous le programme.</p></div>'+
-      '<div class="card"><div class="section-label">Bibliothèque d\'exercices ('+state.library.length+')</div>'+
+        '<p class="hint">Insère un modèle dans n\'importe quelle semaine via « Depuis un modèle » sous le programme.</p></div></details>'+
+      rglEnTete('bibliotheque','Bibliothèque d\'exercices ('+state.library.length+')')+
         '<input id="lib-search" placeholder="Filtrer la liste…" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font:inherit;font-size:var(--fs-base);padding:10px 12px;margin-bottom:10px">'+
         '<div class="chips" id="lib-chips">'+libChips+'</div>'+
         '<div class="add-exo"><input id="new-lib" placeholder="Ajouter un exercice…"><button class="btn primary" data-act="addLib">'+ic(P.plus)+'Ajouter</button></div>'+
@@ -2788,9 +2812,9 @@
           '<select id="lib-merge-to" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font:inherit;font-size:var(--fs-base);padding:10px 10px"><option value="">Nom à conserver…</option>'+state.library.slice().sort().map(function(n){return '<option value="'+escA(n)+'">'+esc(n)+'</option>';}).join('')+'</select>'+
           '<button class="btn" data-act="libMerge">Fusionner →</button>'+
         '</div>'+
-        '<p class="hint" style="margin-top:8px">La fusion renomme aussi tout l\'historique (les records et « Dernière fois » suivent), puis retire le doublon de la liste.</p></div>'+
-      '<div class="card" id="sync-card-host">'+syncCardInner()+'</div>'+
-      '<div class="card"><div class="section-label">Données & sauvegarde</div>'+
+        '<p class="hint" style="margin-top:8px">La fusion renomme aussi tout l\'historique (les records et « Dernière fois » suivent), puis retire le doublon de la liste.</p></div></details>'+
+      rglEnTete('sync','Synchronisation')+'<div id="sync-card-host">'+syncCardInner()+'</div></div></details>'+
+      rglEnTete('donnees','Données & sauvegarde')+
         '<div class="stats-grid" style="margin-bottom:16px">'+
           '<div class="stat"><div class="k">Semaines</div><div class="v">'+g.weeks+'</div></div>'+
           '<div class="stat"><div class="k">Jours</div><div class="v">'+g.days+'</div></div>'+
@@ -2803,13 +2827,13 @@
           '<button class="btn" data-act="export-csv">'+ic('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>')+'Export CSV (brut)</button>'+
           '<button class="btn" data-act="import-csv">'+ic('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 8l5-5 5 5M12 3v12"/>')+'Import CSV</button></div>'+
         '<p class="hint" style="margin-top:12px">L\'<b>Export Excel (.xlsx)</b> contient 4 onglets — <b>Données</b>, <b>Progression</b>, <b>Volume par semaine</b>, <b>Records</b> — idéal pour faire analyser ton programme. La <b>sauvegarde JSON</b> conserve tout (programme, modèles, historique) ; le <b>CSV</b> reste un export brut.</p>'+
-        '<p class="hint" style="margin-top:6px">⚠️ Données stockées dans ce navigateur (localStorage), non synchronisées via OneDrive. Exporte pour sauvegarder ou changer d\'appareil.</p></div>'+
-      '<div class="card"><div class="section-label">Zone de danger</div>'+
-        '<button class="btn danger" data-act="reset-all">'+ic(P.trash)+'Tout réinitialiser</button></div>'+
-      '<div class="card"><div class="section-label">À propos</div>'+
+        '<p class="hint" style="margin-top:6px">⚠️ Données stockées dans ce navigateur (localStorage), non synchronisées via OneDrive. Exporte pour sauvegarder ou changer d\'appareil.</p></div></details>'+
+      rglEnTete('danger','Zone de danger')+
+        '<button class="btn danger" data-act="reset-all">'+ic(P.trash)+'Tout réinitialiser</button></div></details>'+
+      rglEnTete('apropos','À propos')+
         '<p class="hint" style="margin:0 0 12px">Increm · <b style="color:var(--text)">'+APP_VERSION+'</b></p>'+
         '<button class="btn" data-act="check-update" style="width:100%">'+ic('<path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/>')+'Rechercher une mise à jour</button>'+
-        '<p class="hint" style="margin-top:10px">L\'app se met à jour automatiquement à l\'ouverture quand tu as du réseau, et fonctionne aussi <b>hors-ligne</b> (pratique en salle).</p></div>';
+        '<p class="hint" style="margin-top:10px">L\'app se met à jour automatiquement à l\'ouverture quand tu as du réseau, et fonctionne aussi <b>hors-ligne</b> (pratique en salle).</p></div></details>';
     applyTheme();
   }
 
@@ -3039,6 +3063,15 @@
     if(el.dataset.field) applyField(el);
     if(el.dataset.field==='dayName'){ var _w=curWeek(); if(_w && sortWeekDays(_w)){ save(); renderProgramme(); } }
   });
+  document.addEventListener('toggle', function(e){
+    var d=e.target; if(!d || !d.dataset || !d.dataset.rgl) return;
+    var l=((state.settings && state.settings.rglOuverts) || ['apparence']).slice();
+    var i=l.indexOf(d.dataset.rgl);
+    if(d.open && i<0) l.push(d.dataset.rgl);
+    else if(!d.open && i>=0) l.splice(i,1);
+    else return;
+    state.settings.rglOuverts=l; save();
+  }, true);
   document.addEventListener('keydown', function(e){
     if(e.key==='Enter' && e.target.dataset && ['planReps','planWeight','realReps','realWeight'].indexOf(e.target.dataset.field)>-1){ e.preventDefault(); addSet(locate(e.target)); }
     if(e.key==='Enter' && e.target.dataset && e.target.dataset.field==='exName'){ e.preventDefault(); e.target.blur(); }
@@ -3281,8 +3314,7 @@
     else if(sync.status==='syncing'){ statusTxt='Synchronisation…'; statusCol='var(--text-dim)'; }
     else if(sync.status==='error'){ statusTxt='Erreur : '+esc(sync.lastError||'inconnue'); statusCol='var(--danger)'; }
     else { statusTxt='Connecté'+(c.lastSyncAt?(' · dernière sync '+esc(timeAgo(c.lastSyncAt))):''); statusCol='var(--success)'; }
-    var head='<div class="section-label">Synchronisation (GitHub)</div>'+
-      '<p class="hint" style="margin-bottom:12px">Synchronise automatiquement PC ↔ iPhone via un dépôt GitHub privé. Le jeton est stocké uniquement sur cet appareil et n\'est jamais envoyé dans le cloud.</p>';
+    var head=      '<p class="hint" style="margin-bottom:12px">Synchronise automatiquement PC ↔ iPhone via un dépôt GitHub privé. Le jeton est stocké uniquement sur cet appareil et n\'est jamais envoyé dans le cloud.</p>';
     var fields='<div style="display:grid;gap:10px;max-width:460px;margin-bottom:12px">'+
         '<input id="sync-owner" class="date-input" style="font-size:var(--fs-base)" placeholder="Nom d\'utilisateur GitHub (propriétaire)" value="'+escA(c.owner||'')+'" autocapitalize="off" autocomplete="off" spellcheck="false">'+
         '<input id="sync-repo" class="date-input" style="font-size:var(--fs-base)" placeholder="Nom du dépôt (ex. muscu-data)" value="'+escA(c.repo||'')+'" autocapitalize="off" autocomplete="off" spellcheck="false">'+
