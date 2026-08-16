@@ -14,6 +14,12 @@
 // "Derniere fois" sont separes automatiquement quand le materiel differe.
 var EQUIP_PRESETS=['Basic Fit','Fitness Park',"Gold's Gym",'Maison'];                           // salles
 
+// Trois attributs qui changent l exercice sans changer la machine. Ils etaient
+// jusqu ici ecrits dans le NOM (« prise neutre », « a disques », « banc incline
+// 45 degres ») : les sortir en champs rend l ecriture coherente et la cle stable.
+var CHARGE_OPTS=['Disques','Sélecteur','Haltères','Barre','Poulie','Poids du corps'];
+var PRISE_OPTS=['Pronation','Supination','Neutre','Marteau','Large','Serrée','Haute'];
+var INCL_OPTS=['Plat','15°','30°','45°','60°','Décliné'];
 var EQUIP_BRANDS=['Technogym','Matrix','Life Fitness','Hammer Strength','Precor','Panatta','Gym80'];  // marques de machines
 
 /* ---------- analyses : groupe musculaire, dernière séance, plateaux ---------- */
@@ -89,13 +95,31 @@ function equipParts(v){
 
 function equipJoin(gym, brand, poste){ return [gym,brand,poste].filter(Boolean).join(' · '); }
 
-function exKey(x){ if(!x) return ''; var n=(x.name||'').trim(), e=(x.equip||'').trim(); return e?(n+' ['+e+']'):n; }
+// « Disques · Neutre · 45° » — l ordre est fixe pour que la cle soit stable.
+function exAttrs(x){
+  if(!x) return '';
+  return [x.charge,x.prise,x.incl].map(function(v){ return String(v||'').trim(); }).filter(Boolean).join(' · ');
+}
+// Identite pour l HISTORIQUE : nom, materiel entre crochets, attributs entre accolades.
+// Deux delimiteurs distincts : keyName/keyEquip/keyAttrs savent decouper sans ambiguite.
+function exKey(x){
+  if(!x) return '';
+  var n=(x.name||'').trim(), e=(x.equip||'').trim(), a=exAttrs(x);
+  if(!n) return '';
+  return n + (e?(' ['+e+']'):'') + (a?(' {'+a+'}'):'');
+}
 
 // une cle d'historique vaut "Nom [Materiel]" — on sait en extraire les deux morceaux
 // une cle d historique vaut "Nom [Materiel]" — on sait en extraire les deux morceaux
-function keyName(k){ return String(k||'').replace(/\s*\[[^\]]*\]\s*$/,'').trim(); }
+function keyName(k){
+  return String(k||'').replace(/\s*\{[^}]*\}\s*$/,'').replace(/\s*\[[^\]]*\]\s*$/,'').trim();
+}
 
-function keyEquip(k){ var m=/\[([^\]]*)\]\s*$/.exec(String(k||'')); return m?m[1]:''; }
+function keyEquip(k){
+  var m=/\[([^\]]*)\]\s*$/.exec(String(k||'').replace(/\s*\{[^}]*\}\s*$/,''));
+  return m?m[1]:'';
+}
+function keyAttrs(k){ var m=/\{([^}]*)\}\s*$/.exec(String(k||'')); return m?m[1]:''; }
 
 function e1rm(w, reps){ w=+w||0; reps=+reps||0; if(w<=0||reps<=0) return 0; if(reps===1) return Math.round(w); return Math.round(w*(1+reps/30)); }
 
@@ -136,6 +160,7 @@ if (typeof module !== 'undefined' && module.exports) {
     EQUIP_PRESETS, EQUIP_BRANDS, MUSCLE_GROUPS, GROUP_COLORS,
     EST_REP, EST_INSTALL, EST_ECHAUF, EST_CHANGT, EST_COTE,
     isWarmup, isUnilateral, muscleContribs, equipParts, equipJoin,
-    exKey, keyName, keyEquip, e1rm, exSkipped, estSerie, sessionEstBrut,
+    CHARGE_OPTS, PRISE_OPTS, INCL_OPTS,
+    exKey, exAttrs, keyName, keyEquip, keyAttrs, e1rm, exSkipped, estSerie, sessionEstBrut,
   };
 }

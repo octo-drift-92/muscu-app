@@ -208,6 +208,7 @@
   .ex-chip-mus { color:var(--text); }
   .ex-chip-rir { color:var(--accent); background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 30%,var(--border)); }
   /* materiel / marque : historique et records suivis separement */
+  .ex-chip-attr { color:var(--accent); background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 32%,var(--border)); font-weight:700; }
   .ex-chip-equip { color:var(--text-dim); background:var(--surface-3); border-color:var(--border); font-weight:600; }
   .equip-pick { display:flex; flex-wrap:wrap; gap:6px; padding:0 6px 8px; }
   .equip-btn { flex:0 0 auto; font:inherit; font-size:var(--fs-xs); font-weight:700; color:var(--text-dim); background:var(--bg); border:1px solid var(--border); border-radius:var(--r-pill); padding:6px 12px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
@@ -966,6 +967,12 @@
   // "Derniere fois" sont separes automatiquement quand le materiel differe.
   var EQUIP_PRESETS=['Basic Fit','Fitness Park',"Gold's Gym",'Maison'];                           // salles
 
+  // Trois attributs qui changent l exercice sans changer la machine. Ils etaient
+  // jusqu ici ecrits dans le NOM (« prise neutre », « a disques », « banc incline
+  // 45 degres ») : les sortir en champs rend l ecriture coherente et la cle stable.
+  var CHARGE_OPTS=['Disques','Sélecteur','Haltères','Barre','Poulie','Poids du corps'];
+  var PRISE_OPTS=['Pronation','Supination','Neutre','Marteau','Large','Serrée','Haute'];
+  var INCL_OPTS=['Plat','15°','30°','45°','60°','Décliné'];
   var EQUIP_BRANDS=['Technogym','Matrix','Life Fitness','Hammer Strength','Precor','Panatta','Gym80'];  // marques de machines
 
   /* ---------- analyses : groupe musculaire, dernière séance, plateaux ---------- */
@@ -1041,13 +1048,31 @@
 
   function equipJoin(gym, brand, poste){ return [gym,brand,poste].filter(Boolean).join(' · '); }
 
-  function exKey(x){ if(!x) return ''; var n=(x.name||'').trim(), e=(x.equip||'').trim(); return e?(n+' ['+e+']'):n; }
+  // « Disques · Neutre · 45° » — l ordre est fixe pour que la cle soit stable.
+  function exAttrs(x){
+    if(!x) return '';
+    return [x.charge,x.prise,x.incl].map(function(v){ return String(v||'').trim(); }).filter(Boolean).join(' · ');
+  }
+  // Identite pour l HISTORIQUE : nom, materiel entre crochets, attributs entre accolades.
+  // Deux delimiteurs distincts : keyName/keyEquip/keyAttrs savent decouper sans ambiguite.
+  function exKey(x){
+    if(!x) return '';
+    var n=(x.name||'').trim(), e=(x.equip||'').trim(), a=exAttrs(x);
+    if(!n) return '';
+    return n + (e?(' ['+e+']'):'') + (a?(' {'+a+'}'):'');
+  }
 
   // une cle d'historique vaut "Nom [Materiel]" — on sait en extraire les deux morceaux
   // une cle d historique vaut "Nom [Materiel]" — on sait en extraire les deux morceaux
-  function keyName(k){ return String(k||'').replace(/\s*\[[^\]]*\]\s*$/,'').trim(); }
+  function keyName(k){
+    return String(k||'').replace(/\s*\{[^}]*\}\s*$/,'').replace(/\s*\[[^\]]*\]\s*$/,'').trim();
+  }
 
-  function keyEquip(k){ var m=/\[([^\]]*)\]\s*$/.exec(String(k||'')); return m?m[1]:''; }
+  function keyEquip(k){
+    var m=/\[([^\]]*)\]\s*$/.exec(String(k||'').replace(/\s*\{[^}]*\}\s*$/,''));
+    return m?m[1]:'';
+  }
+  function keyAttrs(k){ var m=/\{([^}]*)\}\s*$/.exec(String(k||'')); return m?m[1]:''; }
 
   function e1rm(w, reps){ w=+w||0; reps=+reps||0; if(w<=0||reps<=0) return 0; if(reps===1) return Math.round(w); return Math.round(w*(1+reps/30)); }
 
@@ -1082,7 +1107,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v120';
+  var APP_VERSION = 'v121';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1386,6 +1411,7 @@ function exIsComplete(ex){ return !!(ex.sets && ex.sets.length && ex.sets.every(
               EQUIP_BRANDS.map(function(p){ return '<button class="equip-btn'+((equipParts(ex.equip).brand===p)?' active':'')+'" data-act="setBrand" data-eq="'+escA(p)+'">'+esc(p)+'</button>'; }).join('') +
               '<button class="equip-btn'+(!equipParts(ex.equip).brand?' active':'')+'" data-act="setBrand" data-eq="">Aucune</button>' +
             '</div>' +
+            attrRows(ex, 'setAttr', 'exmenu-lbl') +
             '<div class="exmenu-lbl">Poste — repère visuel</div>' +
             '<div class="equip-pick">' +
               postesConnus(equipParts(ex.equip).gym).map(function(p){ return '<button class="equip-btn'+((equipParts(ex.equip).poste===p)?' active':'')+'" data-act="setPoste" data-eq="'+escA(p)+'">'+esc(p)+'</button>'; }).join('') +
@@ -1404,6 +1430,7 @@ function exIsComplete(ex){ return !!(ex.sets && ex.sets.length && ex.sets.every(
       '</div>' +
       '<div class="ex-chips">' +
         ((g && g!=='Autre')?'<span class="ex-chip ex-chip-mus">'+esc(g)+'</span>':'') +
+        (exAttrs(ex)?'<span class="ex-chip ex-chip-attr" title="Charge · prise · inclinaison — comptent dans l\'identité de l\'exercice">'+esc(exAttrs(ex))+'</span>':'') +
         ((ex.equip||'').trim()?'<span class="ex-chip ex-chip-equip" title="Matériel / marque — l\'historique et les records sont suivis séparément">'+esc(ex.equip.trim())+'</span>':'') +
         '<span class="ex-chip ex-chip-sets"><span class="chip-lbl">Séries</span><button class="chip-step" data-act="setsMinus"'+(nSets<=1?' disabled':'')+' title="Retirer une série">−</button><b>'+nSets+'</b><button class="chip-step" data-act="setsPlus" title="Ajouter une série">+</button></span>' +
         ((rir!=null)?'<span class="ex-chip ex-chip-rir" title="Répétitions en réserve visées cette semaine">RIR '+rir+'</span>':'') +
@@ -1641,6 +1668,18 @@ function exIsComplete(ex){ return !!(ex.sets && ex.sets.length && ex.sets.every(
 
 // on ne propose que les reperes deja saisis, ceux de la salle en cours d'abord :
   // un repere visuel n a aucun sens dans une autre salle.
+  // Les trois attributs se reglent comme la salle et la marque : des boutons, un
+  // « Aucun », et la valeur courante en surbrillance. Meme rendu des deux cotes.
+  var ATTR_DEFS=[{k:'charge',t:'Charge',o:CHARGE_OPTS},{k:'prise',t:'Prise',o:PRISE_OPTS},{k:'incl',t:'Inclinaison du banc',o:INCL_OPTS}];
+  function attrRows(ex, act, lblCls){
+    return ATTR_DEFS.map(function(a){
+      var cur=String(ex[a.k]||'').trim();
+      return '<div class="'+lblCls+'">'+a.t+'</div><div class="equip-pick">'
+        + a.o.map(function(v){ return '<button class="equip-btn'+(cur===v?' active':'')+'" data-act="'+act+'" data-k="'+a.k+'" data-v="'+escA(v)+'">'+esc(v)+'</button>'; }).join('')
+        + '<button class="equip-btn'+(cur?'':' active')+'" data-act="'+act+'" data-k="'+a.k+'" data-v="">Aucun</button>'
+        + '</div>';
+    }).join('');
+  }
   function postesConnus(gym){
     var n={};
     state.weeks.forEach(function(w){ w.days.forEach(function(d){ d.exercises.forEach(function(x){
@@ -1902,7 +1941,7 @@ function exBestE1RM(name, beforeISO){ name=(name||'').trim(); if(!name) return 0
     var p=equipParts(ex.equip);
     ov.innerHTML='<div class="gsheet">'
       +'<div class="gsheet-h">'+(esc((ex.name||'').trim())||'Exercice')+'</div>'
-      +'<div class="gsheet-sub">'+(ex.equip?esc(ex.equip):'Aucun matériel renseigné')+'</div>'
+      +'<div class="gsheet-sub">'+(ex.equip?esc(ex.equip):'Aucun matériel renseigné')+(exAttrs(ex)?(' · '+esc(exAttrs(ex))):'')+'</div>'
       +'<div class="gsheet-lbl">Salle</div><div class="equip-pick">'
         +EQUIP_PRESETS.map(function(g){ return '<button class="equip-btn'+(p.gym===g?' active':'')+'" data-act="gymSetGym" data-eq="'+escA(g)+'">'+esc(g)+'</button>'; }).join('')
         +'<button class="equip-btn'+(!p.gym?' active':'')+'" data-act="gymSetGym" data-eq="">Aucune</button>'
@@ -1911,6 +1950,7 @@ function exBestE1RM(name, beforeISO){ name=(name||'').trim(); if(!name) return 0
         +EQUIP_BRANDS.map(function(m){ return '<button class="equip-btn'+(p.brand===m?' active':'')+'" data-act="gymSetBrand" data-eq="'+escA(m)+'">'+esc(m)+'</button>'; }).join('')
         +'<button class="equip-btn'+(!p.brand?' active':'')+'" data-act="gymSetBrand" data-eq="">Aucune</button>'
       +'</div>'
+      +attrRows(ex, 'gymSetAttr', 'gsheet-lbl')
       +'<div class="gsheet-lbl">Poste — repère visuel</div><div class="equip-pick">'
         +postesConnus(p.gym).map(function(q){ return '<button class="equip-btn'+(p.poste===q?' active':'')+'" data-act="gymSetPoste" data-eq="'+escA(q)+'">'+esc(q)+'</button>'; }).join('')
         +'<button class="equip-btn'+(!p.poste?' active':'')+'" data-act="gymSetPoste" data-eq="">Aucun</button>'
@@ -3066,6 +3106,11 @@ function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return
       case 'setBrand': if(loc.ex){ var _pb=equipParts(loc.ex.equip); loc.ex.equip=equipJoin(_pb.gym, b.dataset.eq||'', _pb.poste); save(); closeMenus(); renderProgramme(); toast(loc.ex.equip?('Matériel : '+loc.ex.equip):'Matériel retiré'); } break;
       case 'gymPass': gymPass(); break;
       case 'toggleSkip': toggleExSkip(loc); break;
+      case 'setAttr': if(loc.ex){ var _k=b.dataset.k, _v=b.dataset.v||''; if(_v) loc.ex[_k]=_v; else delete loc.ex[_k];
+        save(); closeMenus(); renderProgramme(); toast(_v?(b.dataset.k==='incl'?('Banc : '+_v):_v):'Attribut retiré'); } break;
+      case 'gymSetAttr': { var _gx=gymCurEx(); if(_gx){ var _gk=b.dataset.k, _gv=b.dataset.v||'';
+        if(_gv) _gx[_gk]=_gv; else delete _gx[_gk];
+        save(); renderGym(); gymEquipOpen(); } } break;
       case 'setPoste': if(loc.ex){ var _pp=equipParts(loc.ex.equip); loc.ex.equip=equipJoin(_pp.gym, _pp.brand, b.dataset.eq||''); save(); closeMenus(); renderProgramme(); toast(loc.ex.equip?('Matériel : '+loc.ex.equip):'Matériel retiré'); } break;
       case 'gymSetPoste': gymEquipSet('poste', b.dataset.eq||''); break;
       case 'dupEx': duplicateExercise(loc); break;

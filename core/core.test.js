@@ -134,6 +134,37 @@ bloc('exKey / keyName / keyEquip');
   egal('exKey tolère l\'absence d\'objet', C.exKey(null), '');
 }
 
+bloc('Attributs : charge, prise, inclinaison');
+{
+  // Ces trois notions vivaient dans le NOM (« prise neutre », « à disques »).
+  // Sorties en champs, elles entrent dans la clé entre accolades — un délimiteur
+  // distinct des crochets du matériel, pour que le découpage reste sans ambiguïté.
+  egal('ordre fixe : charge · prise · inclinaison',
+    C.exAttrs({ charge:'Disques', prise:'Neutre', incl:'45°' }), 'Disques · Neutre · 45°');
+  egal('les champs vides sautent', C.exAttrs({ prise:'Neutre' }), 'Neutre');
+  egal('aucun attribut', C.exAttrs({}), '');
+  egal('objet absent toléré', C.exAttrs(null), '');
+
+  var k = C.exKey({ name:'Rowing assis', equip:"Gold's Gym · Gym80", charge:'Disques', prise:'Neutre' });
+  egal('clé complète', k, "Rowing assis [Gold's Gym · Gym80] {Disques · Neutre}");
+  egal('nom retrouvé', C.keyName(k), 'Rowing assis');
+  egal('matériel retrouvé', C.keyEquip(k), "Gold's Gym · Gym80");
+  egal('attributs retrouvés', C.keyAttrs(k), 'Disques · Neutre');
+
+  // COMPATIBILITÉ : une clé sans attribut doit rester identique à l'ancienne
+  // écriture, sans quoi 40 semaines d'historique se détacheraient.
+  egal('sans attribut, la clé ne change pas',
+    C.exKey({ name:'Lat pulldown', equip:"Gold's Gym · Gym80" }), "Lat pulldown [Gold's Gym · Gym80]");
+  egal('ancienne clé : nom', C.keyName("Lat pulldown [Gold's Gym · Gym80]"), 'Lat pulldown');
+  egal('ancienne clé : matériel', C.keyEquip("Lat pulldown [Gold's Gym · Gym80]"), "Gold's Gym · Gym80");
+  egal('ancienne clé : aucun attribut', C.keyAttrs("Lat pulldown [Gold's Gym · Gym80]"), '');
+
+  egal('attributs sans matériel', C.exKey({ name:'Traction', charge:'Poids du corps' }), 'Traction {Poids du corps}');
+  egal('nom seul quand tout est vide', C.exKey({ name:'Squat' }), 'Squat');
+  verifie('les trois listes d options existent',
+    C.CHARGE_OPTS.length>0 && C.PRISE_OPTS.length>0 && C.INCL_OPTS.length>0);
+}
+
 /* ---------------------------------------------------------------- *
  * 4. Calculs
  * ---------------------------------------------------------------- */
