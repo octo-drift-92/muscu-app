@@ -1077,7 +1077,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v116';
+  var APP_VERSION = 'v117';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -3438,7 +3438,7 @@ function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return
      (timers, resize, rotation, 1re interaction). Ainsi la barre est bien placee des l'ouverture. */
   var SA_KEY = 'increm-sa2';
   function readEnv(prop){ var p=document.createElement('div'); p.style.cssText='position:fixed;left:-9999px;top:0;width:1px;height:env('+prop+',0px);pointer-events:none'; document.body.appendChild(p); var v=Math.round(p.getBoundingClientRect().height); p.remove(); return v; }
-  function applySA(sab, sat){ var st=document.documentElement.style; if(sab>0) st.setProperty('--nav-pb','calc(7px + '+sab+'px)'); if(sat>0) st.setProperty('--header-pt', sat+'px'); }
+  function applySA(sab, sat){ var st=document.documentElement.style; if(sab>0) st.setProperty('--nav-pb','calc(8px + '+sab+'px)'); if(sat>0) st.setProperty('--header-pt', sat+'px'); }
   try{ var _sa=JSON.parse(localStorage.getItem(SA_KEY)||'null'); if(!_sa && navigator.standalone===true) _sa={b:34,t:50}; if(_sa) applySA(_sa.b||0, _sa.t||0); }catch(_){}   /* immediat, avant le 1er paint : valeur memorisee, ou defaut iOS standalone au 1er lancement */
   function fixSafeArea(){ var sab=readEnv('safe-area-inset-bottom'), sat=readEnv('safe-area-inset-top'); if(sab>0 || sat>0){ applySA(sab, sat); try{ localStorage.setItem(SA_KEY, JSON.stringify({b:sab, t:sat})); }catch(_){} } }
   [0,50,120,250,500,900,1500,2500,4000].forEach(function(ms){ setTimeout(fixSafeArea, ms); });
