@@ -22,7 +22,18 @@
   }
 } catch(e) {} })();
 </script>
-<link rel="manifest" href="manifest.json">
+<script>
+/* Le manifeste n est PAS declare en dur : sur iOS il peut reprendre la main sur le
+   cadrage de la fenetre en mode autonome, et ce cadrage est ce qui pilote --app-h.
+   Les balises apple-mobile-web-app-* restent seules maitresses la-bas. */
+(function(){ try{
+  var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  if (iOS) return;
+  var l = document.createElement('link');
+  l.rel = 'manifest'; l.href = 'manifest.json';
+  document.head.appendChild(l);
+} catch(e) {} })();
+</script>
 <meta name="theme-color" content="#0f1320">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -76,7 +87,8 @@
   }
   [data-theme="light"][data-palette="emeraude"] { --accent:#059669; --accent-press:#047857; --accent-soft:rgba(5,150,105,.12); --accent-grad:linear-gradient(135deg,#059669,#0891b2); }
   * { box-sizing:border-box; margin:0; padding:0; }
-  html { min-height:100vh; min-height:100dvh; background:var(--bg); }
+  /* sans cette regle, iOS peut gonfler le texte sans agrandir les conteneurs */
+  html { -webkit-text-size-adjust:100%; text-size-adjust:100%; min-height:100vh; min-height:100dvh; background:var(--bg); }
   body { min-height:100vh; min-height:100dvh; }
   body {
     background:var(--bg); color:var(--text);
@@ -1065,7 +1077,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v115';
+  var APP_VERSION = 'v116';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2822,6 +2834,33 @@ function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return
       +'<summary class="rgl-h"><span class="section-label">'+titre+'</span>'
       +'<span class="rgl-car" aria-hidden="true">▾</span></summary><div class="rgl-body">';
   }
+  var DIAG = (function(){
+    try{
+      var v = window.visualViewport;
+      return [
+        'win '+window.innerWidth+'×'+window.innerHeight,
+        'screen '+screen.width+'×'+screen.height,
+        'vv '+(v?Math.round(v.width)+'×'+Math.round(v.height)+' s'+(Math.round(v.scale*100)/100):'—'),
+        'page '+document.documentElement.scrollWidth,
+        'dpr '+window.devicePixelRatio,
+        'standalone '+(window.navigator.standalone===true)+'/'+(window.matchMedia&&matchMedia('(display-mode: standalone)').matches),
+        'manifest '+!!document.querySelector('link[rel="manifest"]'),
+        'sa2 '+(localStorage.getItem('increm-sa2')||'null')
+      ].join(' · ');
+    }catch(e){ return 'diag indisponible'; }
+  })();
+  function diagVif(){
+    try{
+      var probe=document.createElement('div');
+      probe.style.cssText='position:absolute;visibility:hidden;font-size:14px';
+      probe.textContent='M'; document.body.appendChild(probe);
+      var fs=getComputedStyle(probe).fontSize; probe.remove();
+      var st=getComputedStyle(document.documentElement);
+      return 'win '+window.innerWidth+'×'+window.innerHeight+' · page '+document.documentElement.scrollWidth
+        +' · 14px rendu '+fs+' · --app-h '+(st.getPropertyValue('--app-h').trim()||'—')
+        +' · --nav-pb '+(st.getPropertyValue('--nav-pb').trim()||'—');
+    }catch(e){ return '—'; }
+  }
   function renderReglages(){
     var g=globalStats();
     var libChips=state.library.map(function(e){ return '<span class="chip">'+esc(e)+'<button data-act="delLib" data-lib="'+escA(e)+'" title="Retirer">×</button></span>'; }).join('') || '<span class="hint">Aucun exercice.</span>';
@@ -2872,7 +2911,12 @@ function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return
       rglEnTete('apropos','À propos')+
         '<p class="hint" style="margin:0 0 12px">Increm · <b style="color:var(--text)">'+APP_VERSION+'</b></p>'+
         '<button class="btn" data-act="check-update" style="width:100%">'+ic('<path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/>')+'Rechercher une mise à jour</button>'+
-        '<p class="hint" style="margin-top:10px">L\'app se met à jour automatiquement à l\'ouverture quand tu as du réseau, et fonctionne aussi <b>hors-ligne</b> (pratique en salle).</p></div></details>';
+        '<p class="hint" style="margin-top:10px">L\'app se met à jour automatiquement à l\'ouverture quand tu as du réseau, et fonctionne aussi <b>hors-ligne</b> (pratique en salle).</p>'+
+        '<div class="section-label" style="margin-top:16px">Diagnostic d\'affichage</div>'+
+        '<p class="hint" style="margin:0 0 6px">Au chargement :</p>'+
+        '<pre style="white-space:pre-wrap;word-break:break-word;font-size:var(--fs-2xs);line-height:1.6;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;margin:0 0 10px;color:var(--text-dim)">'+esc(DIAG)+'</pre>'+
+        '<p class="hint" style="margin:0 0 6px">Maintenant :</p>'+
+        '<pre style="white-space:pre-wrap;word-break:break-word;font-size:var(--fs-2xs);line-height:1.6;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;margin:0;color:var(--text-dim)">'+esc(diagVif())+'</pre></div></details>';
     applyTheme();
   }
 
