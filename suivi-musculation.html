@@ -227,7 +227,11 @@
   .gym-attr-tag { color:var(--accent-ink); background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 32%,var(--border)); }
   .gym-attr-tag:hover { background:color-mix(in srgb,var(--accent) 16%,var(--surface)); color:var(--accent-ink); border-color:color-mix(in srgb,var(--accent) 50%,var(--border)); }
   .gym-equip-tag.empty { background:transparent; border:1px dashed var(--border); color:var(--text-faint); }
-  .gsheet-ov { position:fixed; inset:0; z-index:360; background:color-mix(in srgb,var(--bg) 80%,#000); display:flex; align-items:flex-end; justify-content:center; -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
+  /* v133 : boite de dialogue CENTREE. Elle etait alignee en bas facon feuille
+     iOS ; collee au bord de l ecran elle chevauchait la barre de navigation et
+     donnait l impression d etre tombee en bas de la page. Centree, elle ne touche
+     plus aucun bord et le probleme de recouvrement disparait de lui-meme. */
+  .gsheet-ov { position:fixed; inset:0; z-index:360; background:color-mix(in srgb,var(--bg) 80%,#000); display:flex; align-items:center; justify-content:center; padding:16px; -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
   /* ==== v129 : les surcouches se calent sur le CADRE VISIBLE ====
      Un element en position:fixed se positionne par rapport au viewport de MISE
      EN PAGE, pas au cadre reellement visible — et sur une PWA iOS les deux ne
@@ -239,7 +243,7 @@
      (il suit la barre d URL de Safari), avec 100vh en repli pour les vieux WebKit. */
   .gsheet-ov, .composer, .recap-ov, .gym { bottom:auto; height:100vh; height:var(--app-h, 100dvh); }
   .gsheet-ov[hidden] { display:none; }
-  .gsheet { width:100%; max-width:460px; background:var(--surface); border:1px solid var(--border); border-bottom:0; border-radius:var(--r-xl) var(--r-xl) 0 0; padding:20px 12px calc(16px + env(safe-area-inset-bottom)); box-shadow:0 -14px 44px var(--shadow-c); max-height:84vh; overflow:auto; }
+  .gsheet { width:100%; max-width:460px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-xl); padding:20px 12px; box-shadow:0 18px 50px var(--shadow-c); max-height:84vh; overflow:auto; }
   .gsheet-h { font-size:var(--fs-md); font-weight:800; text-align:center; line-height:1.25; margin:0 8px 4px; }
   .gsheet-sub { font-size:var(--fs-xs); font-weight:600; text-align:center; color:var(--text-dim); margin-bottom:12px; }
   .gsheet-lbl { font-size:var(--fs-2xs); font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:var(--text-dim); padding:10px 8px 6px; }
@@ -765,7 +769,7 @@
      le 84vh/92vh/60vh de celles-ci gagne a specificite egale (constate sur
      l appareil : max calcule 734px = 874 x 0.84, donc vh = viewport de mise en
      page, pas le cadre visible). */
-  .gsheet { max-height:calc(var(--app-h, 100dvh) * 0.84); }
+  .gsheet { max-height:calc(var(--app-h, 100dvh) - 32px); }
   .composer-card, .gym-inner { max-height:calc(var(--app-h, 100dvh) * 0.92); }
   .day-sel-menu, .menu.menu-up, .menu.menu-flip { max-height:calc(var(--app-h, 100dvh) * 0.60); }
   .recap-emoji { font-size:var(--fs-display); text-align:center; line-height:1; }
@@ -933,7 +937,6 @@
       <div class="gsheet" role="dialog" aria-label="Période analysée">
         <div class="gsheet-h">Période analysée</div>
         <div class="gsheet-sub" id="period-sheet-sub">—</div>
-        <div id="period-diag" style="font-size:11px;line-height:1.55;text-align:left;color:#7aa8ff;background:rgba(79,140,255,.10);border:1px solid rgba(79,140,255,.32);border-radius:8px;padding:8px 10px;margin-bottom:12px;font-variant-numeric:tabular-nums;word-break:break-word">—</div>
         <div class="gsheet-lbl">Raccourcis</div>
         <div class="equip-pick period-presets">
           <button class="equip-btn" data-act="period" data-weeks="now">Semaine en cours</button>
@@ -1172,7 +1175,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v132';
+  var APP_VERSION = 'v133';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2817,40 +2820,7 @@ function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return
     box.innerHTML='<div class="card chart-card">'+buildChartSVG(pts,metric)+'</div>'+stats+table;
   }
   function setMetric(m){ state.settings.metric=m; save(); var b=document.querySelectorAll('#metric-seg button'); for(var i=0;i<b.length;i++) b[i].classList.toggle('active', b[i].dataset.metric===m); renderProgBody(); }
-  /* v130 — RELEVE TEMPORAIRE, a retirer des que la cause est identifiee.
-     Le bouton OK finit trop bas sur iPhone. Deux causes possibles appellent des
-     correctifs OPPOSES : soit env(safe-area-inset-bottom) vaut 0 et le padding de
-     la feuille est trop court, soit il vaut 34 et c est la feuille qui descend
-     trop. On mesure sur l appareil plutot que de deviner — une capture avait fait
-     plus que quatre correctifs devines pendant la saga v40-v53. */
-  function periodDiag(){
-    var d=$('period-diag'); if(!d) return;
-    try{
-      var ov=$('period-sheet'), sh=ov.querySelector('.gsheet');
-      var bs=sh.querySelectorAll('button'), ok=null;
-      for(var i=0;i<bs.length;i++){ if(/^OK$/i.test((bs[i].innerText||'').trim())) ok=bs[i]; }
-      var ro=ov.getBoundingClientRect(), rs=sh.getBoundingClientRect();
-      var rk=ok?ok.getBoundingClientRect():null;
-      var st=getComputedStyle(document.documentElement), cs=getComputedStyle(sh);
-      var envB='-'; try{ envB=readEnv('safe-area-inset-bottom'); }catch(e){}
-      var L=[];
-      L.push('vue '+innerWidth+'x'+innerHeight+' vv'+(window.visualViewport?Math.round(visualViewport.height):'-'));
-      L.push('appH '+(st.getPropertyValue('--app-h').trim()||'-')+' navSab '+(st.getPropertyValue('--nav-sab').trim()||'-'));
-      L.push('envBas '+envB+' padF '+cs.paddingBottom+' max '+cs.maxHeight);
-      L.push('surc h'+Math.round(ro.height)+' bas'+Math.round(ro.bottom));
-      L.push('feuille h'+Math.round(rs.height)+' bas'+Math.round(rs.bottom));
-      L.push('OK bas'+(rk?Math.round(rk.bottom):'-')+' SOUS-OK '+(rk?Math.round(innerHeight-rk.bottom):'-')+'px');
-      var cx=Math.round(rk?rk.left+rk.width/2:0), cy=Math.round(rk?rk.top+rk.height/2:0);
-      var top=rk?document.elementFromPoint(cx,cy):null;
-      var nv=document.querySelector('nav.tabs'), rn=nv?nv.getBoundingClientRect():null;
-      L.push('barre '+(rn?Math.round(rn.top)+'-'+Math.round(rn.bottom):'-')+' z'+(nv?getComputedStyle(nv).zIndex:'-'));
-      L.push('AU-DESSUS-DU-OK: '+(top?(top.tagName+'.'+String(top.className||'')).slice(0,22):'-'));
-      L.push('CLIQUABLE '+((ok&&top&&(ok===top||ok.contains(top)))?'OUI':'NON'));
-      L.push('sa '+(navigator.standalone===true)+' '+APP_VERSION);
-      d.textContent=L.join('  |  ');
-    }catch(e){ d.textContent='diag KO: '+e.message; }
-  }
-  function periodOpen(){ var o=$('period-sheet'); if(o){ syncPeriodUI(); o.hidden=false; periodDiag(); } }
+  function periodOpen(){ var o=$('period-sheet'); if(o){ syncPeriodUI(); o.hidden=false; } }
   function periodClose(){ var o=$('period-sheet'); if(o) o.hidden=true; }
   // la bande d onglets ne tient pas a l ecran : on ramene l onglet actif dans le champ
   // de vision et on signale qu il reste quelque chose a droite.
