@@ -238,9 +238,6 @@
      --app-h n est pose qu en mode autonome ; ailleurs 100dvh est la bonne valeur
      (il suit la barre d URL de Safari), avec 100vh en repli pour les vieux WebKit. */
   .gsheet-ov, .composer, .recap-ov, .gym { bottom:auto; height:100vh; height:var(--app-h, 100dvh); }
-  .gsheet       { max-height:calc(var(--app-h, 100dvh) * 0.84); }
-  .composer-card, .gym-inner { max-height:calc(var(--app-h, 100dvh) * 0.92); }
-  .day-sel-menu, .menu.menu-up, .menu.menu-flip { max-height:calc(var(--app-h, 100dvh) * 0.60); }
   .gsheet-ov[hidden] { display:none; }
   .gsheet { width:100%; max-width:460px; background:var(--surface); border:1px solid var(--border); border-bottom:0; border-radius:var(--r-xl) var(--r-xl) 0 0; padding:20px 12px calc(16px + env(safe-area-inset-bottom)); box-shadow:0 -14px 44px var(--shadow-c); max-height:84vh; overflow:auto; }
   .gsheet-h { font-size:var(--fs-md); font-weight:800; text-align:center; line-height:1.25; margin:0 8px 4px; }
@@ -764,6 +761,13 @@
   .recap-ov[hidden] { display:none; }
   .recap-ov { position:fixed; inset:0; z-index:340; background:color-mix(in srgb,var(--bg) 84%,#000); display:flex; align-items:center; justify-content:center; padding:20px; padding-top:calc(20px + env(safe-area-inset-top)); padding-bottom:calc(20px + env(safe-area-inset-bottom)); overflow:auto; -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
   .recap-card { width:100%; max-width:420px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-xl); padding:24px 20px calc(16px + env(safe-area-inset-bottom)); box-shadow:0 18px 50px var(--shadow-c); }
+  /* v131 : ces max-height doivent venir APRES les definitions d origine, sinon
+     le 84vh/92vh/60vh de celles-ci gagne a specificite egale (constate sur
+     l appareil : max calcule 734px = 874 x 0.84, donc vh = viewport de mise en
+     page, pas le cadre visible). */
+  .gsheet { max-height:calc(var(--app-h, 100dvh) * 0.84); }
+  .composer-card, .gym-inner { max-height:calc(var(--app-h, 100dvh) * 0.92); }
+  .day-sel-menu, .menu.menu-up, .menu.menu-flip { max-height:calc(var(--app-h, 100dvh) * 0.60); }
   .recap-emoji { font-size:var(--fs-display); text-align:center; line-height:1; }
   .recap-h { font-size:var(--fs-2xl); font-weight:800; text-align:center; margin-top:8px; }
   .recap-sub { font-size:var(--fs-sm); color:var(--text-faint); text-align:center; margin-top:2px; font-weight:600; }
@@ -1152,7 +1156,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v130';
+  var APP_VERSION = 'v131';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2820,6 +2824,12 @@ function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return
       L.push('surc h'+Math.round(ro.height)+' bas'+Math.round(ro.bottom));
       L.push('feuille h'+Math.round(rs.height)+' bas'+Math.round(rs.bottom));
       L.push('OK bas'+(rk?Math.round(rk.bottom):'-')+' SOUS-OK '+(rk?Math.round(innerHeight-rk.bottom):'-')+'px');
+      var cx=Math.round(rk?rk.left+rk.width/2:0), cy=Math.round(rk?rk.top+rk.height/2:0);
+      var top=rk?document.elementFromPoint(cx,cy):null;
+      var nv=document.querySelector('nav.tabs'), rn=nv?nv.getBoundingClientRect():null;
+      L.push('barre '+(rn?Math.round(rn.top)+'-'+Math.round(rn.bottom):'-')+' z'+(nv?getComputedStyle(nv).zIndex:'-'));
+      L.push('AU-DESSUS-DU-OK: '+(top?(top.tagName+'.'+String(top.className||'')).slice(0,22):'-'));
+      L.push('CLIQUABLE '+((ok&&top&&(ok===top||ok.contains(top)))?'OUI':'NON'));
       L.push('sa '+(navigator.standalone===true)+' '+APP_VERSION);
       d.textContent=L.join('  |  ');
     }catch(e){ d.textContent='diag KO: '+e.message; }
