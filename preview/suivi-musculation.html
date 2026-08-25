@@ -228,6 +228,19 @@
   .gym-attr-tag:hover { background:color-mix(in srgb,var(--accent) 16%,var(--surface)); color:var(--accent-ink); border-color:color-mix(in srgb,var(--accent) 50%,var(--border)); }
   .gym-equip-tag.empty { background:transparent; border:1px dashed var(--border); color:var(--text-faint); }
   .gsheet-ov { position:fixed; inset:0; z-index:360; background:color-mix(in srgb,var(--bg) 80%,#000); display:flex; align-items:flex-end; justify-content:center; -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
+  /* ==== v129 : les surcouches se calent sur le CADRE VISIBLE ====
+     Un element en position:fixed se positionne par rapport au viewport de MISE
+     EN PAGE, pas au cadre reellement visible — et sur une PWA iOS les deux ne
+     coincident pas (meme cause que la saga v50-v53, ou body a du etre epingle a
+     --app-h). Avec inset:0 les surcouches debordaient donc sous l ecran ; celles
+     qui alignent leur contenu en bas (.gsheet-ov, .composer) y emmenaient leur
+     bouton de validation, qui devenait inatteignable.
+     --app-h n est pose qu en mode autonome ; ailleurs 100dvh est la bonne valeur
+     (il suit la barre d URL de Safari), avec 100vh en repli pour les vieux WebKit. */
+  .gsheet-ov, .composer, .recap-ov, .gym { bottom:auto; height:100vh; height:var(--app-h, 100dvh); }
+  .gsheet       { max-height:calc(var(--app-h, 100dvh) * 0.84); }
+  .composer-card, .gym-inner { max-height:calc(var(--app-h, 100dvh) * 0.92); }
+  .day-sel-menu, .menu.menu-up, .menu.menu-flip { max-height:calc(var(--app-h, 100dvh) * 0.60); }
   .gsheet-ov[hidden] { display:none; }
   .gsheet { width:100%; max-width:460px; background:var(--surface); border:1px solid var(--border); border-bottom:0; border-radius:var(--r-xl) var(--r-xl) 0 0; padding:20px 12px calc(16px + env(safe-area-inset-bottom)); box-shadow:0 -14px 44px var(--shadow-c); max-height:84vh; overflow:auto; }
   .gsheet-h { font-size:var(--fs-md); font-weight:800; text-align:center; line-height:1.25; margin:0 8px 4px; }
@@ -1138,7 +1151,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v128';
+  var APP_VERSION = 'v129';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
