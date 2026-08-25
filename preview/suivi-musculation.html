@@ -852,7 +852,23 @@
       -webkit-backdrop-filter:none !important; backdrop-filter:none !important;
       box-shadow:none;
       transform:none;
+      /* v132 : en position:static le z-index est INERTE, et WebKit peignait la barre
+         AU-DESSUS des surcouches modales (releve appareil : elementFromPoint au
+         centre du bouton OK renvoyait le bouton actif de la barre, z60 contre z360).
+         position:relative rend le z-index effectif SANS sortir du flux — la colonne
+         flex de l app-shell est preservee, donc le bug de compositeur des elements
+         fixes (saga v49-v53) ne revient pas. */
+      position:relative;
+      z-index:1;
     }
+    /* Ceinture et bretelles : si WebKit persistait a peindre la barre au-dessus
+       malgre le z-index, on la retire purement de la peinture pendant qu une
+       surcouche modale est ouverte. visibility (et non display) preserve sa place
+       dans la colonne flex : aucun saut de mise en page a l ouverture. */
+    body:has(#period-sheet:not([hidden])) nav.tabs,
+    body:has(#gym-sheet:not([hidden])) nav.tabs,
+    body:has(.recap-ov:not([hidden])) nav.tabs,
+    body:has(.composer:not([hidden])) nav.tabs { visibility:hidden; }
   }
 </style>
 </head>
@@ -1156,7 +1172,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v131';
+  var APP_VERSION = 'v132';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
