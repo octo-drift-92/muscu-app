@@ -68,8 +68,13 @@ function muscleContribs(name, attrs){
   if(/hip thrust|pont fessier|abduction|abducteur|fessier|glute/.test(n)) return P('Fessiers');
   if(/shrug|haussement|trapeze/.test(n)) return [{g:'Trapèzes',w:1},AB()];
   if(/rowing|\brow\b|\bt[\s-]?bar/.test(n)){
-    if(/neutre|marteau/.test(n)) return [{g:'Grand dorsal',w:1},{g:'Milieu du dos',w:.5},{g:'Biceps',w:.5},{g:'Deltoïde post.',w:.5},AB()];
-    if(/haute|large/.test(n)) return [{g:'Milieu du dos',w:1},{g:'Trapèzes',w:.5},{g:'Deltoïde post.',w:.5},{g:'Biceps',w:.5},AB()];
+    // Tout rowing tire ET retracte : les dorsaux comme le milieu du dos sont
+    // moteurs, la prise decide seulement lequel domine. Aucun des deux ne
+    // tombe a zero. Les trapezes manquaient ici alors que les deux autres
+    // branches les comptent — une prise neutre retracte les omoplates autant
+    // qu une prise large.
+    if(/neutre|marteau/.test(n)) return [{g:'Grand dorsal',w:1},{g:'Milieu du dos',w:1},{g:'Trapèzes',w:.5},{g:'Biceps',w:.5},{g:'Deltoïde post.',w:.5},AB()];
+    if(/haute|large/.test(n)) return [{g:'Milieu du dos',w:1},{g:'Grand dorsal',w:.5},{g:'Trapèzes',w:.5},{g:'Deltoïde post.',w:.5},{g:'Biceps',w:.5},AB()];
     return [{g:'Milieu du dos',w:1},{g:'Grand dorsal',w:.5},{g:'Biceps',w:.5},{g:'Deltoïde post.',w:.5},{g:'Trapèzes',w:.5},AB()];
   }
   if(/tirage|traction|pulldown|pull-?up|\blat\b/.test(n)) return [{g:'Grand dorsal',w:1},{g:'Biceps',w:.5},AB()];
