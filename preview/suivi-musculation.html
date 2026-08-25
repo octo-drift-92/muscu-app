@@ -830,7 +830,7 @@
   .help-box { background:var(--bg); border:1px solid var(--border); border-radius:var(--r-sm); padding:10px 12px; margin:8px 0 4px; font-size:var(--fs-xs); line-height:1.5; color:var(--text-faint); }
   .help-box[hidden] { display:none; }
   .prog-lbl { font-size:var(--fs-xs); color:var(--text-faint); font-weight:600; margin-right:2px; }
-  #toast { z-index:400; }
+  #toast { z-index:400; bottom:calc(var(--nav-h, 14px) + 12px); }
   /* En app installee (PWA plein ecran) : barre du bas plus compacte, icones plus proches du bord
      (le gros espace = zone reservee a la barre d'accueil iPhone ; on la reduit pour un look proche de Safari) */
   @media (max-width:680px) and (display-mode: standalone) {
@@ -1175,7 +1175,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v133';
+  var APP_VERSION = 'v134';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -3564,11 +3564,26 @@ function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return
      recalage (rejeu de l'animation de vue, scroll nudge, timers 250/900/2000ms) sont RETIREES :
      devenues inutiles, elles faisaient trembler l'ecran au demarrage. On garde juste --app-h
      synchronisee sur les vrais evenements de viewport. */
+  /* v134 : hauteur reelle de la barre du bas, exposee en --nav-h. Le toast s y
+     cale pour ne plus atterrir DANS la barre — a bottom:26px il tombait en plein
+     dedans depuis que la v128 l a portee a ~86px, par-dessus les onglets et dans
+     la zone du home indicator. Volontairement HORS de la garde autonome : en
+     Safari la barre est fixe en bas et le probleme est le meme. */
+  function navHeight(){
+    try{ var n=document.querySelector('nav.tabs');
+      if(!n) return;
+      var h=n.offsetHeight;
+      if(h>0) document.documentElement.style.setProperty('--nav-h', h+'px');
+    }catch(_){}
+  }
   function shellFix(){
     if(!NAV_STANDALONE) return;
     if(!window.matchMedia || !matchMedia('(max-width:680px)').matches) return;
     try{ if (window.innerHeight) document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px'); }catch(_){}
   }
+  window.addEventListener('pageshow', function(){ setTimeout(shellFix, 60); setTimeout(navHeight, 60); });
+  window.addEventListener('resize', navHeight);
+  setTimeout(navHeight, 0); setTimeout(navHeight, 300); setTimeout(navHeight, 1200);
   window.addEventListener('pageshow', function(){ setTimeout(shellFix, 60); });
   window.addEventListener('resize', shellFix);
   window.addEventListener('orientationchange', function(){ setTimeout(shellFix, 250); });
