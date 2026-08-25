@@ -13,6 +13,11 @@
   if (!s && window.navigator.standalone === true) s = { b:34, t:0 };
   if (s) {
     if (s.b > 0) st.setProperty('--nav-pb', 'calc(8px + ' + s.b + 'px)');
+    /* v128 : la valeur BRUTE de la zone sure, pour le mode autonome. Les icones
+       doivent finir au-dessus du home indicator, sinon un appui qui glisse un peu
+       vers le haut declenche le geste de fermeture d iOS. Posee ici, donc AVANT
+       le premier rendu : env() vaut 0 au 1er paint sur les PWA iOS (saga v40-v44). */
+    if (s.b > 0) st.setProperty('--nav-sab', s.b + 'px');
     if (s.t > 0) st.setProperty('--header-pt', s.t + 'px');
   }
   /* PWA : hauteur epinglee avant le 1er paint (l'app est cadree sous la barre d'etat depuis v53 :
@@ -822,7 +827,10 @@
                 margin-left:0; margin-right:0; width:100%; max-width:100%; }
     nav.tabs {
       position:static; left:auto; right:auto; bottom:auto;
-      padding-bottom:16px !important;
+      /* v128 : 16px placait les icones a 16px du bord, dans les ~34px reserves au
+         home indicator — l appui glisse et iOS ferme l app. On remonte a la zone
+         sure reelle ; 16px reste le repli pour les appareils qui n en ont pas. */
+      padding-bottom:var(--nav-sab, 16px) !important;
       background:var(--surface) !important;
       -webkit-backdrop-filter:none !important; backdrop-filter:none !important;
       box-shadow:none;
@@ -1130,7 +1138,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v127';
+  var APP_VERSION = 'v128';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -3481,7 +3489,7 @@ function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return
      (timers, resize, rotation, 1re interaction). Ainsi la barre est bien placee des l'ouverture. */
   var SA_KEY = 'increm-sa2';
   function readEnv(prop){ var p=document.createElement('div'); p.style.cssText='position:fixed;left:-9999px;top:0;width:1px;height:env('+prop+',0px);pointer-events:none'; document.body.appendChild(p); var v=Math.round(p.getBoundingClientRect().height); p.remove(); return v; }
-  function applySA(sab, sat){ var st=document.documentElement.style; if(sab>0) st.setProperty('--nav-pb','calc(8px + '+sab+'px)'); if(sat>0) st.setProperty('--header-pt', sat+'px'); }
+  function applySA(sab, sat){ var st=document.documentElement.style; if(sab>0){ st.setProperty('--nav-pb','calc(8px + '+sab+'px)'); st.setProperty('--nav-sab', sab+'px'); } if(sat>0) st.setProperty('--header-pt', sat+'px'); }
   try{ var _sa=JSON.parse(localStorage.getItem(SA_KEY)||'null'); if(!_sa && navigator.standalone===true) _sa={b:34,t:50}; if(_sa) applySA(_sa.b||0, _sa.t||0); }catch(_){}   /* immediat, avant le 1er paint : valeur memorisee, ou defaut iOS standalone au 1er lancement */
   function fixSafeArea(){ var sab=readEnv('safe-area-inset-bottom'), sat=readEnv('safe-area-inset-top'); if(sab>0 || sat>0){ applySA(sab, sat); try{ localStorage.setItem(SA_KEY, JSON.stringify({b:sab, t:sat})); }catch(_){} } }
   [0,50,120,250,500,900,1500,2500,4000].forEach(function(ms){ setTimeout(fixSafeArea, ms); });
