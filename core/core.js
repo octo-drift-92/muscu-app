@@ -162,7 +162,7 @@ function sessionEstBrut(day, rest){
     sec += estSerie(x.sets)*(uni?2:1) + (uni?n*EST_COTE:0) + Math.max(0,n-1)*rest;
     if(i>0) sec += EST_CHANGT;
     if(isWarmup(x.name)) return;                       // un echauffement ne s echauffe pas
-    var c=(muscleContribs(x.name)||[])[0], g=c?c.g:'Autre';
+    var c=(muscleContribs(x.name, exAttrs(x))||[])[0], g=c?c.g:'Autre';
     var e=(i===0)?2:(vus[g]?0:1);                      // 2 series au demarrage, 1 par nouveau groupe
     vus[g]=1; nEchauf+=e; sec += e*EST_ECHAUF;
   });

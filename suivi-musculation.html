@@ -1165,7 +1165,7 @@
       sec += estSerie(x.sets)*(uni?2:1) + (uni?n*EST_COTE:0) + Math.max(0,n-1)*rest;
       if(i>0) sec += EST_CHANGT;
       if(isWarmup(x.name)) return;                       // un echauffement ne s echauffe pas
-      var c=(muscleContribs(x.name)||[])[0], g=c?c.g:'Autre';
+      var c=(muscleContribs(x.name, exAttrs(x))||[])[0], g=c?c.g:'Autre';
       var e=(i===0)?2:(vus[g]?0:1);                      // 2 series au demarrage, 1 par nouveau groupe
       vus[g]=1; nEchauf+=e; sec += e*EST_ECHAUF;
     });
@@ -1175,7 +1175,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v134';
+  var APP_VERSION = 'v135';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1445,7 +1445,7 @@ function exIsComplete(ex){ return !!(ex.sets && ex.sets.length && ex.sets.every(
   }
 
   function exerciseHTML(ex, day, num){
-    var g = exPrimaryGroup(ex.name);
+    var g = exPrimaryGroup(ex.name, exAttrs(ex));
     var w = curWeek();
     var rir = (w && w.rirTarget!=null) ? w.rirTarget : null;
     var nSets = ex.sets.length;
@@ -1901,7 +1901,10 @@ function sideDone(s, side){ if(s.doneL==null && s.doneR==null) return !!s.done; 
     }
   }
   function gymRirBadge(){ var w=curWeek(); return (w&&w.rirTarget!=null)?'<span class="gym-rir">vise '+w.rirTarget+' RIR</span>':''; }
-function exPrimaryGroup(name){ var c=muscleContribs(name); return (c&&c.length)?c[0].g:'Autre'; }
+// La prise decide du groupe primaire d un rowing : sans les attributs, « Rowing
+// assis unilateral {Neutre} » retombait dans la branche par defaut et s affichait
+// « Milieu du dos » au lieu de « Grand dorsal ». Appelant rate lors de la v121.
+function exPrimaryGroup(name, attrs){ var c=muscleContribs(name, attrs); return (c&&c.length)?c[0].g:'Autre'; }
   function groupColor(g){ return GROUP_COLORS[g]||'#8090a6'; }
 function exBestE1RM(name, beforeISO){ name=(name||'').trim(); if(!name) return 0; var best=0; state.weeks.forEach(function(w){ w.days.forEach(function(d){ var di=d.date||''; if(beforeISO && di && di>=beforeISO) return; d.exercises.forEach(function(x){ if(exKey(x)!==name) return; x.sets.forEach(function(s){ if(s.done){ var wt=(s.realWeight!=null?s.realWeight:s.planWeight)||0, rp=(s.realReps!=null?s.realReps:s.planReps)||0, e=e1rm(wt,rp); if(e>best) best=e; } }); }); }); }); return best; }
   function gymHeadStats(ex){
