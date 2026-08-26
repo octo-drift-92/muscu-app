@@ -1175,7 +1175,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v135';
+  var APP_VERSION = 'v136';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -1467,7 +1467,7 @@ function exIsComplete(ex){ return !!(ex.sets && ex.sets.length && ex.sets.every(
           '<div class="menu menu-right ex-menu" id="exmenu-'+ex.id+'" hidden>' +
             '<input class="ex-note" data-field="exNote" value="'+escA(ex.note)+'" placeholder="Note (technique, tempo, réglage machine…)">' +
             '<div class="menu-sep"></div>' +
-            '<button data-act="exInfo" data-nm="'+escA(ex.name||'')+'">Fiche de l\'exercice</button>' +
+            '<button data-act="exInfo" data-nm="'+escA(ex.name||'')+'" data-at="'+escA(exAttrs(ex))+'">Fiche de l\'exercice</button>' +
             '<div class="menu-sep"></div>' +
             '<div class="exmenu-lbl">Salle</div>' +
             '<div class="equip-pick">' +
@@ -2079,7 +2079,7 @@ function exBestE1RM(name, beforeISO){ name=(name||'').trim(); if(!name) return 0
       +'</div>'
       +'<div class="gym-progress"><i style="width:'+(totalSets?Math.round(doneSets/totalSets*100):0)+'%"></i></div>'
       +'<div class="gym-body" data-d="'+day.id+'" data-e="'+ex.id+'">'
-        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+(gymMode.exIndex<day.exercises.length-1?'<button class="gym-skip" data-act="gymSkip" title="Machine occupée ? Déplace cet exercice en fin de séance">Plus tard ⤵</button>':'')+'<h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+(gymUni?'<span class="gym-side-tag">G + D</span>':'')+'<button class="gym-equip-tag'+((ex.equip||'').trim()?'':' empty')+'" data-act="gymEquip" title="Salle et marque de la machine">'+((ex.equip||'').trim()?esc(ex.equip.trim()):'+ Matériel')+'</button>'+(exAttrs(ex)?('<button class="gym-equip-tag gym-attr-tag" data-act="gymEquip" title="Charge, prise et inclinaison prévues — touche pour changer">'+esc(exAttrs(ex))+'</button>'):'')+'<button class="gym-info-btn" data-act="exInfo" data-nm="'+escA(ex.name||'')+'" title="Comment faire cet exercice">Fiche</button>'+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(exKey(ex), day)
+        +'<div class="gym-ex-head"><span class="gym-pos">Exercice '+(gymMode.exIndex+1)+' / '+day.exercises.length+'</span>'+gymRirBadge()+(gymMode.exIndex<day.exercises.length-1?'<button class="gym-skip" data-act="gymSkip" title="Machine occupée ? Déplace cet exercice en fin de séance">Plus tard ⤵</button>':'')+'<h2 class="gym-ex-name">'+(esc((ex.name||'').trim())||'Exercice')+(gymUni?'<span class="gym-side-tag">G + D</span>':'')+'<button class="gym-equip-tag'+((ex.equip||'').trim()?'':' empty')+'" data-act="gymEquip" title="Salle et marque de la machine">'+((ex.equip||'').trim()?esc(ex.equip.trim()):'+ Matériel')+'</button>'+(exAttrs(ex)?('<button class="gym-equip-tag gym-attr-tag" data-act="gymEquip" title="Charge, prise et inclinaison prévues — touche pour changer">'+esc(exAttrs(ex))+'</button>'):'')+'<button class="gym-info-btn" data-act="exInfo" data-nm="'+escA(ex.name||'')+'" data-at="'+escA(exAttrs(ex))+'" title="Comment faire cet exercice">Fiche</button>'+'</h2>'+gymHeadStats(ex)+gymTargetCue(ex, day)+lastSessionHTML(exKey(ex), day)
         +'<input class="gym-note" data-field="exNote" value="'+escA(ex.note||'')+'" placeholder="Note (réglage machine, tempo, siège…)">'
         +'</div>'
         +(gymPasse?'<div class="gym-passed-note">Exercice passé. Il reste dans ta prog et apparaîtra comme passé dans l’historique — il ne compte ni dans les séries ni dans le volume.</div>':'')
@@ -2598,12 +2598,16 @@ function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return
     for(var i=0;i<EXERCISE_INFO.length;i++){ if(EXERCISE_INFO[i].re.test(n)) return EXERCISE_INFO[i]; }
     return null;
   }
-  function infoOpen(name){
+  // La prise et la charge changent les muscles cibles : une fiche ouverte depuis
+  // un exercice precis doit lire SES attributs, sinon elle affiche la lecture par
+  // defaut du nom. Ouverte sans attributs, le comportement est inchange.
+  function infoOpen(name, attrs){
     var ov=$('gym-sheet'); if(!ov) return;
-    var nfo=exerciseInfo(name), g=(muscleContribs(name)||[]).filter(function(c){ return c.g!=='Autre'; });
+    var nfo=exerciseInfo(name), g=(muscleContribs(name, attrs)||[]).filter(function(c){ return c.g!=='Autre'; });
     var muscles=g.map(function(c){ return '<span class="info-grp"><i style="background:'+groupColor(c.g)+'"></i>'+esc(c.g)+(c.w<1?' <small>secondaire</small>':'')+'</span>'; }).join('');
     ov.innerHTML='<div class="gsheet">'
       +'<div class="gsheet-h">'+(esc((name||'').trim())||'Exercice')+'</div>'
+      +(attrs?'<div class="gsheet-sub">'+esc(attrs)+'</div>':'')
       +(nfo?'<div class="gsheet-sub">'+esc(nfo.t)+'</div>':'<div class="gsheet-sub">Pas encore de fiche</div>')
       +(muscles?'<div class="gsheet-lbl">Muscles travaillés</div><div class="info-grps">'+muscles+'</div>':'')
       +(nfo?('<div class="gsheet-lbl">Le mouvement</div><p class="info-d">'+esc(nfo.d)+'</p>'
@@ -3158,7 +3162,7 @@ function ptInRange(iso, from, to){ if(!from && !to) return true; if(!iso) return
       case 'gymEquip': gymEquipOpen(); break;
       case 'gymEquipClose': gymEquipClose(); break;
       case 'sheetClose': gymEquipClose(); break;
-      case 'exInfo': closeMenus(); infoOpen(b.dataset.nm||''); break;
+      case 'exInfo': closeMenus(); infoOpen(b.dataset.nm||'', b.dataset.at||''); break;
       case 'gymSetGym': gymEquipSet('gym', b.dataset.eq||''); break;
       case 'gymSetBrand': gymEquipSet('brand', b.dataset.eq||''); break;
       case 'gymDoneSide': gymDoneSide(b); break;
