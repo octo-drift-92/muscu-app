@@ -261,6 +261,33 @@ egal('3 séries de 10 reps', C.estSerie([{ planReps: 10 }, { planReps: 10 }, { p
 }
 
 /* ---------------------------------------------------------------- */
+bloc('rirSerie / rirPlage');
+{
+  const S = n => Array.from({ length: n }, () => ({}));
+
+  egal('cible 1, série 1', C.rirSerie(1, 0, {}), 1);
+  egal('cible 1, série 2', C.rirSerie(1, 1, {}), 2);
+  egal('cible 1, série 3', C.rirSerie(1, 2, {}), 3);
+  egal('cible 1, série 4 : le relâchement plafonne à +2', C.rirSerie(1, 3, {}), 3);
+  egal('cible 1, série 8 : toujours +2', C.rirSerie(1, 7, {}), 3);
+
+  egal('cible 0 (échec) monte à 2', C.rirSerie(0, 3, {}), 2);
+  egal('décharge à 4 reste à 4', C.rirSerie(4, 3, {}), 4);
+  egal('cible 3 plafonne à 4', C.rirSerie(3, 3, {}), 4);
+
+  egal('une valeur posée sur la série prime', C.rirSerie(1, 3, { rir: 0 }), 0);
+  egal('rir 0 sur la série n est pas confondu avec absent', C.rirSerie(1, 0, { rir: 0 }), 0);
+  egal('sans cible de semaine, pas de RIR', C.rirSerie(null, 2, {}), null);
+  egal('cible non numérique ignorée', C.rirSerie('abc', 1, {}), null);
+
+  egal('plage sur 4 séries', C.rirPlage(1, S(4)), '1\u21923');
+  egal('plage sur 1 série', C.rirPlage(1, S(1)), '1');
+  egal('plage en décharge : constante', C.rirPlage(4, S(4)), '4');
+  egal('plage sans séries', C.rirPlage(2, []), '2');
+  egal('plage sans cible', C.rirPlage(null, S(3)), '');
+}
+
+/* ---------------------------------------------------------------- */
 console.log('\n' + (ko ? '✘ ' + ko + ' échec(s) sur ' + (ok + ko) + ' vérifications'
                        : '✔ ' + ok + ' vérifications passées'));
 process.exit(ko ? 1 : 0);

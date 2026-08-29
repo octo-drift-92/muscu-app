@@ -175,6 +175,33 @@ function sessionEstBrut(day, rest){
   return { min:Math.round(sec/60), sets:nSets, exos:exs.length, echauf:nEchauf, cardio:cMin, rest:rest, uni:nUni };
 }
 
+/* RIR par SERIE. On ne tient pas RIR 1 sur quatre series d affilee : la fatigue
+   monte, et exiger la meme proximite de l echec partout produit soit des series
+   ratees, soit une premiere serie trop facile. On part de la cible de la semaine
+   sur la 1re serie, puis on relache d un cran par serie, plafonne a +2.
+
+     cible 1 -> 1, 2, 3, 3, 3...      cible 0 -> 0, 1, 2, 2...
+
+   Une valeur posee sur la serie elle-meme (s.rir) prime toujours : le calcul
+   n est qu un defaut, il n ecrase jamais un choix explicite. */
+function rirSerie(base, i, s){
+  if(s && s.rir!==undefined && s.rir!==null && s.rir!=='') return +s.rir;
+  if(base===undefined || base===null) return null;
+  var b=+base; if(isNaN(b)) return null;
+  // Plafond a 4 : une decharge visant deja RIR 4 ne doit pas glisser vers 5 ou 6,
+  // ou la serie ne stimule plus rien. Elle reste donc constante.
+  return Math.min(b + Math.min(i||0, 2), 4);
+}
+
+/* La plage affichee pour un exercice : « 1 » si une seule serie, « 1→3 » sinon. */
+function rirPlage(base, sets){
+  if(base===undefined || base===null) return '';
+  var n=(sets||[]).length; if(!n) return String(base);
+  var a=rirSerie(base,0,(sets||[])[0]), z=rirSerie(base,n-1,(sets||[])[n-1]);
+  if(a===null||z===null) return '';
+  return a===z ? String(a) : (a+'→'+z);
+}
+
 /* ==== EXPORTS (tests hors navigateur) ==== */
 /* Dans le navigateur, « module » n'existe pas : ce bloc est inerte, et build.js
    le retire de toute facon avant reinjection. */
@@ -185,5 +212,6 @@ if (typeof module !== 'undefined' && module.exports) {
     isWarmup, isUnilateral, muscleContribs, equipParts, equipJoin,
     CHARGE_OPTS, PRISE_OPTS, INCL_OPTS,
     exKey, exAttrs, keyName, keyEquip, keyAttrs, e1rm, exSkipped, estSerie, sessionEstBrut,
+    rirSerie, rirPlage,
   };
 }
