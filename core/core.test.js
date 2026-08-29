@@ -331,6 +331,54 @@ bloc('pasCharge / suggestion');
 }
 
 /* ---------------------------------------------------------------- */
+bloc('plageReps / fourchettes');
+{
+  const P = (nom, at) => C.plageReps(nom, at || '');
+  const bornes = (nom) => P(nom).min + '-' + P(nom).max;
+
+  egal('gros polyarticulaire tire : 6-10', bornes('Rowing T-bar'), '6-10');
+  egal('tirage vertical : 6-10', bornes('Tirage vertical prise large'), '6-10');
+  egal('presse a cuisses : 6-10', bornes('Presse à cuisses'), '6-10');
+  egal('poussee haut du corps : 8-12 (epaule)', bornes('Chest press'), '8-12');
+  egal('isolation grand muscle : 10-15', bornes('Leg extension'), '10-15');
+  egal('curl : 10-15', bornes('Curl biceps banc incliné 45°'), '10-15');
+  egal('petit muscle epaule : 12-20', bornes('Élévations latérales assis'), '12-20');
+  egal('face pull : 12-20', bornes('Face pull'), '12-20');
+  egal('amplitude courte : 12-20', bornes('Adduction machine'), '12-20');
+  egal('mollets : 12-20', bornes('Mollets debout'), '12-20');
+
+  // pieges d ordre, comme dans muscleContribs
+  egal('« hip thrust » passe avant « fessier »', P('Hip thrust').cat, 'lourd');
+  egal('« fente » passe avant « squat »', bornes('Fente bulgare split squat'), '8-12');
+  egal('« curl inverse » passe avant « curl »', P('Curl inversé').cat, 'court');
+  egal('« leg curl » ne tombe pas dans le biceps', P('Leg curl allongé').cat, 'isolation');
+  verifie('chaque fourchette porte sa raison', !!P('Rowing T-bar').raison && !!P('Crunch').raison);
+  verifie('exercice inconnu : repli isolation', P('Machin bidule').min === 10);
+
+  // la fourchette pilote la suggestion
+  const S = (w, reps) => ({ iso: 'x', sets: reps.map(r => ({ r, w })) });
+  const t = (h, p, pl) => C.suggestion(h, p, '', pl);
+  const ADD = { min: 12, max: 20 };
+
+  egal('cas Adduction reel : 12/14/14/15 a 50 -> chercher les reps',
+    t([S(50, [12, 14, 14, 15])], { reps: 12 }, ADD).action, 'reps');
+  egal('… et la cible affichee est le plafond',
+    t([S(50, [12, 14, 14, 15])], { reps: 12 }, ADD).reps, 20);
+  egal('plafond tenu partout -> on charge',
+    t([S(45, [10]), S(50, [20, 20, 20, 20])], { reps: 12 }, ADD).poids, 55);
+  egal('sous le plancher sur la majorite -> on tient la charge',
+    t([S(50, [8, 9, 10, 11])], { reps: 12 }, ADD).action, 'maintien');
+  egal('… sans jamais proposer de descendre',
+    t([S(50, [8, 9, 10, 11])], { reps: 12 }, ADD).poids, 50);
+  egal('fourchette etroite d un lourd : 10 reps a 6-10 -> on charge',
+    t([S(80, [10, 10, 10, 10])], { reps: 8 }, { min: 6, max: 10 }).action, 'charge');
+  // meme seance, verdict oppose : a 6-10 elle plafonne, a 12-20 elle est sous le
+  // plancher. C est tout l objet de la fourchette.
+  egal('la meme seance change de verdict selon la fourchette',
+    t([S(80, [10, 10, 10, 10])], { reps: 8 }, ADD).action, 'maintien');
+}
+
+/* ---------------------------------------------------------------- */
 console.log('\n' + (ko ? '✘ ' + ko + ' échec(s) sur ' + (ok + ko) + ' vérifications'
                        : '✔ ' + ok + ' vérifications passées'));
 process.exit(ko ? 1 : 0);

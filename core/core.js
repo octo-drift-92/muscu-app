@@ -202,6 +202,62 @@ function rirPlage(base, sets){
   return a===z ? String(a) : (a+'→'+z);
 }
 
+/* ==== FOURCHETTE DE REPETITIONS ====
+   L hypertrophie est sensiblement equivalente d environ 5 a 30 reps tant que la
+   serie se termine pres de l echec. La fourchette ne dit donc PAS ou se trouve le
+   muscle : elle dit ou la serie est LIVRABLE sur cet exercice-la. Quatre criteres :
+     - cout systemique : 20 reps a la presse coupent le souffle avant le quadriceps
+     - tenue technique : une elevation laterale lourde devient un haussement d epaule
+     - contrainte articulaire : une epaule encaisse mieux 15 reps legeres que 6 lourdes
+     - granularite de charge : +5 kg sur une machine a 50, c est +10 % d un coup. Il
+       faut une fourchette large pour absorber la marche ; sur 80 kg de disques,
+       +2,5 kg ne pese que +3 % et une fourchette etroite suffit.
+   L ordre des tests reprend celui de muscleContribs : « leg curl » doit etre vu
+   avant « curl », « elevations laterales » avant « elevation ». */
+var PLAGE_RAISON={
+  lourd:"Gros polyarticulaire : la charge est le levier efficace, une serie longue coute plus en fatigue generale qu elle ne rapporte au muscle.",
+  poussee:"Poussee du haut du corps : reps moderees. L epaule encaisse mieux une charge tenue longtemps qu une charge maximale.",
+  isolation:"Isolation : assez lourd pour tendre le muscle, assez leger pour tenir la technique jusqu a la derniere rep.",
+  petit:"Petit muscle, bras de levier defavorable : au-dela d une charge legere c est le tronc qui prend le relais.",
+  court:"Amplitude courte et muscle endurant : les repetitions sont un meilleur levier que la charge, et l articulation ne paie rien."
+};
+function plageReps(name, attrs){
+  var n=((name||'')+' '+(attrs||'')).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  function R(min,max,cat){ return {min:min, max:max, cat:cat, raison:PLAGE_RAISON[cat]}; }
+  if(isWarmup(name)) return R(10,15,'isolation');
+  if(/omoplate|scapulaire|retraction scap/.test(n)) return R(12,20,'petit');
+  if(/face.?pull/.test(n)) return R(12,20,'petit');
+  if(/oiseau|reverse fly|l-?fly|rotation ext|coiffe|rotateur|lever lateral|rear delt|reverse pec/.test(n)) return R(12,20,'petit');
+  if(/elevations? laterales?|lateral raise/.test(n)) return R(12,20,'petit');
+  if(/elevations? frontales?|front raise/.test(n)) return R(12,20,'petit');
+  if(/elevation/.test(n) && !/jambe|cuisse|mollet|genou|bassin|hanche|hip|pelv|gainage|buste|tronc/.test(n)) return R(12,20,'petit');
+  if(/leg curl|leg-curl/.test(n)) return R(10,15,'isolation');
+  if(/jambes tendues|romanian|\brdl\b|souleve de terre roumain|good ?morning/.test(n)) return R(8,12,'lourd');
+  if(/souleve de terre|deadlift|\bsdt\b/.test(n)) return R(6,10,'lourd');
+  if(/adduction|adducteur/.test(n)) return R(12,20,'court');
+  if(/hip thrust|pont fessier/.test(n)) return R(8,12,'lourd');
+  if(/abduction|abducteur|fessier|glute/.test(n)) return R(12,20,'court');
+  if(/shrug|haussement|trapeze/.test(n)) return R(10,15,'isolation');
+  if(/rowing|\brow\b|\bt[\s-]?bar/.test(n)) return R(6,10,'lourd');
+  if(/tirage|traction|pulldown|pull-?up|\blat\b/.test(n)) return R(6,10,'lourd');
+  if(/pull-?over/.test(n)) return R(10,15,'isolation');
+  if(/ecarte|pec deck|butterfly|\bfly\b/.test(n)) return R(10,15,'isolation');
+  if(/developpe couche|developpe incline|chest press|chess press|\bdips?\b|pompe|bench/.test(n)) return R(8,12,'poussee');
+  if(/militaire|overhead press|developpe epaule|arnold|shoulder press/.test(n)) return R(8,12,'poussee');
+  if(/mollet|calf/.test(n)) return R(12,20,'court');
+  if(/fente|\blunge\b/.test(n)) return R(8,12,'lourd');
+  if(/squat|leg press|presse a cuisse|hack/.test(n)) return R(6,10,'lourd');
+  if(/leg extension/.test(n)) return R(10,15,'isolation');
+  if(/triceps|kickback|skull|barre au front/.test(n)) return R(10,15,'isolation');
+  if(/reverse.*curl|curl.*invers|avant.?bras|forearm|wrist|poignet/.test(n)) return R(12,20,'court');
+  if(/curl marteau|hammer/.test(n)) return R(10,15,'isolation');
+  if(/curl|biceps/.test(n)) return R(10,15,'isolation');
+  if(/gainage|plank|hollow/.test(n)) return R(12,20,'court');
+  if(/crunch|abdo|releve de jambe|oblique|sit.?up|ab wheel/.test(n)) return R(12,20,'court');
+  if(/hyperextension|extension lombaire|back extension|superman/.test(n)) return R(12,20,'court');
+  return R(10,15,'isolation');
+}
+
 /* ==== SUGGESTION DE PROGRESSION ====
    Double progression classique, mais sans plage de repetitions explicite : on
    compare la derniere seance a ce qui etait PREVU.
@@ -230,33 +286,41 @@ function pasCharge(sessions, charge){
   return 2.5;
 }
 
-function suggestion(sessions, plan, charge){
+function suggestion(sessions, plan, charge, plage){
   if(!sessions || !sessions.length) return null;
   var last=sessions[sessions.length-1];
   var sets=(last && last.sets) ? last.sets.filter(function(s){ return (+s.r)>0; }) : [];
   if(!sets.length) return null;
+  // Sans fourchette, le plan fait foi et min===max : on retombe exactement sur la
+  // double progression de la v139 (tenu partout -> charge, moitie -> reps, sinon
+  // consolidation). Avec une fourchette, les deux bornes se separent.
   var repsCible=(plan && +plan.reps>0) ? +plan.reps : null;
-  if(repsCible===null) return null;
+  var min=(plage && +plage.min>0) ? +plage.min : repsCible;
+  var max=(plage && +plage.max>0) ? +plage.max : repsCible;
+  if(!min || !max) return null;
 
   // La reference est la charge REELLEMENT soulevee la derniere fois, jamais celle du
   // plan. v139 partait du plan : l Adduction machine etait planifiee a 47,5 alors qu il
   // tirait deja 50, et l app repondait « monte a 50 kg » — une charge deja depassee.
   var refPoids = Math.max.apply(null, sets.map(function(s){ return +s.w||0; }));
-  var tenues=sets.filter(function(s){ return (+s.r)>=repsCible && (refPoids===0 || (+s.w||0)>=refPoids); }).length;
+  function auPoids(s){ return refPoids===0 || (+s.w||0)>=refPoids; }
+  var hautes=sets.filter(function(s){ return auPoids(s) && (+s.r)>=max; }).length;
+  var basses=sets.filter(function(s){ return auPoids(s) && (+s.r)>=min; }).length;
   var pas=pasCharge(sessions, charge);
 
-  if(tenues===sets.length){
-    return { action:'charge', pas:pas, poids:(refPoids||0)+pas, reps:repsCible,
-             texte:'Toutes les séries tenues — monte à '+arrondi(refPoids+pas)+' kg' };
+  if(hautes===sets.length){
+    return { action:'charge', pas:pas, poids:refPoids+pas, reps:min, min:min, max:max,
+             texte:'Plafond de '+max+' reps tenu partout — monte à '+arrondi(refPoids+pas)+' kg' };
   }
-  if(tenues*2>=sets.length){
-    return { action:'reps', pas:0, poids:refPoids, reps:repsCible, manquantes:sets.length-tenues,
-             texte:'Même charge — va chercher '+repsCible+' reps sur '+((sets.length-tenues)>1?('les '+(sets.length-tenues)+' séries manquées'):'la série manquée') };
+  if(basses*2>=sets.length){
+    return { action:'reps', pas:0, poids:refPoids, reps:max, min:min, max:max, manquantes:sets.length-hautes,
+             texte:'Reste à '+arrondi(refPoids)+' kg — pousse jusqu’à '+max+' reps avant de charger' };
   }
-  return { action:'maintien', pas:0, poids:refPoids, reps:repsCible,
-           texte:'Même charge — consolide avant de monter' };
+  // « consolide » ne disait pas quoi faire : sous le plancher, l action est de
+  // construire les reps a charge constante jusqu a tenir le plancher partout.
+  return { action:'maintien', pas:0, poids:refPoids, reps:min, min:min, max:max,
+           texte:'Sous '+min+' reps — reste à '+arrondi(refPoids)+' kg jusqu’à tenir '+min+' partout' };
 }
-
 function arrondi(v){ var n=Math.round(v*10)/10; return (n%1===0)?String(n):String(n).replace('.',','); }
 
 /* ==== EXPORTS (tests hors navigateur) ==== */
@@ -270,6 +334,6 @@ if (typeof module !== 'undefined' && module.exports) {
     CHARGE_OPTS, PRISE_OPTS, INCL_OPTS,
     exKey, exAttrs, keyName, keyEquip, keyAttrs, e1rm, exSkipped, estSerie, sessionEstBrut,
     rirSerie, rirPlage,
-    pasCharge, suggestion,
+    plageReps, pasCharge, suggestion,
   };
 }
