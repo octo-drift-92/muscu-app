@@ -1233,7 +1233,14 @@
   };
   function plageReps(name, attrs){
     var n=((name||'')+' '+(attrs||'')).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-    function R(min,max,cat){ return {min:min, max:max, cat:cat, raison:PLAGE_RAISON[cat]}; }
+    function R(min,max,cat){
+      // Une serie unilaterale lourde coute moitie moins en fatigue generale : la raison
+      // meme qui justifie 6-10 sur un bilateral tombe, et le mouvement supporte des
+      // series plus longues. Ne concerne QUE la famille « lourd » — sur un petit muscle
+      // l unilateral ne change rien au bras de levier.
+      if(cat==='lourd' && min<8 && isUnilateral(name)){ min=8; max=12; }
+      return {min:min, max:max, cat:cat, raison:PLAGE_RAISON[cat]};
+    }
     if(isWarmup(name)) return R(10,15,'isolation');
     if(/omoplate|scapulaire|retraction scap/.test(n)) return R(12,20,'petit');
     if(/face.?pull/.test(n)) return R(12,20,'petit');
@@ -1287,27 +1294,34 @@
       if(m>0) poids.push(m);
     });
     var uniq=poids.filter(function(v,i){ return poids.indexOf(v)===i; }).sort(function(a,b){ return a-b; });
-    var pas=null;
-    for(var i=1;i<uniq.length;i++){ var d=uniq[i]-uniq[i-1]; if(d>0 && (pas===null || d<pas)) pas=d; }
-    if(pas!==null && pas>0) return pas;
 
-    // Les paliers de SA salle, confirmes le 29/08/2026 : disques 2,5 · selecteur 5 ·
-    // halteres 2. Ces replis ne servent qu au tout premier increment d un exercice :
-    // des qu il a monte une fois, l ecart observe reprend la main pour toujours.
+    // La grille MATERIELLE d abord : le palier est une propriete de la machine, pas du
+    // comportement. Paliers de sa salle, confirmes le 29/08/2026 :
+    //   machines a disques 2,5 kg · machines a selecteur 5 kg · halteres 2 kg
     function nn(v){ return String(v||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
-    var c=nn(charge), n=nn(nom);
+    var c=nn(charge), n=nn(nom), grille;
     // le CHAMP charge fait autorite, le nom n est qu un repli — meme regle que AB()
-    if(/haltere|dumbbell/.test(c)) return 2;
-    if(/disque|barre|plate/.test(c)) return 2.5;
-    if(/selecteur|poulie|stack/.test(c)) return 5;
-    if(/haltere|dumbbell/.test(n)) return 2;
-    if(/\bt[\s-]?bar|disque|\bbarre\b|hammer/.test(n)) return 2.5;
+    if(/haltere|dumbbell/.test(c)) grille=2;
+    else if(/disque|barre|plate/.test(c)) grille=2.5;
+    else if(/selecteur|poulie|stack/.test(c)) grille=5;
+    else if(/haltere|dumbbell/.test(n)) grille=2;
+    else if(/\bt[\s-]?bar|disque|\bbarre\b|hammer/.test(n)) grille=2.5;
     // Rien de declare : la forme des charges deja soulevees trahit la machine. Un 47,5
     // ou un 12,5 quelque part prouve un cran de 2,5 ; tout en multiples de 5 designe un
-    // selecteur, majoritaire dans sa salle. C est ce qui rattrape ses machines dont
-    // l attribut de charge est reste vide, comme l Adduction.
-    if(uniq.some(function(v){ return Math.abs(v/5 - Math.round(v/5)) > 1e-9; })) return 2.5;
-    return 5;
+    // selecteur, majoritaire dans sa salle.
+    else if(uniq.some(function(v){ return Math.abs(v/5 - Math.round(v/5)) > 1e-9; })) grille=2.5;
+    else grille=5;
+
+    // L historique ne peut qu AFFINER la grille, jamais la gonfler. Un ecart de 10 kg
+    // entre deux seances ne prouve pas que la machine refuse 5 : il prouve seulement
+    // qu il a saute deux crans, typiquement en calibrant une machine inconnue — T-bar
+    // 25 -> 35, mollets 13 -> 29. Lire ces sauts comme des paliers faisait proposer
+    // +16 kg sur des mollets a 29 (v143). En revanche un ecart PLUS FIN que la grille
+    // est une information reelle : il a trouve un cran intermediaire (aimant de 1,25,
+    // petit disque), et ce cran-la existe donc vraiment.
+    var pas=null;
+    for(var i=1;i<uniq.length;i++){ var d=uniq[i]-uniq[i-1]; if(d>0 && (pas===null || d<pas)) pas=d; }
+    return (pas!==null && pas<grille) ? pas : grille;
   }
   function suggestion(sessions, plan, charge, plage, nom){
     if(!sessions || !sessions.length) return null;
@@ -1348,7 +1362,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v143';
+  var APP_VERSION = 'v144';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';

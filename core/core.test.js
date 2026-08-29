@@ -292,7 +292,14 @@ bloc('pasCharge / suggestion');
 {
   const S = (w, reps) => ({ iso: 'x', sets: reps.map(r => ({ r, w })) });
 
-  egal('pas déduit : 25→30→35 donne 5', C.pasCharge([S(25, [10]), S(30, [10]), S(35, [10])], 'Disques'), 5);
+  // Cas T-bar reel : il est monte 25 -> 30 -> 35, mais une machine a disques accepte
+  // 2,5. L ecart observe dit comment il a progresse, pas ce que la machine permet.
+  egal('un ecart de 5 observe ne masque pas le cran de 2,5 des disques',
+    C.pasCharge([S(25, [10]), S(30, [10]), S(35, [10])], 'Disques'), 2.5);
+  egal('… mais un ecart PLUS FIN que la grille est cru : le cran existe donc',
+    C.pasCharge([S(25, [10]), S(26.25, [10])], 'Disques'), 1.25);
+  egal('un saut de calibrage ne devient jamais un palier (mollets 13 -> 29)',
+    C.pasCharge([S(13, [12]), S(29, [12])], ''), 2.5);
   egal('pas déduit : 8→10 donne 2', C.pasCharge([S(8, [12]), S(10, [10])], 'Haltères'), 2);
   egal('pas déduit : le PLUS PETIT écart gagne', C.pasCharge([S(20, [8]), S(25, [8]), S(26, [8])], ''), 1);
   egal('sans écart observable, repli haltères', C.pasCharge([S(10, [10])], 'Haltères'), 2);
