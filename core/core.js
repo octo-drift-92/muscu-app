@@ -270,7 +270,7 @@ function plageReps(name, attrs){
    sur cet exercice. Quelqu un qui est passe de 25 a 35 kg au T-bar progresse par
    5 ; quelqu un passe de 8 a 10 aux halteres progresse par 2. A defaut d ecart
    observable, on retombe sur un pas par type de charge. */
-function pasCharge(sessions, charge){
+function pasCharge(sessions, charge, nom){
   var poids=[];
   (sessions||[]).forEach(function(s){
     var m=0; (s.sets||[]).forEach(function(x){ var w=+x.w; if(w>m) m=w; });
@@ -280,13 +280,26 @@ function pasCharge(sessions, charge){
   var pas=null;
   for(var i=1;i<uniq.length;i++){ var d=uniq[i]-uniq[i-1]; if(d>0 && (pas===null || d<pas)) pas=d; }
   if(pas!==null && pas>0) return pas;
-  var c=String(charge||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  if(/haltere/.test(c)) return 2;
-  if(/disque/.test(c)) return 2.5;
-  return 2.5;
-}
 
-function suggestion(sessions, plan, charge, plage){
+  // Les paliers de SA salle, confirmes le 29/08/2026 : disques 2,5 · selecteur 5 ·
+  // halteres 2. Ces replis ne servent qu au tout premier increment d un exercice :
+  // des qu il a monte une fois, l ecart observe reprend la main pour toujours.
+  function nn(v){ return String(v||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+  var c=nn(charge), n=nn(nom);
+  // le CHAMP charge fait autorite, le nom n est qu un repli — meme regle que AB()
+  if(/haltere|dumbbell/.test(c)) return 2;
+  if(/disque|barre|plate/.test(c)) return 2.5;
+  if(/selecteur|poulie|stack/.test(c)) return 5;
+  if(/haltere|dumbbell/.test(n)) return 2;
+  if(/\bt[\s-]?bar|disque|\bbarre\b|hammer/.test(n)) return 2.5;
+  // Rien de declare : la forme des charges deja soulevees trahit la machine. Un 47,5
+  // ou un 12,5 quelque part prouve un cran de 2,5 ; tout en multiples de 5 designe un
+  // selecteur, majoritaire dans sa salle. C est ce qui rattrape ses machines dont
+  // l attribut de charge est reste vide, comme l Adduction.
+  if(uniq.some(function(v){ return Math.abs(v/5 - Math.round(v/5)) > 1e-9; })) return 2.5;
+  return 5;
+}
+function suggestion(sessions, plan, charge, plage, nom){
   if(!sessions || !sessions.length) return null;
   var last=sessions[sessions.length-1];
   var sets=(last && last.sets) ? last.sets.filter(function(s){ return (+s.r)>0; }) : [];
@@ -306,7 +319,7 @@ function suggestion(sessions, plan, charge, plage){
   function auPoids(s){ return refPoids===0 || (+s.w||0)>=refPoids; }
   var hautes=sets.filter(function(s){ return auPoids(s) && (+s.r)>=max; }).length;
   var basses=sets.filter(function(s){ return auPoids(s) && (+s.r)>=min; }).length;
-  var pas=pasCharge(sessions, charge);
+  var pas=pasCharge(sessions, charge, nom);
 
   if(hautes===sets.length){
     return { action:'charge', pas:pas, poids:refPoids+pas, reps:min, min:min, max:max,

@@ -298,6 +298,18 @@ bloc('pasCharge / suggestion');
   egal('sans écart observable, repli haltères', C.pasCharge([S(10, [10])], 'Haltères'), 2);
   egal('sans écart observable, repli disques', C.pasCharge([S(40, [10])], 'Disques'), 2.5);
 
+  // Paliers reels de sa salle (29/08/2026) : disques 2,5 · selecteur 5 · halteres 2
+  egal('palier declare : selecteur', C.pasCharge([S(50, [12])], 'Sélecteur'), 5);
+  egal('palier declare : poulie = selecteur', C.pasCharge([S(30, [12])], 'Poulie'), 5);
+  egal('a defaut de champ, le nom parle : halteres', C.pasCharge([S(10, [12])], '', 'Curl haltères'), 2);
+  egal('a defaut de champ, le nom parle : T-bar', C.pasCharge([S(35, [10])], '', 'Rowing T-bar'), 2.5);
+  egal('rien de declare, charges en multiples de 5 -> selecteur',
+    C.pasCharge([S(50, [12])], '', 'Adduction machine'), 5);
+  egal('rien de declare, un 47,5 traine -> cran de 2,5',
+    C.pasCharge([S(47.5, [12])], '', 'Chest press'), 2.5);
+  egal('l historique bat tous les replis',
+    C.pasCharge([S(30, [12]), S(32, [12])], 'Sélecteur', 'Adduction machine'), 2);
+
   const t = (h, p) => C.suggestion(h, p, '');
   egal('toutes tenues → on monte',
     t([S(80, [10, 10, 10, 10])], { reps: 10, poids: 80 }).action, 'charge');
@@ -317,9 +329,9 @@ bloc('pasCharge / suggestion');
 
 
   egal('plan reste en arriere : on progresse depuis la charge reellement soulevee',
-    t([S(50, [12, 14, 14, 15])], { reps: 12, poids: 47.5 }).poids, 52.5);
+    t([S(50, [12, 14, 14, 15])], { reps: 12, poids: 47.5 }).poids, 55);
   egal('plan trop ambitieux : on progresse aussi depuis ce qui a ete fait',
-    t([S(50, [12, 12, 12, 12])], { reps: 12, poids: 60 }).poids, 52.5);
+    t([S(50, [12, 12, 12, 12])], { reps: 12, poids: 60 }).poids, 55);
   egal('la suggestion ne repete jamais une charge deja tenue',
     t([S(50, [12, 12, 12, 12])], { reps: 12, poids: 47.5 }).poids > 50, true);
 
