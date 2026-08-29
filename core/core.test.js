@@ -288,6 +288,41 @@ bloc('rirSerie / rirPlage');
 }
 
 /* ---------------------------------------------------------------- */
+bloc('pasCharge / suggestion');
+{
+  const S = (w, reps) => ({ iso: 'x', sets: reps.map(r => ({ r, w })) });
+
+  egal('pas déduit : 25→30→35 donne 5', C.pasCharge([S(25, [10]), S(30, [10]), S(35, [10])], 'Disques'), 5);
+  egal('pas déduit : 8→10 donne 2', C.pasCharge([S(8, [12]), S(10, [10])], 'Haltères'), 2);
+  egal('pas déduit : le PLUS PETIT écart gagne', C.pasCharge([S(20, [8]), S(25, [8]), S(26, [8])], ''), 1);
+  egal('sans écart observable, repli haltères', C.pasCharge([S(10, [10])], 'Haltères'), 2);
+  egal('sans écart observable, repli disques', C.pasCharge([S(40, [10])], 'Disques'), 2.5);
+
+  const t = (h, p) => C.suggestion(h, p, '');
+  egal('toutes tenues → on monte',
+    t([S(80, [10, 10, 10, 10])], { reps: 10, poids: 80 }).action, 'charge');
+  egal('toutes tenues → la charge visée intègre le pas',
+    t([S(75, [10]), S(80, [10, 10, 10, 10])], { reps: 10, poids: 80 }).poids, 85);
+  egal('3 sur 4 → on cherche les reps',
+    t([S(80, [10, 10, 10, 8])], { reps: 10, poids: 80 }).action, 'reps');
+  egal('2 sur 4 → encore les reps (moitié atteinte)',
+    t([S(80, [10, 10, 7, 8])], { reps: 10, poids: 80 }).action, 'reps');
+  egal('1 sur 4 → on consolide',
+    t([S(80, [10, 7, 6, 6])], { reps: 10, poids: 80 }).action, 'maintien');
+  egal('reps dépassées comptent comme tenues',
+    t([S(80, [12, 11, 10, 10])], { reps: 10, poids: 80 }).action, 'charge');
+  egal('une série plus légère ne compte pas comme tenue',
+    t([{ iso: 'x', sets: [{ r: 10, w: 80 }, { r: 10, w: 80 }, { r: 10, w: 70 }, { r: 10, w: 70 }] }],
+      { reps: 10, poids: 80 }).action, 'reps');
+
+  verifie('aucun historique → aucune suggestion', C.suggestion([], { reps: 10, poids: 80 }, '') === null);
+  verifie('aucune série faite → aucune suggestion',
+    C.suggestion([{ iso: 'x', sets: [] }], { reps: 10, poids: 80 }, '') === null);
+  verifie('sans reps prévues → aucune suggestion',
+    C.suggestion([S(80, [10])], { poids: 80 }, '') === null);
+}
+
+/* ---------------------------------------------------------------- */
 console.log('\n' + (ko ? '✘ ' + ko + ' échec(s) sur ' + (ok + ko) + ' vérifications'
                        : '✔ ' + ok + ' vérifications passées'));
 process.exit(ko ? 1 : 0);

@@ -202,6 +202,61 @@ function rirPlage(base, sets){
   return a===z ? String(a) : (a+'→'+z);
 }
 
+/* ==== SUGGESTION DE PROGRESSION ====
+   Double progression classique, mais sans plage de repetitions explicite : on
+   compare la derniere seance a ce qui etait PREVU.
+
+     toutes les series tenues  -> on monte la charge d un cran
+     la moitie ou plus tenue   -> meme charge, on va chercher les reps manquantes
+     moins de la moitie        -> meme charge, on consolide
+
+   Le « cran » n est pas une constante : on le DEDUIT de son propre historique
+   sur cet exercice. Quelqu un qui est passe de 25 a 35 kg au T-bar progresse par
+   5 ; quelqu un passe de 8 a 10 aux halteres progresse par 2. A defaut d ecart
+   observable, on retombe sur un pas par type de charge. */
+function pasCharge(sessions, charge){
+  var poids=[];
+  (sessions||[]).forEach(function(s){
+    var m=0; (s.sets||[]).forEach(function(x){ var w=+x.w; if(w>m) m=w; });
+    if(m>0) poids.push(m);
+  });
+  var uniq=poids.filter(function(v,i){ return poids.indexOf(v)===i; }).sort(function(a,b){ return a-b; });
+  var pas=null;
+  for(var i=1;i<uniq.length;i++){ var d=uniq[i]-uniq[i-1]; if(d>0 && (pas===null || d<pas)) pas=d; }
+  if(pas!==null && pas>0) return pas;
+  var c=String(charge||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(/haltere/.test(c)) return 2;
+  if(/disque/.test(c)) return 2.5;
+  return 2.5;
+}
+
+function suggestion(sessions, plan, charge){
+  if(!sessions || !sessions.length) return null;
+  var last=sessions[sessions.length-1];
+  var sets=(last && last.sets) ? last.sets.filter(function(s){ return (+s.r)>0; }) : [];
+  if(!sets.length) return null;
+  var repsCible=(plan && +plan.reps>0) ? +plan.reps : null;
+  var poidsCible=(plan && +plan.poids>0) ? +plan.poids : null;
+  if(repsCible===null) return null;
+
+  var refPoids = poidsCible!==null ? poidsCible : Math.max.apply(null, sets.map(function(s){ return +s.w||0; }));
+  var tenues=sets.filter(function(s){ return (+s.r)>=repsCible && (refPoids===0 || (+s.w||0)>=refPoids); }).length;
+  var pas=pasCharge(sessions, charge);
+
+  if(tenues===sets.length){
+    return { action:'charge', pas:pas, poids:(refPoids||0)+pas, reps:repsCible,
+             texte:'Toutes les séries tenues — monte à '+arrondi(refPoids+pas)+' kg' };
+  }
+  if(tenues*2>=sets.length){
+    return { action:'reps', pas:0, poids:refPoids, reps:repsCible, manquantes:sets.length-tenues,
+             texte:'Même charge — va chercher '+repsCible+' reps sur '+((sets.length-tenues)>1?('les '+(sets.length-tenues)+' séries manquées'):'la série manquée') };
+  }
+  return { action:'maintien', pas:0, poids:refPoids, reps:repsCible,
+           texte:'Même charge — consolide avant de monter' };
+}
+
+function arrondi(v){ var n=Math.round(v*10)/10; return (n%1===0)?String(n):String(n).replace('.',','); }
+
 /* ==== EXPORTS (tests hors navigateur) ==== */
 /* Dans le navigateur, « module » n'existe pas : ce bloc est inerte, et build.js
    le retire de toute facon avant reinjection. */
@@ -213,5 +268,6 @@ if (typeof module !== 'undefined' && module.exports) {
     CHARGE_OPTS, PRISE_OPTS, INCL_OPTS,
     exKey, exAttrs, keyName, keyEquip, keyAttrs, e1rm, exSkipped, estSerie, sessionEstBrut,
     rirSerie, rirPlage,
+    pasCharge, suggestion,
   };
 }
