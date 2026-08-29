@@ -236,10 +236,12 @@ function suggestion(sessions, plan, charge){
   var sets=(last && last.sets) ? last.sets.filter(function(s){ return (+s.r)>0; }) : [];
   if(!sets.length) return null;
   var repsCible=(plan && +plan.reps>0) ? +plan.reps : null;
-  var poidsCible=(plan && +plan.poids>0) ? +plan.poids : null;
   if(repsCible===null) return null;
 
-  var refPoids = poidsCible!==null ? poidsCible : Math.max.apply(null, sets.map(function(s){ return +s.w||0; }));
+  // La reference est la charge REELLEMENT soulevee la derniere fois, jamais celle du
+  // plan. v139 partait du plan : l Adduction machine etait planifiee a 47,5 alors qu il
+  // tirait deja 50, et l app repondait « monte a 50 kg » — une charge deja depassee.
+  var refPoids = Math.max.apply(null, sets.map(function(s){ return +s.w||0; }));
   var tenues=sets.filter(function(s){ return (+s.r)>=repsCible && (refPoids===0 || (+s.w||0)>=refPoids); }).length;
   var pas=pasCharge(sessions, charge);
 

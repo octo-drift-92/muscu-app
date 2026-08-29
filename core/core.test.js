@@ -315,6 +315,14 @@ bloc('pasCharge / suggestion');
     t([{ iso: 'x', sets: [{ r: 10, w: 80 }, { r: 10, w: 80 }, { r: 10, w: 70 }, { r: 10, w: 70 }] }],
       { reps: 10, poids: 80 }).action, 'reps');
 
+
+  egal('plan reste en arriere : on progresse depuis la charge reellement soulevee',
+    t([S(50, [12, 14, 14, 15])], { reps: 12, poids: 47.5 }).poids, 52.5);
+  egal('plan trop ambitieux : on progresse aussi depuis ce qui a ete fait',
+    t([S(50, [12, 12, 12, 12])], { reps: 12, poids: 60 }).poids, 52.5);
+  egal('la suggestion ne repete jamais une charge deja tenue',
+    t([S(50, [12, 12, 12, 12])], { reps: 12, poids: 47.5 }).poids > 50, true);
+
   verifie('aucun historique → aucune suggestion', C.suggestion([], { reps: 10, poids: 80 }, '') === null);
   verifie('aucune série faite → aucune suggestion',
     C.suggestion([{ iso: 'x', sets: [] }], { reps: 10, poids: 80 }, '') === null);
