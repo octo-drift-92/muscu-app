@@ -1062,7 +1062,12 @@
     if(/face.?pull/.test(n)) return [{g:'Deltoïde post.',w:1},{g:'Trapèzes',w:.5}];
     if(/oiseau|reverse fly|l-?fly|rotation ext|coiffe|rotateur|lever lateral|rear delt|reverse pec/.test(n)) return P('Deltoïde post.');
     if(/elevations? laterales?|lateral raise/.test(n)) return P('Deltoïde lat.');
-    if(/elevations? frontales?|front raise/.test(n)) return P('Deltoïde ant.');
+    // v137 : les faisceaux du deltoide ne s isolent pas proprement. L EMG montre une
+    // activite substantielle du deltoide MOYEN pendant une elevation frontale, d autant
+    // plus marquee en prise neutre (le mouvement se rapproche alors du plan de l omoplate)
+    // et a mesure que le bras s eleve. Meme principe qu en v127 sur les rowings : quand
+    // deux faisceaux travaillent, aucun ne reste a zero.
+    if(/elevations? frontales?|front raise/.test(n)) return [{g:'Deltoïde ant.',w:1},{g:'Deltoïde lat.',w:.5}];
     if(/elevation/.test(n) && !/jambe|cuisse|mollet|genou|bassin|hanche|hip|pelv|gainage|buste|tronc/.test(n)) return P('Deltoïde lat.');
     if(/leg curl|leg-curl/.test(n)) return P('Ischios');
     if(/jambes tendues|romanian|\brdl\b|souleve de terre roumain|good ?morning/.test(n)) return [{g:'Ischios',w:1},{g:'Fessiers',w:.5},{g:'Lombaires',w:.5},AB()];
@@ -1175,7 +1180,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v136';
+  var APP_VERSION = 'v137';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
