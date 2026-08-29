@@ -1268,7 +1268,7 @@
   /* ==== NOYAU : FIN ==== */
   'use strict';
 
-  var APP_VERSION = 'v139';
+  var APP_VERSION = 'v140';
   var IS_PREVIEW = location.pathname.indexOf('/preview/') !== -1;
   var KEY = IS_PREVIEW ? 'suivi-muscu-v3-preview' : 'suivi-muscu-v3';
   var KEY_SYNC = IS_PREVIEW ? 'suivi-muscu-sync-preview' : 'suivi-muscu-sync';
@@ -2018,7 +2018,10 @@ function exBestE1RM(name, beforeISO){ name=(name||'').trim(); if(!name) return 0
     var nm=(ex.name||'').trim(); if(!nm) return '';
     var lw=lastWorkWeight(exKey(ex), day&&day.date), lr=lastWorkReps(exKey(ex), day&&day.date);
     if(lw==null||lr==null) return '<div class="gym-target new">Première fois sur cet exo — pose ta charge de référence.</div>';
-    return '<div class="gym-target"><span>Objectif : <b>battre '+numStr(lw)+' kg × '+intStr(lr)+'</b></span><span class="gym-target-hint">+1 rep ou +2,5 kg</span></div>';
+    // le pas affiche doit etre celui que la suggestion utilisera juste dessous,
+    // sinon l ecran annonce deux chiffres differents pour la meme decision (v140)
+    var pas=pasCharge(histBefore(exKey(ex), day&&day.date), ex.charge||'');
+    return '<div class="gym-target"><span>Objectif : <b>battre '+numStr(lw)+' kg × '+intStr(lr)+'</b></span><span class="gym-target-hint">+1 rep ou +'+arrondi(pas)+' kg</span></div>';
   }
   // --- estimation des calories brulees (MET x 3,5 x poids / 200 x minutes) ---
   // Valeurs MET issues du Compendium of Physical Activities. Estimation indicative (+/- 30 %).
