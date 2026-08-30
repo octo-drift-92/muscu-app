@@ -49,9 +49,15 @@ bloc('muscleContribs — pondérations');
 egal('T-bar : préhension à 0,5 (barre, pas machine) — la régression de v94',
   (C.muscleContribs('Rowing T-bar prise large') || []).filter(c => c.g === 'Avant-bras'),
   [{ g: 'Avant-bras', w: 0.5 }]);
-egal('tirage sur machine : préhension à 0,25',
+// v145 : MF donne 0,5 d avant-bras a tous les tirages et rowings, sans distinguer
+// l engin libre de la machine. La granularite de prehension d Increm (0,25 quand la
+// machine guide la charge) ne survit que sur les mouvements que MF ne couvre pas.
+egal('tirage sur machine : préhension à 0,5 depuis l alignement MF',
   (C.muscleContribs('Lat pulldown') || []).filter(c => c.g === 'Avant-bras'),
-  [{ g: 'Avant-bras', w: 0.25 }]);
+  [{ g: 'Avant-bras', w: 0.5 }]);
+egal('rowing sur sélecteur aussi',
+  (C.muscleContribs('Rowing machine', 'Sélecteur') || []).filter(c => c.g === 'Avant-bras'),
+  [{ g: 'Avant-bras', w: 0.5 }]);
 egal('curl marteau : 0,5 par sa clause propre',
   (C.muscleContribs('Curl marteau') || []).filter(c => c.g === 'Avant-bras'),
   [{ g: 'Avant-bras', w: 0.5 }]);
@@ -113,28 +119,28 @@ bloc('muscleContribs — lecture des attributs');
 
   // La préhension suit la charge : engin libre 0,5, poulie et sélecteur 0,25.
   egal('charge Haltères donne 0,5 de préhension',
-    (C.muscleContribs('Rowing machine', 'Haltères') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
+    (C.muscleContribs('Soulevé de terre', 'Haltères') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
     [{ g: 'Avant-bras', w: 0.5 }]);
   egal('charge Poulie donne 0,25',
-    (C.muscleContribs('Rowing machine', 'Poulie') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
+    (C.muscleContribs('Soulevé de terre', 'Poulie') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
     [{ g: 'Avant-bras', w: 0.25 }]);
 
   // La charge fait autorité, y compris contre le nom : un nom contenant « poulie »
   // avec une charge « Barre » compte 0,5, parce que c'est bien la main qui tient.
   egal('charge Disques donne 0,5',
-    (C.muscleContribs('Rowing machine', 'Disques') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
+    (C.muscleContribs('Soulevé de terre', 'Disques') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
     [{ g: 'Avant-bras', w: 0.5 }]);
   egal('charge Sélecteur donne 0,25',
-    (C.muscleContribs('Rowing machine', 'Sélecteur') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
+    (C.muscleContribs('Shrug', 'Sélecteur') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
     [{ g: 'Avant-bras', w: 0.25 }]);
   egal('charge Poids du corps donne 0,5',
     (C.muscleContribs('Traction', 'Poids du corps') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
     [{ g: 'Avant-bras', w: 0.5 }]);
   egal('le champ l emporte sur le nom : « poulie » + charge Barre = 0,5',
-    (C.muscleContribs('Rowing poulie basse', 'Barre') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
+    (C.muscleContribs('Shrug poulie basse', 'Barre') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
     [{ g: 'Avant-bras', w: 0.5 }]);
   egal('sans champ, « poulie basse » reste à 0,25',
-    (C.muscleContribs('Rowing poulie basse', '') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
+    (C.muscleContribs('Shrug poulie basse', '') || []).filter(function (c) { return c.g === 'Avant-bras'; }),
     [{ g: 'Avant-bras', w: 0.25 }]);
 
   // NON-RÉGRESSION : sans attribut, rien ne bouge.
@@ -395,6 +401,51 @@ bloc('plageReps / fourchettes');
   // plancher. C est tout l objet de la fourchette.
   egal('la meme seance change de verdict selon la fourchette',
     t([S(80, [10, 10, 10, 10])], { reps: 8 }, ADD).action, 'maintien');
+}
+
+/* ---------------------------------------------------------------- */
+bloc('alignement MacroFactor (v145)');
+{
+  // Table de reference fournie par MacroFactor le 30/08/2026, adoptee sur sa demande
+  // (« c est la reference »). primaire = 1, secondaire = 0,5.
+  const poids = (nom, at) => {
+    const o = {};
+    (C.muscleContribs(nom, at || '') || []).forEach(c => { o[c.g] = c.w; });
+    return o;
+  };
+  const REF = [
+    ['Rowing machine prise neutre', '', { 'Grand dorsal': 1, 'Milieu du dos': 1, 'Deltoïde post.': 1, Biceps: .5, 'Trapèzes': .5, 'Avant-bras': .5 }],
+    ['Rowing T-bar', 'Disques · Large', { 'Grand dorsal': 1, 'Milieu du dos': 1, 'Deltoïde post.': 1, Biceps: .5, 'Trapèzes': .5, 'Avant-bras': .5 }],
+    ['Lat pulldown', '', { 'Grand dorsal': 1, Biceps: 1, 'Milieu du dos': .5, 'Deltoïde post.': .5, 'Avant-bras': .5 }],
+    ['Face pull poulie basse', '', { 'Milieu du dos': 1, 'Deltoïde post.': .5, 'Trapèzes': .5 }],
+    ['Élévations latérales assis', 'Haltères', { 'Deltoïde lat.': 1, 'Deltoïde ant.': .5, 'Trapèzes': .5 }],
+    ['Élévations frontales', 'Poulie', { 'Deltoïde ant.': 1, 'Deltoïde lat.': .5 }],
+    ['Chest Press droit assis', '', { 'Pectoraux': 1, 'Triceps': .5, 'Deltoïde ant.': .5 }],
+    ['Pec deck machine', '', { 'Pectoraux': 1, 'Deltoïde ant.': .5 }],
+    ['Leg Curl allongé', '', { 'Ischios': 1, 'Mollets': .5 }],
+    ['Leg Curl debout unilatéral', '', { 'Ischios': 1, 'Mollets': .5 }],
+    ['Hack squat à disques', '', { 'Quadriceps': 1, 'Adducteurs': .5, 'Fessiers': .5 }],
+    ['Abduction machine', '', { 'Abducteurs': 1, 'Fessiers': 1 }],
+    ['Adduction machine', '', { 'Adducteurs': 1 }],
+    ['Leg Extension', '', { 'Quadriceps': 1 }],
+    ['Preacher curl', 'Haltères', { 'Biceps': 1 }],
+    ['Curl biceps poulie basse', '', { 'Biceps': 1 }],
+    ['Extension triceps à la poulie haute', '', { 'Triceps': 1 }],
+    ['Mollets machine debout', '', { 'Mollets': 1 }],
+  ];
+  REF.forEach(([nom, at, attendu]) => egal('MF · ' + nom, poids(nom, at), attendu));
+
+  // La prise ne separe plus les rowings : MF les traite tous pareil.
+  egal('prise neutre et prise large comptent a l identique',
+    C.muscleContribs('Rowing machine', 'Neutre'), C.muscleContribs('Rowing machine', 'Large'));
+
+  // Abducteurs est un groupe a part entiere, distinct des adducteurs.
+  verifie('« Abducteurs » figure dans les groupes', C.MUSCLE_GROUPS.indexOf('Abducteurs') >= 0);
+  verifie('« Abducteurs » a une couleur', !!C.GROUP_COLORS['Abducteurs']);
+  verifie('adduction ne tombe pas dans abduction',
+    C.muscleContribs('Adduction machine')[0].g === 'Adducteurs');
+  verifie('le travail direct de fessier reste sur Fessiers seul',
+    C.muscleContribs('Hip thrust').length === 1 && C.muscleContribs('Hip thrust')[0].g === 'Fessiers');
 }
 
 /* ---------------------------------------------------------------- */

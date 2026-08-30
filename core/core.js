@@ -23,9 +23,9 @@ var INCL_OPTS=['Plat','15°','30°','45°','60°','Décliné'];
 var EQUIP_BRANDS=['Technogym','Matrix','Life Fitness','Hammer Strength','Precor','Panatta','Gym80'];  // marques de machines
 
 /* ---------- analyses : groupe musculaire, dernière séance, plateaux ---------- */
-var MUSCLE_GROUPS=['Pectoraux','Grand dorsal','Milieu du dos','Trapèzes','Deltoïde ant.','Deltoïde lat.','Deltoïde post.','Biceps','Triceps','Avant-bras','Quadriceps','Ischios','Fessiers','Adducteurs','Mollets','Abdos','Lombaires'];
+var MUSCLE_GROUPS=['Pectoraux','Grand dorsal','Milieu du dos','Trapèzes','Deltoïde ant.','Deltoïde lat.','Deltoïde post.','Biceps','Triceps','Avant-bras','Quadriceps','Ischios','Fessiers','Adducteurs','Abducteurs','Mollets','Abdos','Lombaires'];
 
-var GROUP_COLORS={'Pectoraux':'#ef6f6c','Grand dorsal':'#4f86c6','Milieu du dos':'#6f9fd8','Deltoïde ant.':'#e8973a','Deltoïde lat.':'#f0b54e','Deltoïde post.':'#cf7d2e','Biceps':'#9b6dd6','Triceps':'#19b8aa','Quadriceps':'#3fa869','Ischios':'#7cc24a','Fessiers':'#e070a8','Adducteurs':'#b5738a','Mollets':'#b08152','Abdos':'#e6c64a','Lombaires':'#8090a6','Trapèzes':'#3fb1ca','Avant-bras':'#9aa3ad','Autre':'#8090a6'};
+var GROUP_COLORS={'Pectoraux':'#ef6f6c','Grand dorsal':'#4f86c6','Milieu du dos':'#6f9fd8','Deltoïde ant.':'#e8973a','Deltoïde lat.':'#f0b54e','Deltoïde post.':'#cf7d2e','Biceps':'#9b6dd6','Triceps':'#19b8aa','Quadriceps':'#3fa869','Ischios':'#7cc24a','Fessiers':'#e070a8','Adducteurs':'#b5738a','Abducteurs':'#c98fa4','Mollets':'#b08152','Abdos':'#e6c64a','Lombaires':'#8090a6','Trapèzes':'#3fb1ca','Avant-bras':'#9aa3ad','Autre':'#8090a6'};
 
 // Estimation de duree d une seance. Constantes assumees, documentees dans l aide :
 // 40 s de travail par serie · repos = repos cible reglable · 65 s par serie d echauffement
@@ -56,39 +56,51 @@ function muscleContribs(name, attrs){
   }
 
   if(/omoplate|scapulaire|retraction scap/.test(n)) return [{g:'Trapèzes',w:1},{g:'Deltoïde post.',w:.5}];
-  if(/face.?pull/.test(n)) return [{g:'Deltoïde post.',w:1},{g:'Trapèzes',w:.5}];
+  // v145 — alignement sur MacroFactor, a sa demande explicite : « c est la reference ».
+  // MF inverse la hierarchie du face pull : le milieu du dos est primaire (le mouvement
+  // EST une retraction scapulaire), le deltoide posterieur passe secondaire.
+  if(/face.?pull/.test(n)) return [{g:'Milieu du dos',w:1},{g:'Deltoïde post.',w:.5},{g:'Trapèzes',w:.5}];
   if(/oiseau|reverse fly|l-?fly|rotation ext|coiffe|rotateur|lever lateral|rear delt|reverse pec/.test(n)) return P('Deltoïde post.');
-  if(/elevations? laterales?|lateral raise/.test(n)) return P('Deltoïde lat.');
+  // Symetrique exact de la v137 sur les frontales : si l elevation frontale recrute le
+  // faisceau lateral, la laterale recrute l anterieur. Le trapeze superieur entre des
+  // que le bras depasse l horizontale.
+  if(/elevations? laterales?|lateral raise/.test(n)) return [{g:'Deltoïde lat.',w:1},{g:'Deltoïde ant.',w:.5},{g:'Trapèzes',w:.5}];
   // v137 : les faisceaux du deltoide ne s isolent pas proprement. L EMG montre une
   // activite substantielle du deltoide MOYEN pendant une elevation frontale, d autant
   // plus marquee en prise neutre (le mouvement se rapproche alors du plan de l omoplate)
   // et a mesure que le bras s eleve. Meme principe qu en v127 sur les rowings : quand
   // deux faisceaux travaillent, aucun ne reste a zero.
   if(/elevations? frontales?|front raise/.test(n)) return [{g:'Deltoïde ant.',w:1},{g:'Deltoïde lat.',w:.5}];
-  if(/elevation/.test(n) && !/jambe|cuisse|mollet|genou|bassin|hanche|hip|pelv|gainage|buste|tronc/.test(n)) return P('Deltoïde lat.');
-  if(/leg curl|leg-curl/.test(n)) return P('Ischios');
+  if(/elevation/.test(n) && !/jambe|cuisse|mollet|genou|bassin|hanche|hip|pelv|gainage|buste|tronc/.test(n)) return [{g:'Deltoïde lat.',w:1},{g:'Deltoïde ant.',w:.5},{g:'Trapèzes',w:.5}];
+  // Le gastrocnemien croise le genou : il est flechisseur du genou autant qu extenseur
+  // de cheville. MF le compte sur les deux leg curls, allonge comme debout.
+  if(/leg curl|leg-curl/.test(n)) return [{g:'Ischios',w:1},{g:'Mollets',w:.5}];
   if(/jambes tendues|romanian|\brdl\b|souleve de terre roumain|good ?morning/.test(n)) return [{g:'Ischios',w:1},{g:'Fessiers',w:.5},{g:'Lombaires',w:.5},AB()];
   if(/souleve de terre|deadlift|\bsdt\b/.test(n)) return [{g:'Lombaires',w:1},{g:'Fessiers',w:.5},{g:'Ischios',w:.5},{g:'Trapèzes',w:.5},AB()];
   if(/adduction|adducteur/.test(n)) return P('Adducteurs');
-  if(/hip thrust|pont fessier|abduction|abducteur|fessier|glute/.test(n)) return P('Fessiers');
+  // MF separe les abducteurs (moyen et petit fessier) du grand fessier et compte les
+  // deux. Increm les fondait dans « Fessiers », ce qui masquait que son travail d
+  // abduction ne charge pas le grand fessier de la meme facon.
+  if(/abduction|abducteur/.test(n)) return [{g:'Abducteurs',w:1},{g:'Fessiers',w:1}];
+  if(/hip thrust|pont fessier|fessier|glute/.test(n)) return P('Fessiers');
   if(/shrug|haussement|trapeze/.test(n)) return [{g:'Trapèzes',w:1},AB()];
-  if(/rowing|\brow\b|\bt[\s-]?bar/.test(n)){
-    // Tout rowing tire ET retracte : les dorsaux comme le milieu du dos sont
-    // moteurs, la prise decide seulement lequel domine. Aucun des deux ne
-    // tombe a zero. Les trapezes manquaient ici alors que les deux autres
-    // branches les comptent — une prise neutre retracte les omoplates autant
-    // qu une prise large.
-    if(/neutre|marteau/.test(n)) return [{g:'Grand dorsal',w:1},{g:'Milieu du dos',w:1},{g:'Trapèzes',w:.5},{g:'Biceps',w:.5},{g:'Deltoïde post.',w:.5},AB()];
-    if(/haute|large/.test(n)) return [{g:'Milieu du dos',w:1},{g:'Grand dorsal',w:.5},{g:'Trapèzes',w:.5},{g:'Deltoïde post.',w:.5},{g:'Biceps',w:.5},AB()];
-    return [{g:'Milieu du dos',w:1},{g:'Grand dorsal',w:.5},{g:'Biceps',w:.5},{g:'Deltoïde post.',w:.5},{g:'Trapèzes',w:.5},AB()];
-  }
-  if(/tirage|traction|pulldown|pull-?up|\blat\b/.test(n)) return [{g:'Grand dorsal',w:1},{g:'Biceps',w:.5},AB()];
+  // MacroFactor donne la MEME attribution a tous les rowings, quelle que soit la prise :
+  // trois primaires — grand dorsal, milieu du dos, deltoide posterieur. Cela remplace la
+  // distinction par prise introduite en v127 (prise neutre -> dorsaux dominants, prise
+  // large -> milieu du dos dominant), sur sa demande explicite du 30/08/2026 d aligner
+  // Increm sur MF. Precision perdue assumee : son T-bar {Large} et son rowing machine
+  // {Neutre} comptent desormais a l identique.
+  if(/rowing|\brow\b|\bt[\s-]?bar/.test(n)) return [{g:'Grand dorsal',w:1},{g:'Milieu du dos',w:1},{g:'Deltoïde post.',w:1},{g:'Biceps',w:.5},{g:'Trapèzes',w:.5},{g:'Avant-bras',w:.5}];
+  // MF met le biceps en PRIMAIRE sur un tirage vertical, au meme niveau que le grand
+  // dorsal, et ajoute milieu du dos et deltoide posterieur en secondaires.
+  if(/tirage|traction|pulldown|pull-?up|\blat\b/.test(n)) return [{g:'Grand dorsal',w:1},{g:'Biceps',w:1},{g:'Milieu du dos',w:.5},{g:'Deltoïde post.',w:.5},{g:'Avant-bras',w:.5}];
   if(/pull-?over/.test(n)) return [{g:'Grand dorsal',w:1},{g:'Pectoraux',w:.5}];
-  if(/ecarte|pec deck|butterfly|\bfly\b/.test(n)) return P('Pectoraux');
+  if(/ecarte|pec deck|butterfly|\bfly\b/.test(n)) return [{g:'Pectoraux',w:1},{g:'Deltoïde ant.',w:.5}];
   if(/developpe couche|developpe incline|chest press|chess press|\bdips?\b|pompe|bench/.test(n)) return [{g:'Pectoraux',w:1},{g:'Triceps',w:.5},{g:'Deltoïde ant.',w:.5}];
   if(/militaire|overhead press|developpe epaule|arnold|shoulder press/.test(n)) return [{g:'Deltoïde ant.',w:1},{g:'Deltoïde lat.',w:.5},{g:'Triceps',w:.5}];
   if(/mollet|calf/.test(n)) return P('Mollets');
-  if(/squat|leg press|presse a cuisse|hack|fente|\blunge\b/.test(n)) return [{g:'Quadriceps',w:1},{g:'Fessiers',w:.5}];
+  // L adducteur magnus est un extenseur de hanche majeur en position basse.
+  if(/squat|leg press|presse a cuisse|hack|fente|\blunge\b/.test(n)) return [{g:'Quadriceps',w:1},{g:'Adducteurs',w:.5},{g:'Fessiers',w:.5}];
   if(/leg extension/.test(n)) return P('Quadriceps');
   if(/triceps|kickback|skull|barre au front/.test(n)) return P('Triceps');
   if(/reverse.*curl|curl.*invers|avant.?bras|forearm|wrist|poignet/.test(n)) return [{g:'Avant-bras',w:1},{g:'Biceps',w:.5}];
